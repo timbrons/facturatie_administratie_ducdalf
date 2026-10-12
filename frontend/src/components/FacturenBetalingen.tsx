@@ -3,7 +3,8 @@ import { useQueryClient } from "@tanstack/react-query"
 import { pb } from "../lib/pb"
 import { sleutels, useBetalingen, useFacturen } from "../lib/data"
 import type { Betaling, Boeking, Instellingen } from "../lib/types"
-import { factuurBezwaar, maakConcept, maakCredit, maakDefinitief, markeerVerstuurd, pdfUrl, pdfVoor, statusNaBetaling } from "../lib/facturen"
+import { factuurBezwaar, kopieNaarDrive, maakConcept, maakCredit, maakDefinitief, markeerVerstuurd, pdfUrl, pdfVoor, statusNaBetaling } from "../lib/facturen"
+import { driveBeschikbaar } from "../lib/drive"
 import { totaalBoeking } from "../lib/boeking"
 import { formatLang, formatTijdstip, vandaag } from "../domein/datum"
 import { formatEuro, type Cent } from "../domein/geld"
@@ -47,6 +48,7 @@ export function FacturenKaart({ boeking: b, inst, stappen }: { boeking: Boeking;
   const ververs = useVerversen(b.id)
   const [bezig, setBezig] = useState("")
   const [fout, setFout] = useState<unknown>(null)
+  const [melding, setMelding] = useState("")
 
   const lijst = (facturen.data ?? []).filter((f) => f.boeking === b.id)
   const betaald = (betalingen.data ?? []).filter((p) => p.boeking === b.id).reduce((t, p) => t + p.bedrag_cent, 0)
@@ -73,6 +75,7 @@ export function FacturenKaart({ boeking: b, inst, stappen }: { boeking: Boeking;
     <Kaart titel="Facturen" className="scroll-mt-24">
       <div id="facturen" />
       {fout ? <div className="mb-3"><Fout fout={fout} /></div> : null}
+      {melding && <div className="mb-3"><Melding soort="waarschuwing">{melding}</Melding></div>}
       {lijst.length === 0 && <p className="mb-3 text-sm text-zacht">Nog geen factuur.</p>}
       <ul className="mb-3 flex flex-col gap-3">
         {lijst.map((f) => {
@@ -108,7 +111,10 @@ export function FacturenKaart({ boeking: b, inst, stappen }: { boeking: Boeking;
                       disabled={!!bezig}
                       onClick={() => {
                         if (window.confirm("Factuur definitief maken? Hij krijgt dan een factuurnummer en kan niet meer worden gewijzigd.")) {
-                          actie("definitief", () => maakDefinitief(f, b, inst))
+                          actie("definitief", async () => {
+                            const r = await maakDefinitief(f, b, inst)
+                            setMelding(r.driveMelding ?? "")
+                          })
                         }
                       }}
                     >
@@ -118,6 +124,20 @@ export function FacturenKaart({ boeking: b, inst, stappen }: { boeking: Boeking;
                 )}
                 {f.pdf && (
                   <button type="button" className="knop-klein" onClick={() => actie("pdf", async () => openPdf(await pdfUrl(f)))}>PDF openen</button>
+                )}
+                {f.drive_link && (
+                  <a href={f.drive_link} target="_blank" rel="noopener noreferrer" className="knop-klein">In Drive ↗</a>
+                )}
+                {inst.drive_kopie && f.nummer && f.pdf && !f.drive_link && (
+                  <button
+                    type="button"
+                    className="knop-klein"
+                    disabled={!!bezig}
+                    title={driveBeschikbaar() ? "" : "Koppel eerst Google (onderaan de pagina)"}
+                    onClick={() => actie("drive", async () => { await kopieNaarDrive(f, inst); setMelding("") })}
+                  >
+                    {bezig === "drive" ? "Bezig…" : "Naar Drive"}
+                  </button>
                 )}
                 {f.nummer && !f.vergrendeld && (
                   <button type="button" className="knop-klein" disabled={!!bezig} onClick={() => actie("verstuurd", () => markeerVerstuurd(f, b, stappen))}>

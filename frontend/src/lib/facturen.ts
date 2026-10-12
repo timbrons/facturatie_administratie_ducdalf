@@ -7,6 +7,8 @@ import { betaaltekst, bouwFactuurregels, creditRegels, totaalVan, type Factuurre
 import { isBijOfVoorbij, type WorkflowStap } from "../domein/workflow"
 import type { FactuurGegevens } from "../pdf/FactuurPdf"
 import { laadAfbeelding, maakFactuurPdf } from "../pdf/genereer"
+import { driveBeschikbaar, zetInDrive } from "./drive"
+import { factuurBestandsnaam, factuurMap } from "../domein/bestandsnamen"
 
 // Alle stappen rond facturen: concept maken, definitief maken (nummeren +
 // PDF), als verstuurd markeren (vergrendelen) en crediteren.
@@ -111,11 +113,21 @@ export async function pdfVoor(f: Factuur, inst: Instellingen): Promise<Blob> {
   })
 }
 
+/** Zet de PDF van een definitieve factuur als kopie in Google Drive en onthoudt de link. */
+export async function kopieNaarDrive(f: Factuur, inst: Instellingen, blob?: Blob): Promise<Factuur> {
+  if (!f.nummer) throw new Error("Alleen definitieve facturen gaan naar Drive.")
+  const inhoud = blob ?? (await (await fetch(await pdfUrl(f))).blob())
+  // Naam van de huurder zonder aanhef, bijv. "2026-006 Anna de Vries.pdf".
+  const naam = ((f.gegevens as FactuurGegevens | null)?.huurder?.naam ?? "").replace(/^(Dhr\.|Mevr\.|Fam\.)\s+/i, "")
+  const bestand = await zetInDrive(factuurMap(inst.drive_map, f.nummer), factuurBestandsnaam(f.nummer, naam, f.soort === "credit"), inhoud)
+  return pb.collection("facturen").update<Factuur>(f.id, { drive_id: bestand.id, drive_link: bestand.webViewLink })
+}
+
 /**
  * Definitief maken: factuurdatum op vandaag, nummer toekennen (backend),
  * PDF maken en opslaan. Daarna liggen inhoud en nummer vast.
  */
-export async function maakDefinitief(f: Factuur, b: Boeking, inst: Instellingen): Promise<Factuur> {
+export async function maakDefinitief(f: Factuur, b: Boeking, inst: Instellingen): Promise<{ factuur: Factuur; driveMelding?: string }> {
   let concept = f
   if (f.soort === "factuur") concept = await vernieuwConcept(f, b, inst)
   else if (f.factuurdatum !== vandaag()) concept = await pb.collection("facturen").update<Factuur>(f.id, { factuurdatum: vandaag() })
@@ -123,7 +135,7 @@ export async function maakDefinitief(f: Factuur, b: Boeking, inst: Instellingen)
   const blob = await pdfVoor(genummerd, inst)
   const fd = new FormData()
   fd.append("pdf", new File([blob], `${genummerd.soort === "credit" ? "Creditfactuur" : "Factuur"}_${genummerd.nummer}.pdf`, { type: "application/pdf" }))
-  const metPdf = await pb.collection("facturen").update<Factuur>(genummerd.id, fd)
+  let metPdf = await pb.collection("facturen").update<Factuur>(genummerd.id, fd)
   if (genummerd.soort === "factuur") {
     await pb.collection("boekingen").update(b.id, {
       // Is een aanbetaling omgezet naar één termijn (aankomst te dichtbij), dan ook in de boeking.
@@ -132,7 +144,20 @@ export async function maakDefinitief(f: Factuur, b: Boeking, inst: Instellingen)
       rest_vervaldatum: genummerd.rest_vervaldatum,
     })
   }
-  return metPdf
+  // Kopie naar Google Drive (mag mislukken: de factuur zelf staat veilig in de database).
+  let driveMelding: string | undefined
+  if (inst.drive_kopie) {
+    if (!driveBeschikbaar()) {
+      driveMelding = "Er is nog geen kopie in Google Drive gezet: Google is niet gekoppeld. Koppel Google en klik op ‘Naar Drive’."
+    } else {
+      try {
+        metPdf = await kopieNaarDrive(metPdf, inst, blob)
+      } catch (err) {
+        driveMelding = `Kopie naar Google Drive mislukt: ${err instanceof Error ? err.message : String(err)}`
+      }
+    }
+  }
+  return { factuur: metPdf, driveMelding }
 }
 
 /** Markeer als verstuurd: vergrendelt de factuur en schuift de workflow door. */

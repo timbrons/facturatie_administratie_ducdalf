@@ -17,6 +17,7 @@ export function InstellingenPagina() {
     <>
       <Paginakop wenkbrauw="Beheer" titel="Instellingen">
         <Link to="/sjablonen" className="knop-rand">E-mailsjablonen</Link>
+        <Link to="/beheer" className="knop-rand">Export en privacy</Link>
         <Link to="/importeren" className="knop-rand">Oude administratie importeren</Link>
       </Paginakop>
       <div className="flex flex-col gap-6">
@@ -110,10 +111,21 @@ function Algemeen({ inst }: { inst: Instellingen }) {
         </div>
       </Kaart>
 
+      <Kaart titel="Google Drive">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="flex items-center gap-2 pt-6 text-inkt">
+            <input type="checkbox" checked={d.drive_kopie} onChange={(e) => setD({ ...d, drive_kopie: e.target.checked })} />
+            Kopie van facturen en bewijsstukken in Google Drive zetten
+          </label>
+          {tekst("drive_map", "Hoofdmap in Google Drive", { hint: "Daaronder: Facturen/<jaar> en Toeristenbelasting/<jaar>" })}
+        </div>
+      </Kaart>
+
       <Kaart titel="Links">
         <div className="grid gap-4 sm:grid-cols-2">
           {tekst("tb_portaal_url", "Portaal toeristenbelasting", { type: "url" })}
           {tekst("aanmeldformulier_url", "Aanmeldformulier", { type: "url" })}
+          {tekst("aanmelding_zoekopdracht", "Gmail-zoekopdracht voor aanmeldingen", { hint: "Standaard: from:formsubmit.co aanmelding" })}
         </div>
       </Kaart>
 

@@ -17,10 +17,11 @@ Het client secret (nodig voor A) staat alleen in PocketBase op de NAS.
 2. Bovenin: projectkiezer → **Nieuw project** → naam `ducdalf-verhuurbeheer` → **Maken**.
 3. Selecteer het nieuwe project.
 
-## Stap 2: Gmail API aanzetten (voor fase 3)
+## Stap 2: Gmail API en Google Drive API aanzetten
 
 1. Menu → **API's en services → Bibliotheek**.
 2. Zoek **Gmail API** → **Inschakelen**.
+3. Zoek **Google Drive API** → **Inschakelen** (voor de kopie van facturen in Drive, fase 4).
 
 ## Stap 3: OAuth-toestemmingsscherm
 
@@ -31,6 +32,9 @@ Het client secret (nodig voor A) staat alleen in PocketBase op de NAS.
 4. **Bereiken (scopes / gegevenstoegang)**: voeg toe:
    - `openid`, `.../auth/userinfo.email`, `.../auth/userinfo.profile` (inloggen)
    - `https://www.googleapis.com/auth/gmail.send` (mail versturen, fase 3)
+   - `https://www.googleapis.com/auth/gmail.readonly` (inzendingen van het aanmeldformulier lezen, fase 4)
+   - `https://www.googleapis.com/auth/drive.file` (kopieën in Google Drive; de app ziet alleen de
+     bestanden die hij zelf maakt, fase 4)
 5. **Testgebruikers (doelgroep)**: voeg `ducdalf.languedoc@gmail.com` toe, plus eventuele andere
    accounts die mogen inloggen.
 6. Laat de publicatiestatus op **Testen** staan. Dat is voor jullie gebruik genoeg. Google toont
@@ -57,13 +61,14 @@ Het client secret (nodig voor A) staat alleen in PocketBase op de NAS.
 | Clientgeheim | idem (alleen in PocketBase op de NAS) | **Ja** |
 | Client-ID | GitHub → Settings → Secrets and variables → Actions → **Variables** → `VITE_GOOGLE_CLIENT_ID` (fase 3) | Nee |
 
-## Gmail in de app gebruiken (fase 3)
+## Google in de app gebruiken (Gmail en Drive)
 
 1. Zet `VITE_GOOGLE_CLIENT_ID` als repository-variabele (zie de tabel hierboven) en publiceer opnieuw.
-2. Klik in de app op **Koppel Gmail** (onderaan de pagina of bij E-mails van een boeking). Kies
-   `ducdalf.languedoc@gmail.com` en geef toestemming om "e-mail namens je te verzenden".
+2. Klik in de app op **Koppel Google** (onderaan de pagina, bij E-mails van een boeking of bij
+   Aanmeldingen). Kies `ducdalf.languedoc@gmail.com` en **vink alle gevraagde rechten aan**: mail
+   versturen, mail lezen en de eigen bestanden in Drive.
 3. Het toegangstoken staat alleen in het geheugen van de browser. Na het herladen van de pagina of
-   na ± 1 uur klik je opnieuw op Koppel Gmail. Er worden geen tokens opgeslagen.
+   na ± 1 uur klik je opnieuw op Koppel Google. Er worden geen tokens opgeslagen.
 4. De afzender van de mails is het gekoppelde account. Vul bij Instellingen bij "E-mail" van de
    afzender hetzelfde adres in.
 

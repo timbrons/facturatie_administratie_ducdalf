@@ -15,6 +15,7 @@ import { StatusLabel } from "../components/Status"
 import { TbAangifteDialoog, TbBerekenDialoog } from "../components/Toeristenbelasting"
 import { BetalingenKaart, FacturenKaart } from "../components/FacturenBetalingen"
 import { MailKaart } from "../components/Mail"
+import { AanmeldingKaart } from "../components/AanmeldingKaart"
 
 const BRONNEN: Record<string, string> = {
   website: "Eigen website",
@@ -192,6 +193,8 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
               {b.optie && <Gegeven label="Optie">Ja, nog niet definitief</Gegeven>}
             </dl>
           </Kaart>
+
+          <AanmeldingKaart boeking={b} />
 
           <FacturenKaart boeking={b} inst={inst} stappen={stappen} />
 
