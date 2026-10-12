@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+/*
+ * Huisstijl van vakantiehuis-ducdalf.nl, vastgelegd als design tokens.
+ * Kleuren gemeten uit de website; lettertypen Fraunces (koppen) en Manrope (tekst).
+ */
+@theme {
+  --color-creme: #faf7ef;      /* pagina-achtergrond, kaarten */
+  --color-zand: #f1e7d4;       /* afwisselende secties, infoblokken */
+  --color-zand-donker: #e6d8bd;
+  --color-goud: #b49365;       /* primaire knoppen */
+  --color-goud-donker: #9a7a4e;
+  --color-goud-tekst: #7c6440; /* prijzen, accenten in tekst */
+  --color-inkt: #3c362c;       /* koppen, logo */
+  --color-tekst: #5f594e;      /* lopende tekst (iets donkerder dan de site voor leesbaarheid) */
+  --color-zacht: #878276;      /* secundaire tekst */
+  --color-lijn: #e0dbd2;       /* scheidingslijnen */
+  --color-olijf: #7f9873;      /* accentlijn */
+  --color-olijf-donker: #656951;
+  --color-rood: #a4442f;
+  --color-rood-zacht: #f6e3dc;
+  --color-oranje: #b9741c;
+  --color-oranje-zacht: #f8ead2;
+  --color-groen-zacht: #e5ecdf;
+
+  --font-serif: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-sans: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-creme text-tekst font-sans antialiased;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  h1, h2, h3 {
+    @apply font-serif text-inkt;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+  }
+  h1 { @apply text-3xl sm:text-4xl; }
+  h2 { @apply text-2xl; }
+  h3 { @apply text-lg; }
+  a { @apply text-goud-tekst; }
+  input, select, textarea {
+    @apply w-full rounded-none border border-lijn bg-white px-3 py-2 text-inkt outline-none;
+    font: inherit;
+  }
+  input:focus, select:focus, textarea:focus {
+    @apply border-goud ring-1 ring-goud;
+  }
+  input[type="checkbox"], input[type="radio"] {
+    @apply w-auto accent-goud;
+  }
+  label { @apply text-sm text-zacht; }
+}
+
+@layer components {
+  .wenkbrauw {
+    @apply text-[11px] font-semibold uppercase text-goud-tekst;
+    letter-spacing: 0.22em;
+  }
+  .knop {
+    @apply inline-flex items-center justify-center gap-2 bg-goud px-5 py-2.5 text-xs font-semibold uppercase text-white transition-colors no-underline;
+    letter-spacing: 0.14em;
+  }
+  .knop:hover { @apply bg-goud-donker; }
+  .knop:disabled { @apply cursor-not-allowed opacity-50; }
+  .knop-rand {
+    @apply inline-flex items-center justify-center gap-2 border border-inkt/60 bg-transparent px-5 py-2.5 text-xs font-semibold uppercase text-inkt transition-colors no-underline;
+    letter-spacing: 0.14em;
+  }
+  .knop-rand:hover { @apply bg-zand; }
+  .knop-klein {
+    @apply inline-flex items-center gap-1 border border-lijn bg-white px-2.5 py-1 text-xs text-inkt no-underline;
+  }
+  .knop-klein:hover { @apply border-goud; }
+  .kaart {
+    @apply border border-lijn bg-white/70 p-5;
+  }
+  .infoblok {
+    @apply border-l-2 border-olijf bg-zand px-5 py-4;
+  }
+}

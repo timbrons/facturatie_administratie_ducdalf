@@ -1,0 +1,3 @@
+#!/bin/sh
+# Draait de privacycontrole op de gestagede bestanden vóór elke commit.
+exec "$(git rev-parse --show-toplevel)/scripts/privacy-check.sh"

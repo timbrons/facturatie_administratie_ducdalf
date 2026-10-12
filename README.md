@@ -1,0 +1,115 @@
+# Duc'dalf verhuurbeheer
+
+Web-app voor de verhuur, facturatie en administratie van vakantiehuis **Duc'dalf**
+(huisje 264 op Parc le Duc, Languedoc). Elke boeking doorloopt een workflow van aanvraag tot
+afronding. De app laat steeds zien wat de volgende actie is.
+
+- **Frontend**: statische app (React, TypeScript, Vite, Tailwind) op **GitHub Pages**.
+- **Backend**: **PocketBase** op de eigen **Synology NAS**, bereikbaar via een Cloudflare Tunnel.
+- **Inloggen**: Google, alleen voor e-mailadressen op de allowlist (afgedwongen in de backend).
+
+> ⚠️ **Privacy.** Deze repository is openbaar. Er staan alleen fictieve gegevens in. Echte huurder-,
+> adres- en bankgegevens staan uitsluitend in de database op de NAS. De map `referentie/`, `.env`-
+> bestanden, exports en `pb_data/` staan in `.gitignore`. `scripts/privacy-check.sh` controleert
+> dat bij elke commit (pre-commit hook) en in CI.
+
+## Inhoud
+
+| Map | Wat |
+|---|---|
+| `frontend/` | De app (React). Kernlogica met tests in `src/domein/`. |
+| `backend/` | PocketBase: `Dockerfile`, `pb_migrations/` (schema, API rules, standaardwaarden), `pb_hooks/` (allowlist, workflowbewaking). |
+| `deploy/synology/` | `docker-compose.yml` en `.env.example` voor de NAS (PocketBase + cloudflared). |
+| `docs/` | [Installatie Synology](docs/installatie-synology.md), [Google-inloggen en Gmail](docs/google-inloggen-en-gmail.md), [Plan en architectuur](docs/plan.md). |
+| `scripts/` | Seed met fictieve testdata en de privacycontrole. |
+
+## Lokaal draaien
+
+Vereist: Docker en Node.js 22.
+
+```bash
+# 1. Backend (PocketBase) starten
+docker compose up -d --build
+docker compose exec pocketbase /pb/pocketbase superuser upsert admin@example.com 'EenLangWachtwoord123!' --dir=/pb/pb_data
+
+# 2. Fictieve testdata laden (alleen tegen localhost)
+node scripts/seed.mjs
+
+# 3. Frontend starten
+cd frontend
+cp .env.example .env.local      # VITE_API_URL=http://127.0.0.1:8090, VITE_DEV_LOGIN=true
+npm install
+npm run dev                     # http://localhost:5173
+```
+
+Log in met **test@ducdalf.test / testtest123** (de knop "Inloggen (ontwikkeling)" verschijnt alleen
+met `VITE_DEV_LOGIN=true`; in de gepubliceerde versie bestaat alleen Google-login).
+Het PocketBase-beheerscherm staat op <http://127.0.0.1:8090/_/>.
+
+Tests en controle:
+
+```bash
+cd frontend
+npm test            # kernlogica: prijzen, seizoenen, toeristenbelasting, nummering, termijnen, workflow
+npx tsc -b          # typecheck
+../scripts/privacy-check.sh
+git config core.hooksPath scripts/git-hooks   # privacycontrole vóór elke commit
+```
+
+## Backend op de Synology
+
+Zie **[docs/installatie-synology.md](docs/installatie-synology.md)**: Container Manager, Cloudflare
+Tunnel (`api.vakantiehuis-ducdalf.nl`, geen open poorten), eerste start, MFA, back-ups
+(PocketBase en Hyper Backup), terugzetten, updaten en storingen oplossen.
+
+## Google-login en Gmail
+
+Zie **[docs/google-inloggen-en-gmail.md](docs/google-inloggen-en-gmail.md)**: Google Cloud-project,
+toestemmingsscherm in testmodus en de OAuth Client ID (met `https://timbrons.github.io` als
+JavaScript-origin).
+
+## Publicatie via GitHub Pages
+
+Bij elke push naar `main` draait `.github/workflows/ci-pages.yml`: privacycontrole, typecheck, tests,
+controle van de PocketBase-migraties, en daarna build en publicatie. Bij een pull request draaien
+alleen de controles en de build.
+
+Eenmalig instellen in de repository op GitHub:
+
+1. **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+2. **Settings → Secrets and variables → Actions → tab Variables → New repository variable**:
+   - `VITE_API_URL` = `https://api.vakantiehuis-ducdalf.nl`
+   - `VITE_GOOGLE_CLIENT_ID` = de Client-ID uit Google Cloud (pas nodig vanaf fase 3)
+
+   Dit zijn geen geheimen: ze komen in de publieke app terecht. De beveiliging zit in de backend.
+
+De app staat daarna op `https://timbrons.github.io/facturatie_administratie_ducdalf/`. Zonder login
+ziet een bezoeker alleen het inlogscherm. `robots.txt` en `noindex` houden zoekmachines weg.
+
+**Later alles op de NAS?** Bouw met `VITE_BASE=/` en `VITE_API_URL=https://api.vakantiehuis-ducdalf.nl`
+en zet de inhoud van `frontend/dist/` in de map `pb_public/` op de NAS. PocketBase serveert de app
+dan zelf op `https://api.vakantiehuis-ducdalf.nl/`. Voeg dat adres toe aan `PB_ORIGINS` en aan de
+JavaScript-origins in Google Cloud.
+
+## Back-up en beheer
+
+- **Automatisch**: PocketBase maakt elke nacht een back-up (laatste 14 bewaard), plus Hyper Backup
+  naar een tweede plek. Zie de installatiehandleiding, hoofdstuk 6.
+- **Instellingen** in de app: afzender, bank, vaste kosten, termijnen, brochure, huisfoto,
+  factuurnummering en de workflowstappen (teksten, volgorde, aan/uit).
+- **Prijzen** in de app: seizoenen per jaar (prijs per nacht inclusief parkkosten), extra's
+  en de parameters voor de richtberekening van de toeristenbelasting.
+
+## Rekenregels (kort)
+
+- Bedragen worden als **centen** (gehele getallen) opgeslagen, nooit als zwevendekommagetallen.
+- **Huur**: per nacht het tarief van het seizoen waarin die nacht begint. Op een grensdatum geldt het
+  nieuwe seizoen. Seizoensprijzen zijn inclusief parkkosten (€ 10 per nacht); op de factuur staan
+  huur en parkkosten apart (instelbaar). Een afwijkende huur is mogelijk en wordt zichtbaar gemarkeerd.
+- **Toeristenbelasting**: het bedrag uit de simulatie in het portaal van Grand Pic Saint-Loup gaat
+  altijd voor. De app rekent ter controle een richtbedrag uit: 5% van de prijs per persoon per nacht,
+  afgetopt op € 4,00, plus opslagen van 10% (Hérault) en 34% (regio), elk apart afgerond, maal het
+  aantal volwassenen en nachten. Minderjarigen tellen mee als bewoner, maar zijn vrijgesteld.
+- **Betaling**: standaard 50% aanbetaling, binnen 1 maand na de factuurdatum. De rest uiterlijk 4 weken
+  voor aankomst. Alles is instelbaar.
+- **Factuurnummers**: `JJJJ-NNN`, doorlopend per jaar.

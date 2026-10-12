@@ -1,0 +1,146 @@
+import type { RecordModel } from "pocketbase"
+import type { Cent } from "../domein/geld"
+import type { ExtraEenheid, ExtraRegel } from "../domein/prijs"
+
+export type Taal = "nl" | "en" | "fr" | "de"
+
+export interface Instellingen extends RecordModel {
+  afzender_naam: string
+  afzender_adres: string
+  afzender_telefoon: string
+  afzender_email: string
+  accommodatie_naam: string
+  bank_tnv: string
+  bank_iban: string
+  schoonmaak_cent: Cent
+  parkkosten_per_nacht_cent: Cent
+  parkkosten_apart_op_factuur: boolean
+  min_nachten: number
+  max_personen: number
+  aanbetaling_pct: number
+  aanbetaling_termijn_maanden: number
+  rest_weken_voor_aankomst: number
+  herinnering_rest_dagen: number
+  aankomst_vooruit_dagen: number
+  tb_aangifte_dag: number
+  tb_portaal_url: string
+  aanmeldformulier_url: string
+  bewaartermijn_jaren: number
+  brochure: string
+  huisfoto: string
+}
+
+export interface SeizoenRecord extends RecordModel {
+  jaar: number
+  naam: string
+  van: string
+  tot: string
+  prijs_per_nacht_cent: Cent
+  min_nachten: number
+}
+
+export interface ExtraRecord extends RecordModel {
+  naam: string
+  omschrijving: string
+  prijs_cent: Cent
+  eenheid: ExtraEenheid
+  actief: boolean
+  volgorde: number
+}
+
+export interface TbTariefRecord extends RecordModel {
+  geldig_vanaf: string
+  omschrijving: string
+  percentage_bp: number
+  plafond_cent: Cent
+  opslagen: { naam: string; bp: number }[] | null
+  volwassen_vanaf_leeftijd: number
+}
+
+export interface Huurder extends RecordModel {
+  aanhef: string
+  voornaam: string
+  achternaam: string
+  email: string
+  telefoon_mobiel: string
+  telefoon_vast: string
+  adres: string
+  postcode: string
+  plaats: string
+  land: string
+  kenteken: string
+  taal: Taal | ""
+  notities: string
+  geanonimiseerd_op: string
+}
+
+export interface WorkflowStapRecord extends RecordModel {
+  sleutel: string
+  label: string
+  actie_label: string
+  omschrijving: string
+  volgorde: number
+  overslaan_als: string
+  actief: boolean
+}
+
+export interface Boeking extends RecordModel {
+  code: string
+  huurder: string
+  aankomst: string
+  vertrek: string
+  volwassenen: number
+  kinderen: number
+  kenteken: string
+  bron: string
+  taal: Taal | ""
+  optie: boolean
+  status: string
+  status_sinds: string
+  geannuleerd_reden: string
+  huur_cent: Cent
+  huur_berekend_cent: Cent
+  huur_handmatig: boolean
+  parkkosten_cent: Cent
+  schoonmaak_cent: Cent
+  extras: ExtraRegel[] | null
+  tb_berekend_cent: Cent
+  tb_portaal_cent: Cent
+  tb_portaal_op: string
+  betaalwijze: "ineens" | "aanbetaling" | ""
+  aanbetaling_pct: number
+  aanbetaling_vervaldatum: string
+  rest_vervaldatum: string
+  tb_aangifte: string
+  tb_definitief_volwassenen: number
+  tb_definitief_kinderen: number
+  tb_aangegeven_cent: Cent
+  tb_aangegeven_op: string
+  aanmelding: Record<string, unknown> | null
+  notities: string
+  expand?: { huurder?: Huurder }
+}
+
+export interface Statuswijziging extends RecordModel {
+  boeking: string
+  van: string
+  naar: string
+  door: string
+  opmerking: string
+}
+
+export interface Nummerreeks extends RecordModel {
+  jaar: number
+  laatste: number
+}
+
+/** Weergavenaam van een huurder, bijv. "Jan de Vries". */
+export function huurderNaam(h: Pick<Huurder, "voornaam" | "achternaam"> | null | undefined): string {
+  if (!h) return "(geen huurder)"
+  const naam = [h.voornaam, h.achternaam].filter(Boolean).join(" ").trim()
+  return naam || "(naamloos)"
+}
+
+export function boekingNaam(b: Boeking): string {
+  return huurderNaam(b.expand?.huurder)
+}
