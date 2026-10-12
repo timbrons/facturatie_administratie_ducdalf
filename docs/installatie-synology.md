@@ -304,3 +304,10 @@ Werk van achter naar voor:
 
 De app verliest geen gegevens als de server even weg is: hij toont de laatst geladen gegevens en
 meldt dat opslaan niet lukt. Probeer het opnieuw als de server terug is.
+
+### Foutmelding "Only superusers can perform this action." bij Inloggen met Google
+
+Bij de eerste keer inloggen maakt PocketBase zelf de gebruiker aan. In versies van vóór migratie
+`1760600000_oauth2_nieuwe_gebruiker.js` mocht dat niet. Werk de map `backend` bij en start het
+project opnieuw (zie hoofdstuk 7). Registreren via de API blijft geblokkeerd en alleen adressen uit
+`DUCDALF_ALLOWED_EMAILS` komen erin.
