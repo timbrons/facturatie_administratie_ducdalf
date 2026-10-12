@@ -118,13 +118,32 @@ standaardwaarden (workflow, seizoenen 2026, extra's, tarieven toeristenbelasting
 
 ### 5a. Beheerdersaccount (superuser)
 
-1. Container Manager → Container → `ducdalf-pocketbase` → **Actie → Terminal openen** → **Maken** →
-   kies `sh`.
-2. Typ (met een eigen, sterk wachtwoord van minimaal 16 tekens; bewaar het in je wachtwoordmanager):
+**Manier 1 – via de installatielink (het makkelijkst)**
+
+1. Container Manager → **Container** → `ducdalf-pocketbase` → **Details** → tabblad **Logboek**.
+2. Zoek de regel met `/_/#/pbinstall/` (er staat iets als
+   `http://0.0.0.0:8090/_/#/pbinstall/eyJhbGciOi…`).
+3. Kopieer alles vanaf `/_/#/pbinstall/` en zet `https://api.vakantiehuis-ducdalf.nl` ervoor, dus:
+   `https://api.vakantiehuis-ducdalf.nl/_/#/pbinstall/eyJhbGciOi…`
+4. Open die link in je browser en vul je e-mailadres en een sterk wachtwoord in (minimaal 16
+   tekens; bewaar het in je wachtwoordmanager).
+
+De link werkt maar korte tijd. Verlopen? Herstart de container (Actie → Opnieuw opstarten); in het
+logboek staat dan een nieuwe link. Zodra er een beheerder is, verschijnt de link niet meer.
+
+**Manier 2 – via de terminal**
+
+1. Container Manager → Container → `ducdalf-pocketbase` → **Actie → Terminal openen**.
+2. Klik op **Maken** zelf (niet op het pijltje ernaast en niet op "Opstarten met opdracht"). Er
+   verschijnt een tabblad `sh` met een prompt.
+3. Typ in dat tabblad (vervang e-mail en wachtwoord; gebruik een wachtwoord zonder spaties en
+   zonder aanhalingstekens):
    ```
-   /pb/pocketbase superuser upsert jouw@email.nl 'EenHeelSterkWachtwoord!2026' --dir=/pb/pb_data
+   /pb/pocketbase superuser upsert jouw@email.nl EenHeelSterkWachtwoord2026
    ```
-3. Open <https://api.vakantiehuis-ducdalf.nl/_/> en log in.
+   Je ziet: `Successfully saved superuser`.
+
+Daarna: open <https://api.vakantiehuis-ducdalf.nl/_/> en log in.
 
 ### 5b. Algemene instellingen in PocketBase
 
