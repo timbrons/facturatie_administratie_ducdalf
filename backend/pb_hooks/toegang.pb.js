@@ -30,8 +30,11 @@ onRecordAuthRefreshRequest((e) => {
 }, "users")
 
 // Gebruikers kunnen alleen via Google OAuth2 ontstaan; nooit via de API.
+// Bij de eerste Google-login maakt PocketBase het record aan met een interne
+// aanvraag in de context "oauth2". De allowlist is dan al gecontroleerd door
+// onRecordAuthWithOAuth2Request hierboven.
 onRecordCreateRequest((e) => {
-  if (!e.hasSuperuserAuth()) {
+  if (!e.hasSuperuserAuth() && e.requestInfo().context !== "oauth2") {
     throw new ForbiddenError("Registreren is niet mogelijk.")
   }
   e.next()
