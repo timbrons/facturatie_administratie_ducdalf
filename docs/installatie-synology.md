@@ -173,8 +173,15 @@ het gedeelde Gmail-account hoeft er niets voor.
 2. Naam `PocketBase beheer`; Application domain: subdomein `api`, domein
    `vakantiehuis-ducdalf.nl`, **path `_/`**. Zet het **niet** op het hele subdomein: de app moet de
    API (`/api/…`) kunnen blijven bereiken.
-3. Policy: naam `Familie`, Action **Allow**, Include → **Emails** → jullie eigen e-mailadressen.
-4. Login method: **One-time PIN**. Opslaan.
+3. Policy (venster "Policy rules / Policy details"): Policy Name `Familie`, Action **Allow**. Links bij
+   Include → **Emails**: typ jullie eigen e-mailadressen (Enter na elk adres). De overige instellingen
+   (MFA, Just-in-time, RDP) laat je zoals ze staan. **Save policy**.
+4. One-time PIN staat niet in de policy maar bij de inlogmethoden:
+   - In de applicatie, onderdeel **Login methods** / **Authentication**: zorg dat **One-time PIN**
+     is aangevinkt (of "Accept all available identity providers").
+   - Staat One-time PIN nergens in de lijst? Ga naar **Settings → Authentication → Login methods →
+     Add new → One-time PIN** (geen verdere instellingen nodig) en kies hem daarna in de applicatie.
+   Sla de applicatie op.
 5. Test: open <https://api.vakantiehuis-ducdalf.nl/_/>. Je krijgt eerst een Cloudflare-scherm; vul je
    e-mailadres in, voer de code uit je mail in en log daarna in bij PocketBase.
 
