@@ -22,13 +22,24 @@ export type Urgentie = "rood" | "oranje" | "normaal"
 
 export interface Actie {
   boekingId: string
-  soort: "volgende_stap" | "aanbetaling" | "restbetaling" | "aankomst" | "tb_aangifte" | "overlap" | "verblijf"
+  soort: "volgende_stap" | "aanbetaling" | "restbetaling" | "aankomst" | "tb_aangifte" | "overlap" | "verblijf" | "bericht"
   titel: string
   toelichting: string
   urgentie: Urgentie
   /** Datum waarop de actie relevant of vervallen is, voor sortering */
   datum: IsoDatum | null
+  /** Sjabloon voor een herinnering of bericht dat bij deze actie hoort */
+  mail?: string
 }
+
+/** Eerder verstuurde mails (uit het maillog), om herinneringen te tonen of te onderdrukken. */
+export interface VerstuurdeMail {
+  boekingId: string
+  sjablonen: string[]
+  datum: IsoDatum
+}
+
+export const FIJNE_REIS_DAGEN = 7
 
 /** Periode (JJJJ-MM) waarin een verblijf wordt aangegeven: de maand van de laatste nacht. */
 export function tbPeriode(vertrek: IsoDatum): string {
@@ -53,8 +64,15 @@ export function bouwActielijst(
   stappen: WorkflowStap[],
   inst: ActieInstellingen,
   vandaag: IsoDatum,
+  mails: VerstuurdeMail[] = [],
 ): Actie[] {
   const acties: Actie[] = []
+  const laatste = (boekingId: string, sjabloon: string) =>
+    mails.filter((m) => m.boekingId === boekingId && m.sjablonen.includes(sjabloon)).map((m) => m.datum).sort().at(-1)
+  const herinnerd = (boekingId: string, sjabloon: string) => {
+    const d = laatste(boekingId, sjabloon)
+    return d ? ` Herinnering verstuurd op ${formatLang(d)}.` : ""
+  }
 
   for (const b of boekingen) {
     if (ACTIEVE_STATUS_UITGESLOTEN.has(b.status)) continue
@@ -68,15 +86,15 @@ export function bouwActielijst(
       const dagen = dagenTussen(vandaag, b.aanbetaling_vervaldatum)
       if (dagen < 0) {
         acties.push({
-          boekingId: b.id, soort: "aanbetaling", urgentie: "rood", datum: b.aanbetaling_vervaldatum,
+          boekingId: b.id, soort: "aanbetaling", urgentie: "rood", datum: b.aanbetaling_vervaldatum, mail: "herinnering_aanbetaling",
           titel: `Aanbetaling vervallen – ${b.naam}`,
-          toelichting: `${-dagen} dag(en) over de vervaldatum.`,
+          toelichting: `${-dagen} dag(en) over de vervaldatum.${herinnerd(b.id, "herinnering_aanbetaling")}`,
         })
       } else if (dagen <= inst.herinnering_rest_dagen) {
         acties.push({
-          boekingId: b.id, soort: "aanbetaling", urgentie: "oranje", datum: b.aanbetaling_vervaldatum,
+          boekingId: b.id, soort: "aanbetaling", urgentie: "oranje", datum: b.aanbetaling_vervaldatum, mail: "herinnering_aanbetaling",
           titel: `Aanbetaling vervalt binnenkort – ${b.naam}`,
-          toelichting: dagen === 0 ? "Vervalt vandaag." : `Vervalt over ${dagen} dag(en).`,
+          toelichting: (dagen === 0 ? "Vervalt vandaag." : `Vervalt over ${dagen} dag(en).`) + herinnerd(b.id, "herinnering_aanbetaling"),
         })
       }
     }
@@ -87,15 +105,15 @@ export function bouwActielijst(
       const wat = b.betaalwijze === "aanbetaling" ? "Restbetaling" : "Betaling"
       if (dagen < 0) {
         acties.push({
-          boekingId: b.id, soort: "restbetaling", urgentie: "rood", datum: b.rest_vervaldatum,
+          boekingId: b.id, soort: "restbetaling", urgentie: "rood", datum: b.rest_vervaldatum, mail: "herinnering_rest",
           titel: `${wat} vervallen – ${b.naam}`,
-          toelichting: `${-dagen} dag(en) over de vervaldatum.`,
+          toelichting: `${-dagen} dag(en) over de vervaldatum.${herinnerd(b.id, "herinnering_rest")}`,
         })
       } else if (dagen <= inst.herinnering_rest_dagen) {
         acties.push({
-          boekingId: b.id, soort: "restbetaling", urgentie: "oranje", datum: b.rest_vervaldatum,
+          boekingId: b.id, soort: "restbetaling", urgentie: "oranje", datum: b.rest_vervaldatum, mail: "herinnering_rest",
           titel: `${wat} vervalt binnenkort – ${b.naam}`,
-          toelichting: dagen === 0 ? "Vervalt vandaag." : `Vervalt over ${dagen} dag(en).`,
+          toelichting: (dagen === 0 ? "Vervalt vandaag." : `Vervalt over ${dagen} dag(en).`) + herinnerd(b.id, "herinnering_rest"),
         })
       }
     }
@@ -107,6 +125,15 @@ export function bouwActielijst(
         boekingId: b.id, soort: "aankomst", urgentie: totAankomst <= 2 ? "oranje" : "normaal", datum: b.aankomst,
         titel: `Aankomst ${b.naam}`,
         toelichting: totAankomst === 0 ? "Komt vandaag aan." : `Komt over ${totAankomst} dag(en) aan.`,
+      })
+    }
+
+    // Kort voor aankomst: "fijne reis / praktische info" als dat nog niet is verstuurd
+    if (totAankomst >= 0 && totAankomst <= FIJNE_REIS_DAGEN && !laatste(b.id, "fijne_reis") && b.status !== "aanvraag" && b.status !== "in_afstemming") {
+      acties.push({
+        boekingId: b.id, soort: "bericht", urgentie: "normaal", datum: b.aankomst, mail: "fijne_reis",
+        titel: `Praktische info sturen – ${b.naam}`,
+        toelichting: "Stuur kort voor aankomst de mail met praktische informatie.",
       })
     }
 
