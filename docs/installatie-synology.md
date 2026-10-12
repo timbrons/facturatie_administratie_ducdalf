@@ -150,9 +150,15 @@ In het beheerscherm → **Settings**:
 
 1. **Application**: Application URL = `https://api.vakantiehuis-ducdalf.nl`.
 2. **Mail settings**: stel SMTP in, zodat PocketBase je codes en waarschuwingen kan mailen. Met Gmail:
-   - SMTP server `smtp.gmail.com`, poort `587`, gebruiker `ducdalf.languedoc@gmail.com`
-   - wachtwoord: een **app-wachtwoord** (Google-account → Beveiliging → 2-stapsverificatie →
-     App-wachtwoorden). Gebruik nooit je gewone Google-wachtwoord.
+   - Zet eerst **2-stapsverificatie** aan op het Google-account `ducdalf.languedoc@gmail.com`
+     (<https://myaccount.google.com/security>). Zonder 2-stapsverificatie bestaan er geen app-wachtwoorden.
+   - Maak een **app-wachtwoord** aan via <https://myaccount.google.com/apppasswords> (naam bijv.
+     `PocketBase NAS`). Je krijgt 16 letters; neem die over **zonder spaties**. Gebruik nooit je gewone
+     Google-wachtwoord: dat geeft de fout `535 5.7.8 Username and Password not accepted`.
+   - Vul in: Sender address `ducdalf.languedoc@gmail.com`, SMTP server host `smtp.gmail.com`,
+     port `587`, username `ducdalf.languedoc@gmail.com` (het volledige adres), password het
+     app-wachtwoord. Laat **TLS encryption uit** bij poort 587 (de verbinding wordt dan via
+     STARTTLS beveiligd); gebruik je poort 465, zet TLS dan aan.
    - Klik **Send test email** om te controleren.
 3. **Superusers → (tandwiel) → Options → Multi-factor authentication**: zet **MFA aan**. Daarna log je
    in met je wachtwoord **én** een eenmalige code die naar je e-mail komt. Zet dit pas aan als de
