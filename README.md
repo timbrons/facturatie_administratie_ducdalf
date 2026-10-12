@@ -29,8 +29,8 @@ Vereist: Docker en Node.js 22.
 
 ```bash
 # 1. Backend (PocketBase) starten
-docker compose up -d --build
-docker compose exec pocketbase /pb/pocketbase superuser upsert admin@example.com 'EenLangWachtwoord123!' --dir=/pb/pb_data
+docker compose -f docker-compose.dev.yml up -d --build
+docker compose -f docker-compose.dev.yml exec pocketbase /pb/pocketbase superuser upsert admin@example.com 'EenLangWachtwoord123!' --dir=/pb/pb_data
 
 # 2. Fictieve testdata laden (alleen tegen localhost)
 node scripts/seed.mjs

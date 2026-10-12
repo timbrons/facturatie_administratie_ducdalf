@@ -35,7 +35,11 @@ Reken op ongeveer een uur voor de eerste installatie.
    - `pb_public` (leeg; voor later)
 4. Pak de ZIP van de repository uit op je computer en upload naar `/volume1/docker/ducdalf/`:
    - de hele map **`backend`** (met `Dockerfile`, `pb_migrations` en `pb_hooks`; **niet** een eventuele `pb_data`)
-   - het bestand **`deploy/synology/docker-compose.yml`** (direct in `ducdalf/`, dus niet in een submap)
+   - het bestand **`deploy/synology/docker-compose.yml`**, direct in `ducdalf/` (dus niet in een submap).
+
+   > ⚠️ Gebruik **niet** het bestand `docker-compose.dev.yml` uit de hoofdmap van de repository. Dat
+   > is alleen voor lokaal ontwikkelen. Herken het goede bestand aan de twee diensten `pocketbase` én
+   > `cloudflared` en aan de regel `- ./pb_data:/pb/pb_data`.
 
 Het resultaat:
 
@@ -226,6 +230,17 @@ Gebruik voor beide liever geen `latest`: met een vaste versie weet je precies wa
 | Beheerscherm | <https://api.vakantiehuis-ducdalf.nl/_/> | Inlogscherm |
 | App | GitHub Pages-adres → Inloggen met Google | Overzicht met actielijst |
 | Back-up | Settings → Backups | Back-up van vannacht aanwezig |
+
+### Foutmelding "Bind mount failed: … does not exist"
+
+Een map die in `docker-compose.yml` staat, bestaat niet op de NAS. Synology maakt die mappen niet
+zelf aan.
+- Staat er `…/ducdalf/backend/pb_data` in de melding? Dan gebruik je per ongeluk het
+  ontwikkelbestand. Vervang `docker-compose.yml` door `deploy/synology/docker-compose.yml` (zie stap 1).
+- Staat er `…/ducdalf/pb_data` of `…/ducdalf/pb_public`? Maak die (lege) map aan in File Station.
+
+Verwijder daarna in Container Manager het project (de mappen en bestanden blijven staan) en maak het
+opnieuw aan zoals in stap 4. Gebruik daarbij hetzelfde pad.
 
 ### "De server is niet bereikbaar" in de app
 
