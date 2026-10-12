@@ -9,7 +9,7 @@ import { boekingNaam, huurderNaam, type Boeking, type Instellingen } from "../li
 import { aantalNachten, bijStatuswijziging, extrasTotaal, tbOpFactuur, tbRichtbedrag, totaalBoeking } from "../lib/boeking"
 import { formatLang, formatTijdstip } from "../domein/datum"
 import { formatEuro } from "../domein/geld"
-import { GEANNULEERD, gesorteerd, isBijOfVoorbij, labelVoor, overgangFout, stappenbalk, volgendeStap, type WorkflowStap } from "../domein/workflow"
+import { GEANNULEERD, gesorteerd, isBijOfVoorbij, labelVoor, overgangFout, positie, stappenbalk, volgendeStap, type WorkflowStap } from "../domein/workflow"
 import { Dialoog, Fout, Gegeven, Kaart, Laden, Melding, Paginakop } from "../components/ui"
 import { StatusLabel } from "../components/Status"
 import { TbAangifteDialoog, TbBerekenDialoog } from "../components/Toeristenbelasting"
@@ -288,7 +288,12 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
         stappen={stappen}
         onSluiten={() => setDialoog("")}
         onBevestig={async (naar) => {
-          if (await zetStatus(naar)) setDialoog("")
+          // Terug naar vóór "Aangifte registreren": de vastgelegde aangifte vervalt ook.
+          const aangifteWeg = b.tb_aangegeven_op && positie(stappen, naar) < positie(stappen, "tb_aangegeven")
+          const extra = aangifteWeg
+            ? { tb_aangegeven_op: "", tb_aangegeven_cent: 0, tb_definitief_volwassenen: 0, tb_definitief_kinderen: 0 }
+            : {}
+          if (await zetStatus(naar, extra)) setDialoog("")
         }}
       />
       <TbBerekenDialoog
@@ -425,7 +430,7 @@ function StatusDialoog({
   const [naar, setNaar] = useState(huidig)
   return (
     <Dialoog open={open} titel="Status corrigeren" onSluiten={onSluiten}>
-      <p className="mb-3 text-sm">Gebruik dit alleen om een vergissing te herstellen of een stap handmatig vast te leggen. De wijziging komt in de historie.</p>
+      <p className="mb-3 text-sm">Gebruik dit alleen om een vergissing te herstellen of een stap handmatig vast te leggen. De wijziging komt in de historie. Zet je de status terug naar vóór "Aangifte registreren", dan vervalt ook de vastgelegde aangifte.</p>
       <select value={naar} onChange={(e) => setNaar(e.target.value)}>
         {gesorteerd(stappen).map((s) => <option key={s.sleutel} value={s.sleutel}>{s.label}</option>)}
       </select>
