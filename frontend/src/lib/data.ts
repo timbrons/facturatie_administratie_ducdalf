@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { pb } from "./pb"
 import type {
-  Betaling, Factuur, TbAangifte,
+  Betaling, Factuur, MailLog, MailSjabloon, TbAangifte,
   Boeking, ExtraRecord, Huurder, Instellingen, Nummerreeks, SeizoenRecord, Statuswijziging, TbTariefRecord,
   WorkflowStapRecord,
 } from "./types"
@@ -24,6 +24,8 @@ export const sleutels = {
   facturen: ["facturen"] as const,
   betalingen: ["betalingen"] as const,
   tbAangiften: ["tb_aangiften"] as const,
+  sjablonen: ["mail_sjablonen"] as const,
+  maillog: ["mail_log"] as const,
 }
 
 export function useInstellingen() {
@@ -155,5 +157,20 @@ export function useTbAangiften() {
   return useQuery({
     queryKey: sleutels.tbAangiften,
     queryFn: () => pb.collection("tb_aangiften").getFullList<TbAangifte>({ sort: "periode" }),
+  })
+}
+
+export function useSjablonen() {
+  return useQuery({
+    queryKey: sleutels.sjablonen,
+    queryFn: () => pb.collection("mail_sjablonen").getFullList<MailSjabloon>({ sort: "sleutel,taal" }),
+  })
+}
+
+/** Alle verstuurde mails (ook nodig voor de actielijst: welke herinneringen zijn al verstuurd). */
+export function useMaillog() {
+  return useQuery({
+    queryKey: sleutels.maillog,
+    queryFn: () => pb.collection("mail_log").getFullList<MailLog>({ sort: "-created" }),
   })
 }

@@ -183,3 +183,25 @@ export interface TbAangifte extends RecordModel {
   afgedragen_cent: Cent
   notities: string
 }
+
+export interface MailSjabloon extends RecordModel {
+  sleutel: string
+  taal: Taal
+  naam: string
+  onderwerp: string
+  tekst: string
+  bijlagen: ("brochure" | "factuur")[]
+}
+
+export interface MailLog extends RecordModel {
+  boeking: string
+  aan: string
+  onderwerp: string
+  tekst: string
+  bijlagen: string[] | null
+  sjablonen: string[] | null
+  gmail_message_id: string
+  gmail_thread_id: string
+  message_id: string
+  status_na: string
+}

@@ -1,8 +1,10 @@
-import { useState } from "react"
-import { Link, useParams } from "react-router-dom"
+import { useEffect, useState } from "react"
+import { Link, useParams, useSearchParams } from "react-router-dom"
 import { useQueryClient } from "@tanstack/react-query"
 import { pb } from "../lib/pb"
-import { sleutels, useBoeking, useHistorie, useInstellingen, useStappen, useTbTarieven } from "../lib/data"
+import { sleutels, useBoeking, useFacturen, useHistorie, useInstellingen, useStappen, useTbTarieven } from "../lib/data"
+import { gmailBeschikbaar } from "../lib/gmail"
+import { actueleFactuur } from "../lib/mail"
 import { boekingNaam, huurderNaam, type Boeking, type Instellingen } from "../lib/types"
 import { aantalNachten, bijStatuswijziging, extrasTotaal, tbOpFactuur, tbRichtbedrag, totaalBoeking } from "../lib/boeking"
 import { formatLang, formatTijdstip } from "../domein/datum"
@@ -12,6 +14,7 @@ import { Dialoog, Fout, Gegeven, Kaart, Laden, Melding, Paginakop } from "../com
 import { StatusLabel } from "../components/Status"
 import { TbAangifteDialoog, TbBerekenDialoog } from "../components/Toeristenbelasting"
 import { BetalingenKaart, FacturenKaart } from "../components/FacturenBetalingen"
+import { MailKaart } from "../components/Mail"
 
 const BRONNEN: Record<string, string> = {
   website: "Eigen website",
@@ -40,7 +43,27 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
   const tarieven = useTbTarieven().data ?? []
   const [fout, setFout] = useState<unknown>(null)
   const [bezig, setBezig] = useState(false)
-  const [dialoog, setDialoog] = useState<"" | "annuleren" | "status" | "tb_berekend" | "tb_aangegeven" | "betaling">("")
+  const [dialoog, setDialoog] = useState<"" | "annuleren" | "status" | "tb_berekend" | "tb_aangegeven" | "betaling" | "mail">("")
+  const [mailSleutels, setMailSleutels] = useState<string[]>([])
+  const facturen = useFacturen().data ?? []
+  const [params, setParams] = useSearchParams()
+
+  function openMail(sleutelsVoorMail: string[]) {
+    setMailSleutels(sleutelsVoorMail)
+    setDialoog("mail")
+  }
+
+  // Vanuit de actielijst: ?mail=herinnering_rest opent direct het opstelscherm.
+  useEffect(() => {
+    const m = params.get("mail")
+    if (m) {
+      openMail(m.split(","))
+      const p = new URLSearchParams(params)
+      p.delete("mail")
+      setParams(p, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const volgende = volgendeStap(stappen, b)
   const huurder = b.expand?.huurder
@@ -80,7 +103,12 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
     if (volgende.sleutel === "tb_berekend") return setDialoog("tb_berekend")
     if (volgende.sleutel === "tb_aangegeven") return setDialoog("tb_aangegeven")
     if (volgende.sleutel === "aanbetaling_ontvangen" || volgende.sleutel === "volledig_betaald") return setDialoog("betaling")
+    const viaMail = gmailBeschikbaar()
+    if (viaMail && volgende.sleutel === "aanmeldformulier_verstuurd") return openMail(["aanmeldformulier"])
+    if (viaMail && volgende.sleutel === "brochure_verstuurd") return openMail(["brochure"])
     if (volgende.sleutel === "factuur_verstuurd") {
+      const f = actueleFactuur(b, facturen)
+      if (viaMail && f?.pdf) return openMail(["factuur"])
       document.getElementById("facturen")?.scrollIntoView({ behavior: "smooth", block: "start" })
       return
     }
@@ -167,9 +195,15 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
 
           <FacturenKaart boeking={b} inst={inst} stappen={stappen} />
 
-          <Kaart titel="E-mails">
-            <p className="text-sm text-zacht">Versturen via Gmail en het maillog komen in fase 3.</p>
-          </Kaart>
+          <MailKaart
+            boeking={b}
+            inst={inst}
+            stappen={stappen}
+            open={dialoog === "mail"}
+            sleutels={mailSleutels}
+            onOpen={openMail}
+            onSluiten={() => setDialoog("")}
+          />
 
           <Notities boeking={b} onOpgeslagen={ververs} />
         </div>

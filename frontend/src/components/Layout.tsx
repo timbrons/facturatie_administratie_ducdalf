@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react"
 import { NavLink } from "react-router-dom"
 import { pb } from "../lib/pb"
 import { useServerBereikbaar } from "../lib/verbinding"
+import { GmailKnop } from "./Mail"
 
 const MENU = [
   { naar: "/", label: "Overzicht" },
@@ -85,6 +86,7 @@ export function Layout({ children }: { children: ReactNode }) {
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-6 text-sm text-zacht sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <Merk />
           <div className="flex items-center gap-4">
+            <GmailKnop klein />
             <span>{pb.authStore.record?.email}</span>
             <button
               type="button"
