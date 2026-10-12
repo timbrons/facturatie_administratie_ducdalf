@@ -1,0 +1,26 @@
+# --- Privacy: NOOIT committen -------------------------------------------
+# Referentiemateriaal met echte huurder-, bank- en adresgegevens
+/referentie/
+# Exports en back-ups uit de app
+/exports/
+*.export.json
+*.export.csv
+ducdalf-export-*.zip
+# Omgevingsvariabelen en geheimen
+.env
+.env.*
+!.env.example
+!**/.env.example
+# PocketBase-data (database, uploads, back-ups)
+pb_data/
+**/pb_data/
+
+# --- Build / tooling -----------------------------------------------------
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
+.vite/
+*.tsbuildinfo
+backend/bin/
