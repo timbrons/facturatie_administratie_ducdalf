@@ -118,32 +118,31 @@ standaardwaarden (workflow, seizoenen 2026, extra's, tarieven toeristenbelasting
 
 ### 5a. Beheerdersaccount (superuser)
 
-**Manier 1 – via de installatielink (het makkelijkst)**
+We maken het account aan met de **Taakplanner** van DSM. Dat werkt betrouwbaarder dan de terminal
+van Container Manager.
 
-1. Container Manager → **Container** → `ducdalf-pocketbase` → **Details** → tabblad **Logboek**.
-2. Zoek de regel met `/_/#/pbinstall/` (er staat iets als
-   `http://0.0.0.0:8090/_/#/pbinstall/eyJhbGciOi…`).
-3. Kopieer alles vanaf `/_/#/pbinstall/` en zet `https://api.vakantiehuis-ducdalf.nl` ervoor, dus:
-   `https://api.vakantiehuis-ducdalf.nl/_/#/pbinstall/eyJhbGciOi…`
-4. Open die link in je browser en vul je e-mailadres en een sterk wachtwoord in (minimaal 16
-   tekens; bewaar het in je wachtwoordmanager).
-
-De link werkt maar korte tijd. Verlopen? Herstart de container (Actie → Opnieuw opstarten); in het
-logboek staat dan een nieuwe link. Zodra er een beheerder is, verschijnt de link niet meer.
-
-**Manier 2 – via de terminal**
-
-1. Container Manager → Container → `ducdalf-pocketbase` → **Actie → Terminal openen**.
-2. Klik op **Maken** zelf (niet op het pijltje ernaast en niet op "Opstarten met opdracht"). Er
-   verschijnt een tabblad `sh` met een prompt.
-3. Typ in dat tabblad (vervang e-mail en wachtwoord; gebruik een wachtwoord zonder spaties en
-   zonder aanhalingstekens):
+1. **Configuratiescherm → Taakplanner → Maken → Geplande taak → Door gebruiker gedefinieerd script**.
+2. Tabblad **Algemeen**: taak `PocketBase beheerder`, gebruiker **root**. Haal het vinkje bij
+   "Ingeschakeld" weg (de taak hoeft maar één keer te draaien).
+3. Tabblad **Taakinstellingen** → bij "Door gebruiker gedefinieerd script" (vervang e-mail en
+   wachtwoord; gebruik voor het wachtwoord alleen letters en cijfers, minimaal 16 tekens):
    ```
-   /pb/pocketbase superuser upsert jouw@email.nl EenHeelSterkWachtwoord2026
+   /usr/local/bin/docker exec ducdalf-pocketbase /pb/pocketbase superuser upsert jouw@email.nl EenHeelSterkWachtwoord2026 > /volume1/docker/ducdalf/superuser.txt 2>&1
    ```
-   Je ziet: `Successfully saved superuser`.
+4. **OK**. Selecteer de taak en klik op **Uitvoeren** (bevestig met Ja).
+5. Open in File Station `/docker/ducdalf/superuser.txt`. Daarin staat
+   `Successfully saved superuser "jouw@email.nl"!`.
+6. Verwijder daarna de taak in de Taakplanner (er staat een wachtwoord in) en het bestand
+   `superuser.txt`.
+7. Open <https://api.vakantiehuis-ducdalf.nl/_/> en log in.
 
-Daarna: open <https://api.vakantiehuis-ducdalf.nl/_/> en log in.
+> Staat er in `superuser.txt` "No such container"? Kijk in Container Manager → Container hoe de
+> PocketBase-container precies heet en pas de naam in het script aan.
+>
+> Een andere mogelijkheid is de installatielink in het logboek van de container (regel met
+> `/_/#/pbinstall/`, met `https://api.vakantiehuis-ducdalf.nl` in plaats van `http://0.0.0.0:8090`).
+> Die werkt alleen binnen 30 minuten na het starten van de container en alleen als je de hele,
+> lange link kopieert.
 
 ### 5b. Algemene instellingen in PocketBase
 
