@@ -9,10 +9,12 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "")
   return {
     base: env.VITE_BASE || "/facturatie_administratie_ducdalf/",
+    // De PDF-bibliotheek (± 1,2 MB) wordt pas geladen bij het maken van een factuur.
+    build: { chunkSizeWarningLimit: 1300 },
     plugins: [react(), tailwindcss()],
     test: {
       environment: "node",
-      include: ["src/**/*.test.ts"],
+      include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     },
   }
 })

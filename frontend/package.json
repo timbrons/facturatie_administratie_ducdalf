@@ -12,6 +12,7 @@
     "typecheck": "tsc -b"
   },
   "dependencies": {
+    "@react-pdf/renderer": "^4.9.0",
     "@tanstack/react-query": "^5.104.2",
     "pocketbase": "^0.28.1",
     "react": "^19.3.0",

@@ -170,7 +170,22 @@ describe("betaaltermijnen", () => {
     })
     expect(t.aanbetalingCent).toBe(0)
     expect(t.restCent).toBe(50000)
-    expect(t.restVervaldatum).toBe("2026-08-02")
+    // Rest zou 2 augustus zijn (4 weken voor aankomst), maar minimaal een week na de factuurdatum
+    expect(t.restVervaldatum).toBe("2026-08-08")
+  })
+  it("zet een aanbetaling om naar één termijn als de aankomst te dichtbij is", () => {
+    const t = berekenTermijnen({
+      totaalCent: 108100, betaalwijze: "aanbetaling", aanbetalingPct: 50, factuurdatum: "2026-10-12",
+      aankomst: "2026-10-17", aanbetalingTermijnMaanden: 1, restWekenVoorAankomst: 4,
+    })
+    expect(t).toMatchObject({ betaalwijze: "ineens", omgezetNaarIneens: true, aanbetalingCent: 0, restCent: 108100 })
+    // Minstens een week, maar niet na aankomst: dan per direct
+    expect(t.restVervaldatum).toBe("2026-10-12")
+    const later = berekenTermijnen({
+      totaalCent: 108100, betaalwijze: "aanbetaling", aanbetalingPct: 50, factuurdatum: "2026-10-12",
+      aankomst: "2026-11-01", aanbetalingTermijnMaanden: 1, restWekenVoorAankomst: 4,
+    })
+    expect(later.restVervaldatum).toBe("2026-10-19")
   })
   it("ziet wanneer een aanbetaling geen zin heeft", () => {
     expect(aanbetalingZinvol("2026-05-27", "2026-10-17", 1, 4)).toBe(true)

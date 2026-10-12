@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { pb } from "./pb"
 import type {
+  Betaling, Factuur, TbAangifte,
   Boeking, ExtraRecord, Huurder, Instellingen, Nummerreeks, SeizoenRecord, Statuswijziging, TbTariefRecord,
   WorkflowStapRecord,
 } from "./types"
@@ -20,6 +21,9 @@ export const sleutels = {
   huurder: (id: string) => ["huurders", id] as const,
   historie: (id: string) => ["statuswijzigingen", id] as const,
   nummerreeksen: ["nummerreeksen"] as const,
+  facturen: ["facturen"] as const,
+  betalingen: ["betalingen"] as const,
+  tbAangiften: ["tb_aangiften"] as const,
 }
 
 export function useInstellingen() {
@@ -130,5 +134,26 @@ export function useVerwijderen(collectie: string, ververs: readonly (readonly un
     onSuccess: () => {
       for (const k of ververs) qc.invalidateQueries({ queryKey: k })
     },
+  })
+}
+
+export function useFacturen() {
+  return useQuery({
+    queryKey: sleutels.facturen,
+    queryFn: () => pb.collection("facturen").getFullList<Factuur>({ sort: "factuurdatum,created" }),
+  })
+}
+
+export function useBetalingen() {
+  return useQuery({
+    queryKey: sleutels.betalingen,
+    queryFn: () => pb.collection("betalingen").getFullList<Betaling>({ sort: "datum,created" }),
+  })
+}
+
+export function useTbAangiften() {
+  return useQuery({
+    queryKey: sleutels.tbAangiften,
+    queryFn: () => pb.collection("tb_aangiften").getFullList<TbAangifte>({ sort: "periode" }),
   })
 }

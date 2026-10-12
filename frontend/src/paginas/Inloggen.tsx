@@ -43,8 +43,16 @@ export function Inloggen() {
           <div className="wenkbrauw mb-3">Verhuurbeheer</div>
           <h1 className="mb-4">Welkom terug</h1>
           <p className="mb-8 text-zacht">Log in met het Google-account van Duc’dalf om boekingen, facturen en betalingen te beheren.</p>
+          {config.apiUrlOntbreekt && (
+            <div className="mb-4">
+              <Melding soort="fout">
+                Deze versie van de app weet niet waar de server staat: de repository-variabele <strong>VITE_API_URL</strong> was leeg bij het publiceren.
+                Stel hem in op GitHub (Settings → Secrets and variables → Actions → Variables) en publiceer opnieuw.
+              </Melding>
+            </div>
+          )}
           {fout && <div className="mb-4"><Melding soort="fout">{fout}</Melding></div>}
-          <button type="button" className="knop w-full" onClick={metGoogle} disabled={bezig}>
+          <button type="button" className="knop w-full" onClick={metGoogle} disabled={bezig || config.apiUrlOntbreekt}>
             Inloggen met Google
           </button>
           {config.devLogin && (

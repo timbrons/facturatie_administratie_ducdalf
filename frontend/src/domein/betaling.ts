@@ -5,6 +5,8 @@ export type Betaalwijze = "ineens" | "aanbetaling"
 
 export interface Betaaltermijnen {
   betaalwijze: Betaalwijze
+  /** Aanbetaling afgesproken, maar de restbetaling vervalt al vóór de aanbetaling: één termijn. */
+  omgezetNaarIneens: boolean
   aanbetalingCent: Cent
   aanbetalingVervaldatum: IsoDatum | null
   restCent: Cent
@@ -21,6 +23,9 @@ export function restVervaldatum(aankomst: IsoDatum, weken: number): IsoDatum {
   return plusDagen(aankomst, -7 * weken)
 }
 
+/** Minimale betaaltermijn in dagen, ook als de aankomst dichtbij is. */
+export const MINIMALE_TERMIJN_DAGEN = 7
+
 export function berekenTermijnen(input: {
   totaalCent: Cent
   betaalwijze: Betaalwijze
@@ -33,23 +38,31 @@ export function berekenTermijnen(input: {
   aanbetalingVervaldatum?: IsoDatum | null
 }): Betaaltermijnen {
   const rest = restVervaldatum(input.aankomst, input.restWekenVoorAankomst)
-  if (input.betaalwijze === "ineens") {
-    // Bij betaling ineens: uiterlijk de vervaldatum van de aanbetaling, maar nooit later dan 4 weken voor aankomst.
-    const termijn = aanbetalingVervaldatum(input.factuurdatum, input.aanbetalingTermijnMaanden)
+  const aanbetalingDatum = input.aanbetalingVervaldatum || aanbetalingVervaldatum(input.factuurdatum, input.aanbetalingTermijnMaanden)
+  const omgezet = input.betaalwijze === "aanbetaling" && aanbetalingDatum >= rest
+  if (input.betaalwijze === "ineens" || omgezet) {
+    // Eén termijn: uiterlijk de vervaldatum van de aanbetaling, niet later dan
+    // 4 weken voor aankomst, maar altijd minstens een week na de factuurdatum
+    // (en niet na de aankomst).
+    let termijn = aanbetalingVervaldatum(input.factuurdatum, input.aanbetalingTermijnMaanden)
+    if (rest < termijn) termijn = rest
+    const minimaal = plusDagen(input.factuurdatum, MINIMALE_TERMIJN_DAGEN)
+    if (termijn < minimaal) termijn = minimaal < input.aankomst ? minimaal : input.factuurdatum
     return {
       betaalwijze: "ineens",
+      omgezetNaarIneens: omgezet,
       aanbetalingCent: 0,
       aanbetalingVervaldatum: null,
       restCent: input.totaalCent,
-      restVervaldatum: termijn < rest ? termijn : rest,
+      restVervaldatum: termijn,
     }
   }
   const aanbetalingCent = percentageVan(input.totaalCent, input.aanbetalingPct)
   return {
     betaalwijze: "aanbetaling",
+    omgezetNaarIneens: false,
     aanbetalingCent,
-    aanbetalingVervaldatum:
-      input.aanbetalingVervaldatum || aanbetalingVervaldatum(input.factuurdatum, input.aanbetalingTermijnMaanden),
+    aanbetalingVervaldatum: aanbetalingDatum,
     restCent: input.totaalCent - aanbetalingCent,
     restVervaldatum: rest,
   }

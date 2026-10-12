@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { Link } from "react-router-dom"
 import { pb } from "../lib/pb"
 import { sleutels, useInstellingen, useNummerreeksen, useOpslaan, useStappen } from "../lib/data"
 import type { Instellingen, Nummerreeks, WorkflowStapRecord } from "../lib/types"
@@ -14,7 +15,9 @@ export function InstellingenPagina() {
   if (inst.error) return <Fout fout={inst.error} />
   return (
     <>
-      <Paginakop wenkbrauw="Beheer" titel="Instellingen" />
+      <Paginakop wenkbrauw="Beheer" titel="Instellingen">
+        <Link to="/importeren" className="knop-rand">Oude administratie importeren</Link>
+      </Paginakop>
       <div className="flex flex-col gap-6">
         <Algemeen key={inst.data!.updated} inst={inst.data!} />
         <Bestanden inst={inst.data!} />

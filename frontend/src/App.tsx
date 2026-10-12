@@ -12,6 +12,8 @@ import { HuurderDetail } from "./paginas/HuurderDetail"
 import { Kalender } from "./paginas/Kalender"
 import { Prijzen } from "./paginas/Prijzen"
 import { InstellingenPagina } from "./paginas/Instellingen"
+import { Financieel } from "./paginas/Financieel"
+import { Importeren } from "./paginas/Importeren"
 
 function useIngelogd(): boolean {
   const [ingelogd, setIngelogd] = useState(pb.authStore.isValid)
@@ -46,6 +48,8 @@ export function App() {
           <Route path="/huurders/:id" element={<HuurderDetail />} />
           <Route path="/prijzen" element={<Prijzen />} />
           <Route path="/instellingen" element={<InstellingenPagina />} />
+          <Route path="/financieel" element={<Financieel />} />
+          <Route path="/importeren" element={<Importeren />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>
