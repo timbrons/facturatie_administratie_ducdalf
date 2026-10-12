@@ -6,11 +6,12 @@ import { sleutels, useBoeking, useHistorie, useInstellingen, useStappen, useTbTa
 import { boekingNaam, huurderNaam, type Boeking, type Instellingen } from "../lib/types"
 import { aantalNachten, bijStatuswijziging, extrasTotaal, tbOpFactuur, tbRichtbedrag, totaalBoeking } from "../lib/boeking"
 import { formatLang, formatTijdstip } from "../domein/datum"
-import { formatEuro, percentageVan } from "../domein/geld"
+import { formatEuro } from "../domein/geld"
 import { GEANNULEERD, gesorteerd, isBijOfVoorbij, labelVoor, overgangFout, stappenbalk, volgendeStap, type WorkflowStap } from "../domein/workflow"
 import { Dialoog, Fout, Gegeven, Kaart, Laden, Melding, Paginakop } from "../components/ui"
 import { StatusLabel } from "../components/Status"
 import { TbAangifteDialoog, TbBerekenDialoog } from "../components/Toeristenbelasting"
+import { BetalingenKaart, FacturenKaart } from "../components/FacturenBetalingen"
 
 const BRONNEN: Record<string, string> = {
   website: "Eigen website",
@@ -39,7 +40,7 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
   const tarieven = useTbTarieven().data ?? []
   const [fout, setFout] = useState<unknown>(null)
   const [bezig, setBezig] = useState(false)
-  const [dialoog, setDialoog] = useState<"" | "annuleren" | "status" | "tb_berekend" | "tb_aangegeven">("")
+  const [dialoog, setDialoog] = useState<"" | "annuleren" | "status" | "tb_berekend" | "tb_aangegeven" | "betaling">("")
 
   const volgende = volgendeStap(stappen, b)
   const huurder = b.expand?.huurder
@@ -78,6 +79,11 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
     if (!volgende) return
     if (volgende.sleutel === "tb_berekend") return setDialoog("tb_berekend")
     if (volgende.sleutel === "tb_aangegeven") return setDialoog("tb_aangegeven")
+    if (volgende.sleutel === "aanbetaling_ontvangen" || volgende.sleutel === "volledig_betaald") return setDialoog("betaling")
+    if (volgende.sleutel === "factuur_verstuurd") {
+      document.getElementById("facturen")?.scrollIntoView({ behavior: "smooth", block: "start" })
+      return
+    }
     zetStatus(volgende.sleutel)
   }
 
@@ -159,9 +165,7 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
             </dl>
           </Kaart>
 
-          <Kaart titel="Facturen">
-            <p className="text-sm text-zacht">Facturen maken, downloaden en versturen komt in fase 2.</p>
-          </Kaart>
+          <FacturenKaart boeking={b} inst={inst} stappen={stappen} />
 
           <Kaart titel="E-mails">
             <p className="text-sm text-zacht">Versturen via Gmail en het maillog komen in fase 3.</p>
@@ -202,25 +206,7 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
             {extrasTotaal(b) > 0 && <p className="mt-2 text-xs text-zacht">Waarvan extra's: {formatEuro(extrasTotaal(b))}</p>}
           </Kaart>
 
-          <Kaart titel="Betaling">
-            <dl className="text-sm">
-              {b.betaalwijze === "aanbetaling" ? (
-                <>
-                  <Gegeven label="Afspraak">{`${b.aanbetaling_pct}% aanbetaling`}</Gegeven>
-                  <Gegeven label="Aanbetaling">{formatEuro(percentageVan(totaalBoeking(b), b.aanbetaling_pct))}</Gegeven>
-                  <Gegeven label="Vervalt">{b.aanbetaling_vervaldatum ? formatLang(b.aanbetaling_vervaldatum) : "bij versturen factuur"}</Gegeven>
-                  <Gegeven label="Restbetaling">{formatEuro(totaalBoeking(b) - percentageVan(totaalBoeking(b), b.aanbetaling_pct))}</Gegeven>
-                  <Gegeven label="Vervalt">{formatLang(b.rest_vervaldatum)}</Gegeven>
-                </>
-              ) : (
-                <>
-                  <Gegeven label="Afspraak">Volledig bedrag ineens</Gegeven>
-                  <Gegeven label="Uiterlijk">{formatLang(b.rest_vervaldatum)}</Gegeven>
-                </>
-              )}
-            </dl>
-            <p className="mt-3 text-xs text-zacht">Betalingen registreren komt in fase 2.</p>
-          </Kaart>
+          <BetalingenKaart boeking={b} stappen={stappen} open={dialoog === "betaling"} onOpen={() => setDialoog("betaling")} onSluiten={() => setDialoog("")} />
 
           <Kaart titel="Toeristenbelasting">
             <dl className="text-sm">
@@ -386,7 +372,7 @@ function AnnuleerDialoog({ open, onSluiten, onBevestig }: { open: boolean; onSlu
   const [reden, setReden] = useState("")
   return (
     <Dialoog open={open} titel="Boeking annuleren" onSluiten={onSluiten}>
-      <p className="mb-3 text-sm">Geef de reden van de annulering. Een eventuele creditfactuur maak je in fase 2 vanuit de factuur.</p>
+      <p className="mb-3 text-sm">Geef de reden van de annulering. Is er al een factuur verstuurd? Maak daarna bij Facturen een creditfactuur.</p>
       <textarea rows={3} value={reden} onChange={(e) => setReden(e.target.value)} placeholder="Reden" />
       <div className="mt-4 flex justify-end gap-2">
         <button type="button" className="knop-rand" onClick={onSluiten}>Terug</button>

@@ -144,3 +144,42 @@ export function huurderNaam(h: Pick<Huurder, "voornaam" | "achternaam"> | null |
 export function boekingNaam(b: Boeking): string {
   return huurderNaam(b.expand?.huurder)
 }
+
+export interface Factuur extends RecordModel {
+  boeking: string
+  nummer: string
+  soort: "factuur" | "credit"
+  factuurdatum: string
+  regels: import("../domein/factuur").Factuurregel[] | null
+  gegevens: import("../pdf/FactuurPdf").FactuurGegevens | null
+  totaal_cent: Cent
+  aanbetaling_cent: Cent
+  aanbetaling_vervaldatum: string
+  rest_vervaldatum: string
+  pdf: string
+  verstuurd_op: string
+  vergrendeld: boolean
+  verwijst_naar: string
+  geimporteerd: boolean
+}
+
+export interface Betaling extends RecordModel {
+  boeking: string
+  factuur: string
+  datum: string
+  bedrag_cent: Cent
+  soort: "aanbetaling" | "rest" | "volledig" | "terugbetaling" | "overig"
+  opmerking: string
+  geimporteerd: boolean
+}
+
+export interface TbAangifte extends RecordModel {
+  periode: string
+  ingediend_op: string
+  aangegeven_cent: Cent
+  referentie: string
+  bewijs: string[]
+  afgedragen_op: string
+  afgedragen_cent: Cent
+  notities: string
+}

@@ -2,13 +2,13 @@ import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { useQueryClient } from "@tanstack/react-query"
 import { pb } from "../lib/pb"
-import { sleutels, useBoeking, useBoekingen, useExtras, useHuurders, useInstellingen, useSeizoenen, useTbTarieven } from "../lib/data"
+import { sleutels, useBoeking, useBoekingen, useExtras, useFacturen, useHuurders, useInstellingen, useSeizoenen, useTbTarieven } from "../lib/data"
 import { boekingNaam, huurderNaam, type Boeking, type Huurder } from "../lib/types"
 import { tbRichtbedrag } from "../lib/boeking"
-import { dagenTussen, formatLang, isIsoDatum } from "../domein/datum"
+import { dagenTussen, formatLang, isIsoDatum, vandaag } from "../domein/datum"
 import { formatEuro, type Cent } from "../domein/geld"
 import { berekenHuur, berekenPrijsopbouw, type ExtraRegel } from "../domein/prijs"
-import { restVervaldatum } from "../domein/betaling"
+import { aanbetalingZinvol, restVervaldatum } from "../domein/betaling"
 import { overlappendeBoekingen } from "../domein/overlap"
 import { BedragVeld, Fout, Kaart, Laden, Melding, Paginakop, Veld } from "../components/ui"
 
@@ -45,6 +45,10 @@ function Formulier({ boeking, vooringevuldeHuurder }: { boeking?: Boeking; voori
   const tarieven = useTbTarieven().data!
   const huurders = useHuurders().data!
   const boekingen = useBoekingen().data!
+  const facturen = useFacturen().data ?? []
+  const vergrendeld = boeking
+    ? facturen.filter((f) => f.boeking === boeking.id && f.soort === "factuur" && f.nummer && !facturen.some((c) => c.soort === "credit" && c.nummer && c.verwijst_naar === f.id))
+    : []
 
   const [huurderId, setHuurderId] = useState(boeking?.huurder ?? vooringevuldeHuurder)
   const [nieuweHuurder, setNieuweHuurder] = useState<HuurderInvoer>(LEGE_HUURDER)
@@ -176,6 +180,14 @@ function Formulier({ boeking, vooringevuldeHuurder }: { boeking?: Boeking; voori
       </Paginakop>
 
       {fout ? <div className="mb-4"><Fout fout={fout} /></div> : null}
+      {vergrendeld.length > 0 && (
+        <div className="mb-4">
+          <Melding soort="waarschuwing">
+            Er is al een definitieve factuur ({vergrendeld.map((f) => f.nummer).join(", ")}). Wijzigingen in prijs of periode komen niet vanzelf op die factuur:
+            maak na het opslaan een creditfactuur en daarna een nieuwe factuur.
+          </Melding>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="flex flex-col gap-6 lg:col-span-2">
@@ -333,6 +345,9 @@ function Formulier({ boeking, vooringevuldeHuurder }: { boeking?: Boeking; voori
                 <input type="radio" name="betaalwijze" checked={betaalwijze === "ineens"} onChange={() => setBetaalwijze("ineens")} />
                 Volledig bedrag ineens
               </label>
+              {datumsGeldig && betaalwijze === "aanbetaling" && !aanbetalingZinvol(vandaag(), aankomst, inst.aanbetaling_termijn_maanden, inst.rest_weken_voor_aankomst) && (
+                <Melding soort="waarschuwing">De aankomst is te dichtbij voor een aanbetaling: de factuur krijgt één betaaltermijn.</Melding>
+              )}
               {datumsGeldig && (
                 <p className="text-xs text-zacht">
                   Restbetaling uiterlijk {formatLang(restVervaldatum(aankomst, inst.rest_weken_voor_aankomst))}. De vervaldatum van de aanbetaling wordt vastgelegd bij het versturen van de factuur.
