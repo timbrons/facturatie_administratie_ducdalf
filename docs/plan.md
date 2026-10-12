@@ -74,7 +74,7 @@ Alle bedragen zijn centen (`*_cent`). Datums zonder tijd zijn tekst `JJJJ-MM-DD`
 3. **Fase 3 – E-mail (opgeleverd)**
    - **Gmail-koppeling** vanuit de browser met Google Identity Services (scope `gmail.send`). Het
      token staat alleen in het geheugen en verloopt na ± 1 uur; daarna klik je opnieuw op
-     "Koppel Gmail".
+     "Koppel Google".
    - **Sjablonen** (beheer onder Instellingen → E-mailsjablonen) met variabelen zoals `{voornaam}`,
      `{factuurnummer}` en `{link_aanmeldformulier}`. Taalvarianten (en/fr/de) per sjabloon kunnen
      worden toegevoegd; de taal van de huurder bepaalt welke wordt gebruikt.
@@ -89,13 +89,22 @@ Alle bedragen zijn centen (`*_cent`). Datums zonder tijd zijn tekst `JJJJ-MM-DD`
      laatste herinnering. Kort voor aankomst verschijnt "Praktische info sturen".
    - De link naar het aanmeldformulier bevat de boekingscode (`?boeking=…`); in fase 4 koppelen we
      daarmee de inzending.
-4. **Fase 4 – Aanmeldformulier, export en back-up, AVG**
-   - Koppeling met het aanmeldformulier.
-   - "Exporteer alles".
-   - Anonimiseren na de bewaartermijn; afronding van de documentatie.
+4. **Fase 4 – Aanmeldformulier, Drive, export en AVG (opgeleverd)**
+   - **Aanmeldingen**: inzendingen van het aanmeldformulier (FormSubmit) uit Gmail lezen. Ze worden
+     gekoppeld op boekingscode, anders op e-mailadres en datums. Na controle neem je adres, kenteken en
+     aantallen over; volwassenen en minderjarigen volgen uit de geboortedata. Zie
+     [aanmeldformulier.md](aanmeldformulier.md).
+   - **Google Drive**: bij "Definitief maken" gaat een kopie van de factuur-PDF naar
+     `Duc'dalf verhuurbeheer/Facturen/<jaar>/`. Bewijsstukken van de aangifte gaan naar
+     `Toeristenbelasting/<jaar>/`. De app krijgt alleen toegang tot de eigen bestanden (`drive.file`).
+     Lukt de kopie niet, dan staat er een knop "Naar Drive".
+   - **Exporteer alles** (Instellingen → Export en privacy): één zip met alle gegevens als JSON,
+     overzichten als CSV en alle bestanden.
+   - **AVG**: anonimiseren van huurders van wie het laatste verblijf langer dan de bewaartermijn
+     (standaard 7 jaar) geleden is, of los per huurder. Facturen en betalingen blijven bewaard.
 5. **Fase 5 (optioneel)**: aanvragen uit de Gmail-inbox omzetten naar boekingen; meertalige sjablonen.
 
-## Aanmeldformulier (advies voor fase 4)
+## Aanmeldformulier (oorspronkelijk advies, uitgevoerd in fase 4)
 
 Het bestaande formulier (`/aanmelden/`) post via **FormSubmit.co** naar `ducdalf.languedoc@gmail.com`.
 

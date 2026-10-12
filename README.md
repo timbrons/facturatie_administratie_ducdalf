@@ -20,7 +20,7 @@ afronding. De app laat steeds zien wat de volgende actie is.
 | `frontend/` | De app (React). Kernlogica met tests in `src/domein/`. |
 | `backend/` | PocketBase: `Dockerfile`, `pb_migrations/` (schema, API rules, standaardwaarden), `pb_hooks/` (allowlist, workflowbewaking). |
 | `deploy/synology/` | `docker-compose.yml` en `.env.example` voor de NAS (PocketBase + cloudflared). |
-| `docs/` | [Installatie Synology](docs/installatie-synology.md), [Google-inloggen en Gmail](docs/google-inloggen-en-gmail.md), [Plan en architectuur](docs/plan.md). |
+| `docs/` | [Installatie Synology](docs/installatie-synology.md), [Google-inloggen en Gmail](docs/google-inloggen-en-gmail.md), [Aanmeldformulier](docs/aanmeldformulier.md), [Plan en architectuur](docs/plan.md). |
 | `scripts/` | Seed met fictieve testdata en de privacycontrole. |
 
 ## Lokaal draaien
@@ -120,13 +120,24 @@ opgeslagen. Stel vóór de import de afzender- en bankgegevens in.
 
 1. Zet de repository-variabele `VITE_GOOGLE_CLIENT_ID` (zie
    [docs/google-inloggen-en-gmail.md](docs/google-inloggen-en-gmail.md)).
-2. Klik in de app op **Koppel Gmail** en kies `ducdalf.languedoc@gmail.com`. Het toegangstoken
+2. Klik in de app op **Koppel Google** en kies `ducdalf.languedoc@gmail.com`. Het toegangstoken
    blijft alleen in het geheugen van de browser (± 1 uur geldig).
 3. Bij een boeking: **E-mail opstellen**, of de knop bij de volgende actie. Kies of combineer
    sjablonen, pas de preview aan en klik **Versturen**. De mail staat daarna in Gmail onder
    "Verzonden" en in het maillog van de boeking.
 
 Sjablonen beheer je onder **Instellingen → E-mailsjablonen**.
+
+## Aanmeldingen, Google Drive, export en privacy
+
+- **Aanmeldingen** (menu): ingevulde aanmeldformulieren ophalen uit Gmail en na controle overnemen in
+  de huurder en de boeking. Zie [docs/aanmeldformulier.md](docs/aanmeldformulier.md), met de kleine
+  aanpassing voor de website.
+- **Google Drive**: definitieve facturen en bewijsstukken toeristenbelasting komen als kopie in
+  `Duc'dalf verhuurbeheer/…` in Google Drive. Aan of uit te zetten onder Instellingen.
+- **Instellingen → Export en privacy**:
+  - **Exporteer alles** maakt één zip met alle gegevens en bestanden.
+  - **AVG**: huurders anonimiseren na de bewaartermijn. Facturen blijven bewaard.
 
 ## Rekenregels (kort)
 
