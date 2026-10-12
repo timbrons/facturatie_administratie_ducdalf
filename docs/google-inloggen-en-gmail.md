@@ -57,6 +57,19 @@ Het client secret (nodig voor A) staat alleen in PocketBase op de NAS.
 | Clientgeheim | idem (alleen in PocketBase op de NAS) | **Ja** |
 | Client-ID | GitHub → Settings → Secrets and variables → Actions → **Variables** → `VITE_GOOGLE_CLIENT_ID` (fase 3) | Nee |
 
+## Gmail in de app gebruiken (fase 3)
+
+1. Zet `VITE_GOOGLE_CLIENT_ID` als repository-variabele (zie de tabel hierboven) en publiceer opnieuw.
+2. Klik in de app op **Koppel Gmail** (onderaan de pagina of bij E-mails van een boeking). Kies
+   `ducdalf.languedoc@gmail.com` en geef toestemming om "e-mail namens je te verzenden".
+3. Het toegangstoken staat alleen in het geheugen van de browser. Na het herladen van de pagina of
+   na ± 1 uur klik je opnieuw op Koppel Gmail. Er worden geen tokens opgeslagen.
+4. De afzender van de mails is het gekoppelde account. Vul bij Instellingen bij "E-mail" van de
+   afzender hetzelfde adres in.
+
+> Vervolgmails aan dezelfde huurder komen in dezelfde Gmail-thread. Bij de huurder groepeert Gmail
+> mails op onderwerp; met een ander onderwerp kan de mail daar als nieuw gesprek verschijnen.
+
 ## Testen
 
 1. Open de app op GitHub Pages → **Inloggen met Google**.
