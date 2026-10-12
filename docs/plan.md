@@ -55,11 +55,22 @@ Alle bedragen zijn centen (`*_cent`). Datums zonder tijd zijn tekst `JJJJ-MM-DD`
    - Dashboard met actielijst, bezettingskalender met overlapwaarschuwing, huisstijl.
    - Al meegenomen uit fase 2: invulhulp toeristenbelasting vooraf (simulatiebedrag vastleggen)
      en achteraf (aangifte per maand met bewijsstuk).
-2. **Fase 2 – Facturen en betalingen**
-   - PDF-factuur volgens het voorbeeld, nummering via een backend-hook (geen dubbele nummers),
-     creditfacturen.
-   - Betalingen registreren met automatische workflowstap.
-   - Financieel overzicht en jaaroverzicht toeristenbelasting (CSV), import van de bestaande Excel.
+2. **Fase 2 – Facturen en betalingen (opgeleverd)**
+   - PDF-factuur in de browser, volgens de voorbeeldfactuur.
+   - Een factuur is eerst een **concept** zonder nummer. Bij "Definitief maken" kent de backend in
+     één transactie het volgende nummer toe. Daarna liggen inhoud en nummer vast.
+   - "Markeer als verstuurd" vergrendelt de factuur. Corrigeren gaat met een creditfactuur en
+     een nieuwe factuur.
+   - Betalingen registreren. De workflow schuift automatisch door naar "Aanbetaling ontvangen" of
+     "Volledig betaald".
+   - Betaalstatus per factuur: open, deels betaald, betaald, vervallen of gecrediteerd.
+   - Bij een boeking kort voor aankomst wordt een aanbetaling automatisch één betaaltermijn, met
+     minimaal een week betaaltijd.
+   - Financieel overzicht per jaar (huur, schoonmaak, parkkosten, extra's, toeristenbelasting,
+     gefactureerd, ontvangen, openstaand), factuurlijst en jaaroverzicht toeristenbelasting
+     (geïnd, aangegeven, afgedragen, verschil). Alle overzichten kunnen naar CSV.
+   - Import van de bestaande Google Sheet (CSV) met voorbeeldweergave. Oude factuurnummers blijven
+     behouden en de nummerreeks schuift mee.
 3. **Fase 3 – E-mail**
    - Gmail-koppeling met sjablonen, preview, bijlagen en maillog.
    - Herinneringen in de actielijst.

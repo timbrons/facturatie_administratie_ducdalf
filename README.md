@@ -100,6 +100,22 @@ JavaScript-origins in Google Cloud.
 - **Prijzen** in de app: seizoenen per jaar (prijs per nacht inclusief parkkosten), extra's
   en de parameters voor de richtberekening van de toeristenbelasting.
 
+## Facturen en betalingen
+
+1. Leg bij de boeking eerst het bedrag uit het portaal voor de toeristenbelasting vast.
+2. **Facturen → Factuur maken**: er ontstaat een concept. Bekijk het met "Voorbeeld (PDF)".
+3. **Definitief maken**: de factuur krijgt het volgende nummer (`JJJJ-NNN`) en de PDF wordt
+   opgeslagen.
+4. Stuur de PDF naar de huurder en klik **Markeer als verstuurd**. De factuur is dan vergrendeld.
+   Vanaf fase 3 gebeurt dit vanzelf bij het versturen via Gmail.
+5. **Betaling registreren** (knop bij de volgende actie of "+ Betaling"). De workflow schuift
+   vanzelf door.
+6. Iets veranderd na het versturen? **Crediteren**, en daarna **Nieuwe (gecorrigeerde) factuur**.
+
+**Bestaande administratie overnemen**: Instellingen → *Oude administratie importeren*. Download de
+Google Sheet als CSV en kies het bestand. Je ziet eerst een voorbeeld; pas na je klik wordt er iets
+opgeslagen. Stel vóór de import de afzender- en bankgegevens in.
+
 ## Rekenregels (kort)
 
 - Bedragen worden als **centen** (gehele getallen) opgeslagen, nooit als zwevendekommagetallen.
@@ -111,5 +127,6 @@ JavaScript-origins in Google Cloud.
   afgetopt op € 4,00, plus opslagen van 10% (Hérault) en 34% (regio), elk apart afgerond, maal het
   aantal volwassenen en nachten. Minderjarigen tellen mee als bewoner, maar zijn vrijgesteld.
 - **Betaling**: standaard 50% aanbetaling, binnen 1 maand na de factuurdatum. De rest uiterlijk 4 weken
-  voor aankomst. Alles is instelbaar.
+  voor aankomst. Valt de restbetaling al vóór de aanbetaling (boeking kort voor aankomst), dan wordt
+  het één termijn van minimaal een week. Alles is instelbaar.
 - **Factuurnummers**: `JJJJ-NNN`, doorlopend per jaar.
