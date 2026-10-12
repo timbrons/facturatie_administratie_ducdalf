@@ -76,10 +76,8 @@ zodat de website en het verhuurbeheer elkaar niet beïnvloeden.
 > Het domein staat bij Mijn.host geregistreerd, maar de nameservers wijzen al naar Cloudflare
 > (anders zou je huidige tunnel niet werken). Je hoeft bij Mijn.host niets te veranderen.
 
-**Optioneel, extra veilig:** zet in Cloudflare Zero Trust onder **Access → Applications** een
-"Self-hosted" applicatie op `api.vakantiehuis-ducdalf.nl/_/` met alleen jullie e-mailadressen.
-Dan is het beheerscherm van PocketBase alleen bereikbaar na een extra Cloudflare-login.
-(Zet dit **niet** op het hele subdomein: de app zelf moet de API kunnen bereiken.)
+**Extra beveiliging:** het beheerscherm van PocketBase kun je achter een extra Cloudflare-login
+zetten (Cloudflare Access). Dat staat in stap 5b uitgelegd.
 
 ---
 
@@ -149,20 +147,36 @@ van Container Manager.
 In het beheerscherm → **Settings**:
 
 1. **Application**: Application URL = `https://api.vakantiehuis-ducdalf.nl`.
-2. **Mail settings**: stel SMTP in, zodat PocketBase je codes en waarschuwingen kan mailen. Met Gmail:
-   - Zet eerst **2-stapsverificatie** aan op het Google-account `ducdalf.languedoc@gmail.com`
-     (<https://myaccount.google.com/security>). Zonder 2-stapsverificatie bestaan er geen app-wachtwoorden.
-   - Maak een **app-wachtwoord** aan via <https://myaccount.google.com/apppasswords> (naam bijv.
-     `PocketBase NAS`). Je krijgt 16 letters; neem die over **zonder spaties**. Gebruik nooit je gewone
-     Google-wachtwoord: dat geeft de fout `535 5.7.8 Username and Password not accepted`.
-   - Vul in: Sender address `ducdalf.languedoc@gmail.com`, SMTP server host `smtp.gmail.com`,
-     port `587`, username `ducdalf.languedoc@gmail.com` (het volledige adres), password het
-     app-wachtwoord. Laat **TLS encryption uit** bij poort 587 (de verbinding wordt dan via
-     STARTTLS beveiligd); gebruik je poort 465, zet TLS dan aan.
-   - Klik **Send test email** om te controleren.
-3. **Superusers → (tandwiel) → Options → Multi-factor authentication**: zet **MFA aan**. Daarna log je
-   in met je wachtwoord **én** een eenmalige code die naar je e-mail komt. Zet dit pas aan als de
-   testmail uit stap 2 aankomt, anders sluit je jezelf buiten.
+2. **Mail settings (optioneel)**: alleen nodig als je MFA voor het beheerscherm via PocketBase wilt
+   (stap 3). De app zelf heeft dit **niet** nodig: inloggen met Google en mailen naar huurders via
+   de Gmail-koppeling werken zonder SMTP.
+   - Met Gmail heb je een **app-wachtwoord** nodig, en daarvoor moet **2-stapsverificatie** aan staan
+     op `ducdalf.languedoc@gmail.com` (<https://myaccount.google.com/apppasswords>). Gebruik nooit het
+     gewone Google-wachtwoord: dat geeft de fout `535 5.7.8 Username and Password not accepted`.
+   - Vul in: Sender address `ducdalf.languedoc@gmail.com`, host `smtp.gmail.com`, port `587`,
+     username het volledige adres, password het app-wachtwoord **zonder spaties**, TLS encryption
+     **uit** (bij poort 465: aan). Klik **Send test email**.
+   - Wil je geen 2-stapsverificatie op het gedeelde Gmail-account? Sla SMTP en stap 3 dan over en
+     beveilig het beheerscherm met **Cloudflare Access** (stap 4 hieronder).
+3. **MFA via PocketBase (alleen met werkende SMTP)**: Superusers → (tandwiel) → Options →
+   Multi-factor authentication → aan. Daarna log je in met je wachtwoord **én** een eenmalige code per
+   e-mail. Zet dit pas aan als de testmail uit stap 2 aankomt, anders sluit je jezelf buiten.
+4. **Cloudflare Access voor het beheerscherm (aanbevolen, zeker zonder SMTP)**: zie hieronder.
+
+#### Beheerscherm afschermen met Cloudflare Access
+
+Cloudflare vraagt dan vóór het PocketBase-beheerscherm om een eenmalige code, die Cloudflare zelf
+mailt naar een adres dat jij toestaat. Ieder van jullie kan daarvoor zijn eigen e-mailadres gebruiken;
+het gedeelde Gmail-account hoeft er niets voor.
+
+1. <https://one.dash.cloudflare.com> → **Access → Applications → Add an application → Self-hosted**.
+2. Naam `PocketBase beheer`; Application domain: subdomein `api`, domein
+   `vakantiehuis-ducdalf.nl`, **path `_/`**. Zet het **niet** op het hele subdomein: de app moet de
+   API (`/api/…`) kunnen blijven bereiken.
+3. Policy: naam `Familie`, Action **Allow**, Include → **Emails** → jullie eigen e-mailadressen.
+4. Login method: **One-time PIN**. Opslaan.
+5. Test: open <https://api.vakantiehuis-ducdalf.nl/_/>. Je krijgt eerst een Cloudflare-scherm; vul je
+   e-mailadres in, voer de code uit je mail in en log daarna in bij PocketBase.
 
 ### 5c. Inloggen met Google instellen
 
