@@ -15,7 +15,7 @@ export function GmailKnop({ inst, klein = false }: { inst?: Instellingen; klein?
   const gekoppeld = useGmailGekoppeld()
   const [fout, setFout] = useState("")
   if (!gmailBeschikbaar()) return null
-  if (gekoppeld) return <span className={`${klein ? "text-xs" : "text-sm"} text-olijf-donker`}>✓ Gmail gekoppeld</span>
+  if (gekoppeld) return <span className={`${klein ? "text-xs" : "text-sm"} text-olijf-donker`}>✓ Google gekoppeld</span>
   return (
     <span className="inline-flex flex-col">
       <button
@@ -26,7 +26,7 @@ export function GmailKnop({ inst, klein = false }: { inst?: Instellingen; klein?
           try { await koppelGmail(inst?.afzender_email) } catch (e) { setFout(e instanceof Error ? e.message : String(e)) }
         }}
       >
-        Koppel Gmail
+        Koppel Google
       </button>
       {fout && <span className="mt-1 text-xs text-rood">{fout}</span>}
     </span>
@@ -202,7 +202,7 @@ function MailDialoog({ boeking: b, inst, stappen, startSleutels, onSluiten }: {
             <Melding soort="waarschuwing">Er is nog geen brochure geüpload. <Link to="/instellingen">Upload hem bij Instellingen</Link>.</Melding>
           )}
           {!gekoppeld && (
-            <Melding soort="info">Koppel eerst Gmail om te kunnen versturen. <GmailKnop inst={inst} klein /></Melding>
+            <Melding soort="info">Koppel eerst Google om te kunnen versturen. <GmailKnop inst={inst} klein /></Melding>
           )}
           {fout ? <Fout fout={fout} /> : null}
           <div className="flex justify-end gap-2">

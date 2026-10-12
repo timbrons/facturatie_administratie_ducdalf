@@ -8,6 +8,7 @@ const MENU = [
   { naar: "/", label: "Overzicht" },
   { naar: "/boekingen", label: "Boekingen" },
   { naar: "/kalender", label: "Kalender" },
+  { naar: "/aanmeldingen", label: "Aanmeldingen" },
   { naar: "/huurders", label: "Huurders" },
   { naar: "/financieel", label: "Financieel" },
   { naar: "/prijzen", label: "Prijzen" },

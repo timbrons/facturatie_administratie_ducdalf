@@ -1,6 +1,9 @@
 import { useState } from "react"
 import { Link, useParams } from "react-router-dom"
-import { sleutels, useBoekingen, useHuurder, useOpslaan, useStappen } from "../lib/data"
+import { useQueryClient } from "@tanstack/react-query"
+import { sleutels, useBoekingen, useHuurder, useMaillog, useOpslaan, useStappen } from "../lib/data"
+import { anonimiseer } from "../lib/avg"
+import { vandaag } from "../domein/datum"
 import { huurderNaam, type Huurder } from "../lib/types"
 import { formatLang } from "../domein/datum"
 import { Fout, Kaart, Laden, Melding, Paginakop, Veld } from "../components/ui"
@@ -34,6 +37,9 @@ function Formulier({ huurder }: { huurder: Huurder }) {
   const opslaan = useOpslaan<Huurder>("huurders", [sleutels.huurders, sleutels.huurder(huurder.id), sleutels.boekingen])
   const [data, setData] = useState<Partial<Huurder>>(huurder)
   const [opgeslagen, setOpgeslagen] = useState(false)
+  const maillog = useMaillog()
+  const qc = useQueryClient()
+  const [avgFout, setAvgFout] = useState<unknown>(null)
   const verblijven = (boekingen.data ?? []).filter((b) => b.huurder === huurder.id).sort((a, b) => b.aankomst.localeCompare(a.aankomst))
 
   return (
@@ -42,6 +48,7 @@ function Formulier({ huurder }: { huurder: Huurder }) {
         <Link to={`/boekingen/nieuw?huurder=${huurder.id}`} className="knop">Nieuwe boeking</Link>
       </Paginakop>
       {huurder.geanonimiseerd_op && <div className="mb-4"><Melding soort="info">Deze huurder is geanonimiseerd.</Melding></div>}
+      {avgFout ? <div className="mb-4"><Fout fout={avgFout} /></div> : null}
       <div className="grid gap-6 lg:grid-cols-3">
         <Kaart titel="Gegevens" className="lg:col-span-2">
           <form
@@ -81,7 +88,28 @@ function Formulier({ huurder }: { huurder: Huurder }) {
             </div>
           </form>
         </Kaart>
-        <Kaart titel="Verblijven">
+        <Kaart
+          titel="Verblijven"
+          actie={!huurder.geanonimiseerd_op && (
+            <button
+              type="button"
+              className="text-xs text-zacht underline"
+              onClick={async () => {
+                const toekomst = verblijven.some((b) => b.vertrek >= vandaag() && b.status !== "geannuleerd")
+                if (toekomst) return setAvgFout(new Error("Deze huurder heeft nog een lopend of toekomstig verblijf en kan nog niet worden geanonimiseerd."))
+                if (!window.confirm("Deze huurder anonimiseren? Naam, contactgegevens, kenteken, aanmeldformulier en mailteksten worden gewist. Facturen blijven bewaard. Dit kan niet ongedaan worden gemaakt.")) return
+                try {
+                  await anonimiseer(huurder.id, boekingen.data ?? [], maillog.data ?? [])
+                  await qc.invalidateQueries()
+                } catch (err) {
+                  setAvgFout(err)
+                }
+              }}
+            >
+              Anonimiseren
+            </button>
+          )}
+        >
           {verblijven.length === 0 ? (
             <p className="text-sm text-zacht">Nog geen verblijven.</p>
           ) : (

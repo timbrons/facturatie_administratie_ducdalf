@@ -28,6 +28,9 @@ export interface Instellingen extends RecordModel {
   bewaartermijn_jaren: number
   brochure: string
   huisfoto: string
+  drive_kopie: boolean
+  drive_map: string
+  aanmelding_zoekopdracht: string
 }
 
 export interface SeizoenRecord extends RecordModel {
@@ -117,6 +120,7 @@ export interface Boeking extends RecordModel {
   tb_aangegeven_cent: Cent
   tb_aangegeven_op: string
   aanmelding: Record<string, unknown> | null
+  aanmelding_op: string
   notities: string
   expand?: { huurder?: Huurder }
 }
@@ -161,6 +165,8 @@ export interface Factuur extends RecordModel {
   vergrendeld: boolean
   verwijst_naar: string
   geimporteerd: boolean
+  drive_id: string
+  drive_link: string
 }
 
 export interface Betaling extends RecordModel {

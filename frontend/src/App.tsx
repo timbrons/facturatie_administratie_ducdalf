@@ -15,6 +15,8 @@ import { InstellingenPagina } from "./paginas/Instellingen"
 import { Financieel } from "./paginas/Financieel"
 import { Importeren } from "./paginas/Importeren"
 import { Sjablonen } from "./paginas/Sjablonen"
+import { Aanmeldingen } from "./paginas/Aanmeldingen"
+import { Beheer } from "./paginas/Beheer"
 
 function useIngelogd(): boolean {
   const [ingelogd, setIngelogd] = useState(pb.authStore.isValid)
@@ -52,6 +54,8 @@ export function App() {
           <Route path="/financieel" element={<Financieel />} />
           <Route path="/importeren" element={<Importeren />} />
           <Route path="/sjablonen" element={<Sjablonen />} />
+          <Route path="/aanmeldingen" element={<Aanmeldingen />} />
+          <Route path="/beheer" element={<Beheer />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>

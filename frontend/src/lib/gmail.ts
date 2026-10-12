@@ -1,15 +1,26 @@
 import { useSyncExternalStore } from "react"
 import { config } from "./config"
 
-// Gmail-koppeling vanuit de browser met Google Identity Services (OAuth 2.0
-// token model, scope gmail.send). Het access token staat ALLEEN in het
-// geheugen van deze pagina: na herladen of na ± 1 uur opnieuw koppelen.
-// Er worden geen wachtwoorden, secrets of refresh tokens opgeslagen.
+// Google-koppeling vanuit de browser met Google Identity Services (OAuth 2.0
+// token model). Het access token staat ALLEEN in het geheugen van deze
+// pagina: na herladen of na ± 1 uur opnieuw koppelen. Er worden geen
+// wachtwoorden, secrets of refresh tokens opgeslagen.
+//
+// Rechten:
+//  - gmail.send      mails versturen (fase 3)
+//  - gmail.readonly  inzendingen van het aanmeldformulier lezen (fase 4)
+//  - drive.file      kopieën van facturen in Drive zetten; de app ziet alleen
+//                    de bestanden en mappen die hij zelf heeft gemaakt
 
-const SCOPE = "https://www.googleapis.com/auth/gmail.send"
+export const SCOPES = {
+  verzenden: "https://www.googleapis.com/auth/gmail.send",
+  lezen: "https://www.googleapis.com/auth/gmail.readonly",
+  drive: "https://www.googleapis.com/auth/drive.file",
+}
+const SCOPE = Object.values(SCOPES).join(" ")
 const GIS_URL = "https://accounts.google.com/gsi/client"
 
-interface TokenResponse { access_token?: string; expires_in?: number; error?: string; error_description?: string }
+interface TokenResponse { access_token?: string; expires_in?: number; scope?: string; error?: string; error_description?: string }
 interface TokenClient { requestAccessToken: (opts?: { prompt?: string; login_hint?: string }) => void }
 declare global {
   interface Window {
@@ -17,7 +28,7 @@ declare global {
   }
 }
 
-let token: { waarde: string; verlooptOp: number } | null = null
+let token: { waarde: string; verlooptOp: number; scopes: string[] } | null = null
 const luisteraars = new Set<() => void>()
 function meld() { for (const l of luisteraars) l() }
 
@@ -61,7 +72,7 @@ export async function koppelGmail(loginHint?: string): Promise<void> {
       scope: SCOPE,
       callback: (r) => {
         if (r.error || !r.access_token) return reject(new Error(r.error_description || r.error || "Koppelen mislukt."))
-        token = { waarde: r.access_token, verlooptOp: Date.now() + (r.expires_in ?? 3600) * 1000 }
+        token = { waarde: r.access_token, verlooptOp: Date.now() + (r.expires_in ?? 3600) * 1000, scopes: (r.scope ?? SCOPE).split(" ") }
         meld()
         resolve()
       },
@@ -69,6 +80,26 @@ export async function koppelGmail(loginHint?: string): Promise<void> {
     })
     client.requestAccessToken({ prompt: token ? "" : "consent", login_hint: loginHint })
   })
+}
+
+/** Heeft de gebruiker dit recht gegeven? (Google laat toe om rechten uit te vinken.) */
+export function heeftRecht(scope: string): boolean {
+  return isGekoppeld() && token!.scopes.includes(scope)
+}
+
+/** Geautoriseerd verzoek naar een Google-API. */
+export async function googleFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  if (!isGekoppeld()) throw new Error("Google is niet (meer) gekoppeld. Klik op ‘Koppel Google’ en probeer het opnieuw.")
+  const res = await fetch(url, { ...init, headers: { ...(init.headers ?? {}), Authorization: `Bearer ${token!.waarde}` } })
+  if (res.status === 401) {
+    ontkoppelGmail()
+    throw new Error("De Google-koppeling is verlopen. Koppel opnieuw en probeer het nog een keer.")
+  }
+  if (res.status === 403) {
+    const data = await res.clone().json().catch(() => ({}))
+    throw new Error(`Google weigert dit verzoek: ${data?.error?.message ?? "geen toestemming"}. Koppel Google opnieuw en vink alle gevraagde rechten aan.`)
+  }
+  return res
 }
 
 export function ontkoppelGmail(): void {
@@ -80,16 +111,11 @@ export interface Verzonden { id: string; threadId: string }
 
 /** Verstuurt een mail (raw = base64url MIME). Bij een verlopen token eerst opnieuw koppelen. */
 export async function verstuurViaGmail(raw: string, threadId?: string): Promise<Verzonden> {
-  if (!isGekoppeld()) throw new Error("Gmail is niet (meer) gekoppeld. Klik op ‘Koppel Gmail’ en probeer het opnieuw.")
-  const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+  const res = await googleFetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
     method: "POST",
-    headers: { Authorization: `Bearer ${token!.waarde}`, "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(threadId ? { raw, threadId } : { raw }),
   })
-  if (res.status === 401) {
-    ontkoppelGmail()
-    throw new Error("De Gmail-koppeling is verlopen. Koppel Gmail opnieuw en verstuur de mail nog een keer.")
-  }
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
     // Een threadId dat niet (meer) bestaat: zonder thread opnieuw proberen.

@@ -6,6 +6,9 @@ import { tbPeriode } from "../domein/actielijst"
 import { formatKort, formatLang, vandaag } from "../domein/datum"
 import { formatBedrag, formatEuro, type Cent } from "../domein/geld"
 import type { TbBerekening } from "../domein/toeristenbelasting"
+import { driveBeschikbaar, zetInDrive } from "../lib/drive"
+import { tbMap, veiligeNaam } from "../domein/bestandsnamen"
+import { huurderNaam } from "../lib/types"
 import { BedragVeld, Dialoog, Fout, KopieerKnop, Melding, Veld } from "./ui"
 
 // De berekening en de aangifte doen we altijd zelf in het portaal van
@@ -164,6 +167,16 @@ export function TbAangifteDialoog({
         tb_aangegeven_cent: bedrag,
         tb_aangegeven_op: datum,
       })
+      // Kopie van de bewijsstukken in Google Drive (mag mislukken; het origineel staat in de database).
+      if (inst.drive_kopie && driveBeschikbaar()) {
+        for (const f of bestanden) {
+          try {
+            await zetInDrive(tbMap(inst.drive_map, periode), veiligeNaam(`${periode} ${huurderNaam(boeking.expand?.huurder)} - ${f.name}`), f, f.type || "application/octet-stream")
+          } catch {
+            // Niet blokkerend.
+          }
+        }
+      }
       await onOpgeslagen()
     } catch (err) {
       setFout(err)
