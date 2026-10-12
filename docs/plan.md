@@ -71,9 +71,24 @@ Alle bedragen zijn centen (`*_cent`). Datums zonder tijd zijn tekst `JJJJ-MM-DD`
      (geïnd, aangegeven, afgedragen, verschil). Alle overzichten kunnen naar CSV.
    - Import van de bestaande Google Sheet (CSV) met voorbeeldweergave. Oude factuurnummers blijven
      behouden en de nummerreeks schuift mee.
-3. **Fase 3 – E-mail**
-   - Gmail-koppeling met sjablonen, preview, bijlagen en maillog.
-   - Herinneringen in de actielijst.
+3. **Fase 3 – E-mail (opgeleverd)**
+   - **Gmail-koppeling** vanuit de browser met Google Identity Services (scope `gmail.send`). Het
+     token staat alleen in het geheugen en verloopt na ± 1 uur; daarna klik je opnieuw op
+     "Koppel Gmail".
+   - **Sjablonen** (beheer onder Instellingen → E-mailsjablonen) met variabelen zoals `{voornaam}`,
+     `{factuurnummer}` en `{link_aanmeldformulier}`. Taalvarianten (en/fr/de) per sjabloon kunnen
+     worden toegevoegd; de taal van de huurder bepaalt welke wordt gebruikt.
+   - **Opstellen**: sjablonen combineren (bijv. aanmeldformulier + brochure). Je ziet altijd eerst
+     een preview met aanpasbaar onderwerp, tekst en bijlagen. Er wordt nooit iets verstuurd zonder
+     je klik.
+   - Na het versturen schuift de workflow door (aanmeldformulier, brochure, factuur). De
+     factuurmail vergrendelt de factuur.
+   - **Maillog** per boeking, met het Gmail message- en thread-ID. Vervolgmails gaan in dezelfde
+     Gmail-thread (threadId plus In-Reply-To/References).
+   - **Actielijst**: knop "Herinnering sturen" bij (bijna) vervallen betalingen, met de datum van de
+     laatste herinnering. Kort voor aankomst verschijnt "Praktische info sturen".
+   - De link naar het aanmeldformulier bevat de boekingscode (`?boeking=…`); in fase 4 koppelen we
+     daarmee de inzending.
 4. **Fase 4 – Aanmeldformulier, export en back-up, AVG**
    - Koppeling met het aanmeldformulier.
    - "Exporteer alles".

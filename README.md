@@ -116,6 +116,18 @@ JavaScript-origins in Google Cloud.
 Google Sheet als CSV en kies het bestand. Je ziet eerst een voorbeeld; pas na je klik wordt er iets
 opgeslagen. Stel vóór de import de afzender- en bankgegevens in.
 
+## E-mail via Gmail
+
+1. Zet de repository-variabele `VITE_GOOGLE_CLIENT_ID` (zie
+   [docs/google-inloggen-en-gmail.md](docs/google-inloggen-en-gmail.md)).
+2. Klik in de app op **Koppel Gmail** en kies `ducdalf.languedoc@gmail.com`. Het toegangstoken
+   blijft alleen in het geheugen van de browser (± 1 uur geldig).
+3. Bij een boeking: **E-mail opstellen**, of de knop bij de volgende actie. Kies of combineer
+   sjablonen, pas de preview aan en klik **Versturen**. De mail staat daarna in Gmail onder
+   "Verzonden" en in het maillog van de boeking.
+
+Sjablonen beheer je onder **Instellingen → E-mailsjablonen**.
+
 ## Rekenregels (kort)
 
 - Bedragen worden als **centen** (gehele getallen) opgeslagen, nooit als zwevendekommagetallen.

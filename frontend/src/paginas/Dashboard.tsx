@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom"
 import { useMemo } from "react"
-import { useBoekingen, useInstellingen, useStappen } from "../lib/data"
+import { useBoekingen, useInstellingen, useMaillog, useStappen } from "../lib/data"
 import { boekingNaam } from "../lib/types"
 import { aantalNachten, isActief, totaalBoeking } from "../lib/boeking"
 import { bouwActielijst, type Urgentie } from "../domein/actielijst"
@@ -19,6 +19,7 @@ export function Dashboard() {
   const boekingen = useBoekingen()
   const stappen = useStappen()
   const inst = useInstellingen()
+  const maillog = useMaillog()
   const nu = vandaag()
   const jaar = jaarVan(nu)
 
@@ -29,8 +30,9 @@ export function Dashboard() {
       stappen.data,
       inst.data,
       nu,
+      (maillog.data ?? []).map((m) => ({ boekingId: m.boeking, sjablonen: m.sjablonen ?? [], datum: m.created.slice(0, 10) })),
     )
-  }, [boekingen.data, stappen.data, inst.data, nu])
+  }, [boekingen.data, stappen.data, inst.data, maillog.data, nu])
 
   if (boekingen.isLoading || stappen.isLoading || inst.isLoading) return <Laden />
   const fout = boekingen.error || stappen.error || inst.error
@@ -56,10 +58,17 @@ export function Dashboard() {
             <ul className="flex flex-col gap-2">
               {acties.map((a, i) => (
                 <li key={`${a.boekingId}-${a.soort}-${i}`}>
-                  <Link to={`/boekingen/${a.boekingId}`} className={`block border border-lijn border-l-4 px-4 py-3 no-underline hover:border-goud ${KLEUR[a.urgentie]}`}>
-                    <div className="font-medium text-inkt">{a.titel}</div>
-                    {a.toelichting && <div className="text-sm text-tekst">{a.toelichting}</div>}
-                  </Link>
+                  <div className={`flex flex-col gap-2 border border-lijn border-l-4 px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${KLEUR[a.urgentie]}`}>
+                    <Link to={`/boekingen/${a.boekingId}`} className="no-underline">
+                      <div className="font-medium text-inkt">{a.titel}</div>
+                      {a.toelichting && <div className="text-sm text-tekst">{a.toelichting}</div>}
+                    </Link>
+                    {a.mail && (
+                      <Link to={`/boekingen/${a.boekingId}?mail=${a.mail}`} className="knop-klein shrink-0 self-start sm:self-center">
+                        {a.mail === "fijne_reis" ? "Mail opstellen" : "Herinnering sturen"}
+                      </Link>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>

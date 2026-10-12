@@ -16,6 +16,7 @@ export function InstellingenPagina() {
   return (
     <>
       <Paginakop wenkbrauw="Beheer" titel="Instellingen">
+        <Link to="/sjablonen" className="knop-rand">E-mailsjablonen</Link>
         <Link to="/importeren" className="knop-rand">Oude administratie importeren</Link>
       </Paginakop>
       <div className="flex flex-col gap-6">
