@@ -166,15 +166,17 @@ In het beheerscherm → **Settings**:
 #### Beheerscherm afschermen met Cloudflare Access
 
 Cloudflare vraagt dan vóór het PocketBase-beheerscherm om een eenmalige code, die Cloudflare zelf
-mailt naar een adres dat jij toestaat. Ieder van jullie kan daarvoor zijn eigen e-mailadres gebruiken;
-het gedeelde Gmail-account hoeft er niets voor.
+mailt naar een adres dat jij toestaat. Dat kan gewoon het gedeelde adres `ducdalf.languedoc@gmail.com`
+zijn (iedereen met toegang tot die inbox kan dan inloggen); een persoonlijk adres van wie de
+technische kant beheert mag er ook bij. Er hoeft niets ingesteld te worden op het Gmail-account.
 
 1. <https://one.dash.cloudflare.com> → **Access → Applications → Add an application → Self-hosted**.
 2. Naam `PocketBase beheer`; Application domain: subdomein `api`, domein
    `vakantiehuis-ducdalf.nl`, **path `_/`**. Zet het **niet** op het hele subdomein: de app moet de
    API (`/api/…`) kunnen blijven bereiken.
 3. Policy (venster "Policy rules / Policy details"): Policy Name `Familie`, Action **Allow**. Links bij
-   Include → **Emails**: typ jullie eigen e-mailadressen (Enter na elk adres). De overige instellingen
+   Include → **Emails**: typ de adressen die de code mogen ontvangen, bijv.
+   `ducdalf.languedoc@gmail.com` (Enter na elk adres). De overige instellingen
    (MFA, Just-in-time, RDP) laat je zoals ze staan. **Save policy**.
 4. One-time PIN staat niet in de policy maar bij de inlogmethoden:
    - In de applicatie, onderdeel **Login methods** / **Authentication**: zorg dat **One-time PIN**
@@ -182,8 +184,8 @@ het gedeelde Gmail-account hoeft er niets voor.
    - Staat One-time PIN nergens in de lijst? Ga naar **Settings → Authentication → Login methods →
      Add new → One-time PIN** (geen verdere instellingen nodig) en kies hem daarna in de applicatie.
    Sla de applicatie op.
-5. Test: open <https://api.vakantiehuis-ducdalf.nl/_/>. Je krijgt eerst een Cloudflare-scherm; vul je
-   e-mailadres in, voer de code uit je mail in en log daarna in bij PocketBase.
+5. Test: open <https://api.vakantiehuis-ducdalf.nl/_/>. Je krijgt eerst een Cloudflare-scherm; vul het
+   toegestane e-mailadres in, voer de code uit die inbox in en log daarna in bij PocketBase.
 
 ### 5c. Inloggen met Google instellen
 
