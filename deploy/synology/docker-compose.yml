@@ -1,0 +1,49 @@
+# Duc'dalf verhuurbeheer op de Synology NAS (Container Manager → Project).
+# Zie docs/installatie-synology.md voor de stap-voor-stap-uitleg.
+#
+# Mappenstructuur op de NAS (bijv. /volume1/docker/ducdalf):
+#   docker-compose.yml      ← dit bestand
+#   .env                    ← geheimen (tunnel-token, e-mailadressen); NOOIT in git
+#   backend/                ← Dockerfile, pb_migrations, pb_hooks (uit de repository)
+#   pb_data/                ← database en bestanden (maak een lege map aan)
+#   pb_public/              ← optioneel: de gebouwde frontend (later, zonder GitHub Pages)
+
+services:
+  pocketbase:
+    build: ./backend
+    image: ducdalf-pocketbase:0.40.4
+    container_name: ducdalf-pocketbase
+    restart: unless-stopped
+    environment:
+      PB_ORIGINS: ${PB_ORIGINS:-https://timbrons.github.io}
+      DUCDALF_ALLOWED_EMAILS: ${DUCDALF_ALLOWED_EMAILS}
+    volumes:
+      - ./pb_data:/pb/pb_data
+      - ./backend/pb_migrations:/pb/pb_migrations:ro
+      - ./backend/pb_hooks:/pb/pb_hooks:ro
+      - ./pb_public:/pb/pb_public:ro
+    # Geen poorten naar buiten: alleen cloudflared praat met PocketBase.
+    # Wil je het beheerscherm ook binnen je thuisnetwerk bereiken, haal dan
+    # het #-teken weg voor de twee regels hieronder (http://<ip-van-nas>:8090/_/).
+    # ports:
+    #   - "8090:8090"
+    networks: [ducdalf]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8090/api/health"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+
+  cloudflared:
+    image: cloudflare/cloudflared:2026.9.3
+    container_name: ducdalf-cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN}
+    depends_on:
+      - pocketbase
+    networks: [ducdalf]
+
+networks:
+  ducdalf:

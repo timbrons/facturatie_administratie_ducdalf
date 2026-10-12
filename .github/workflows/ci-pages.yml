@@ -1,0 +1,93 @@
+name: Testen en publiceren
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PB_VERSION: "0.40.4"
+  PB_SHA256: "9042ec818570e79c3628dadcd0a756c1496d9e1173918ec409d133c02f82e5fa"
+
+jobs:
+  controleren:
+    name: Tests, privacy en migraties
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Privacycontrole
+        run: ./scripts/privacy-check.sh
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Afhankelijkheden installeren
+        working-directory: frontend
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: frontend
+        run: npx tsc -b
+
+      - name: Tests
+        working-directory: frontend
+        run: npm test
+
+      - name: PocketBase-migraties controleren
+        run: |
+          wget -q -O pb.zip "https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/pocketbase_${PB_VERSION}_linux_amd64.zip"
+          echo "${PB_SHA256}  pb.zip" | sha256sum -c -
+          unzip -q pb.zip pocketbase
+          ./pocketbase migrate up --dir="$RUNNER_TEMP/pb_data" --migrationsDir=backend/pb_migrations --hooksDir=backend/pb_hooks
+
+  bouwen:
+    name: App bouwen
+    needs: controleren
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - working-directory: frontend
+        run: npm ci
+      - name: Bouwen voor GitHub Pages
+        working-directory: frontend
+        env:
+          VITE_BASE: /${{ github.event.repository.name }}/
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}
+          VITE_DEV_LOGIN: "false"
+        run: npm run build
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: frontend/dist
+
+  publiceren:
+    name: Publiceren op GitHub Pages
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: bouwen
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

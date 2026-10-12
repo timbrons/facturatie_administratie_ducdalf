@@ -1,0 +1,20 @@
+# Lokaal ontwikkelen: PocketBase op http://127.0.0.1:8090 (beheer: /_/).
+#
+#   docker compose up -d --build
+#   docker compose exec pocketbase /pb/pocketbase superuser upsert admin@example.com 'EenLangWachtwoord123!' --dir=/pb/pb_data
+#   node scripts/seed.mjs
+#
+# Alleen fictieve testdata. De map backend/pb_data staat in .gitignore.
+services:
+  pocketbase:
+    build: ./backend
+    ports:
+      - "127.0.0.1:8090:8090"
+    environment:
+      PB_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173"
+      DUCDALF_ALLOWED_EMAILS: "test@ducdalf.test"
+    volumes:
+      - ./backend/pb_data:/pb/pb_data
+      - ./backend/pb_migrations:/pb/pb_migrations:ro
+      - ./backend/pb_hooks:/pb/pb_hooks:ro
+    restart: unless-stopped

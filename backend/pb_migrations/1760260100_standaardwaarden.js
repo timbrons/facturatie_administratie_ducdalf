@@ -109,6 +109,9 @@ migrate((app) => {
   settings.meta.appName = "Duc'dalf verhuurbeheer"
   settings.rateLimits.enabled = true
   settings.batch.enabled = false
+  // Dagelijkse back-up om 02:30 UTC; de laatste 14 worden bewaard (pb_data/backups).
+  settings.backups.cron = "30 2 * * *"
+  settings.backups.cronMaxKeep = 14
   app.save(settings)
 }, (app) => {
   for (const naam of ["tb_tarieven", "seizoenen", "extras", "workflow_stappen", "instellingen"]) {
