@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react"
 import { config } from "./config"
+import { pb } from "./pb"
 
 // Google-koppeling vanuit de browser met Google Identity Services (OAuth 2.0
 // token model). Het access token staat ALLEEN in het geheugen van deze
@@ -25,7 +26,10 @@ export const SCOPES = {
   lezen: "https://www.googleapis.com/auth/gmail.readonly",
   drive: "https://www.googleapis.com/auth/drive.file",
 }
-const SCOPE = Object.values(SCOPES).join(" ")
+// Het e-mailadres van het gekoppelde account hebben we nodig om te controleren
+// dat het het afzenderaccount is (zie controleerAccount).
+const EMAIL_SCOPE = "https://www.googleapis.com/auth/userinfo.email"
+const SCOPE = [...Object.values(SCOPES), EMAIL_SCOPE].join(" ")
 const GIS_URL = "https://accounts.google.com/gsi/client"
 
 interface TokenResponse { access_token?: string; expires_in?: number; scope?: string; error?: string; error_description?: string }
@@ -70,6 +74,46 @@ export function useGmailGekoppeld(): boolean {
   )
 }
 
+// Het Google-account waarmee gekoppeld moet worden: de afzender uit Instellingen.
+// Wie met een ander (eigen) account in de app inlogt, mag niet per ongeluk
+// mails versturen of Drive-kopieën maken vanuit dat eigen account.
+let afzender = ""
+export function stelAfzenderIn(email: string | undefined): void {
+  afzender = (email ?? "").trim().toLowerCase()
+}
+async function verwachteAfzender(): Promise<string> {
+  if (!afzender) {
+    try {
+      stelAfzenderIn((await pb.collection("instellingen").getFirstListItem<{ afzender_email: string }>("")).afzender_email)
+    } catch {
+      // Geen instellingen: dan geen controle.
+    }
+  }
+  return afzender
+}
+
+interface TokenInfo { email: string; scopes: string[]; verlooptOp: number }
+
+/** Vraagt bij Google op voor welk account en welke rechten een token geldt. */
+async function tokenInfo(accessToken: string): Promise<TokenInfo | null> {
+  const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(accessToken)}`)
+  if (!res.ok) return null
+  const info = await res.json()
+  if (config.googleClientId && info.aud !== config.googleClientId) return null
+  return {
+    email: String(info.email ?? "").toLowerCase(),
+    scopes: String(info.scope ?? "").split(" "),
+    verlooptOp: Date.now() + Number(info.expires_in ?? 0) * 1000,
+  }
+}
+
+/** Foutmelding als het token van een ander account is dan de afzender, anders null. */
+async function controleerAccount(info: TokenInfo): Promise<string | null> {
+  const verwacht = await verwachteAfzender()
+  if (!verwacht || !info.email || info.email === verwacht) return null
+  return `Google is gekoppeld met ${info.email}, maar mails en Drive-kopieën horen bij ${verwacht} (de afzender bij Instellingen). Kies in het Google-venster het account ${verwacht}.`
+}
+
 /** Laadt de Google-component alvast, zodat koppelen later direct bij een klik kan. */
 export function voorladenGoogle(): void {
   if (config.googleClientId) laadGis().catch(() => {})
@@ -89,14 +133,13 @@ export function zetToken(waarde: string, verlooptOp: number, scopes: string[]): 
 export async function neemLoginTokenOver(accessToken: string | undefined, verloopt: string | undefined): Promise<void> {
   if (!accessToken || !config.googleClientId) return
   try {
-    const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(accessToken)}`)
-    if (!res.ok) return
-    const info = await res.json()
-    if (info.aud !== config.googleClientId) return
-    const scopes = String(info.scope ?? "").split(" ")
-    if (!Object.values(SCOPES).some((s) => scopes.includes(s))) return
-    const verlooptOp = verloopt ? Date.parse(verloopt.replace(" ", "T")) : Date.now() + Number(info.expires_in ?? 0) * 1000
-    zetToken(accessToken, Number.isFinite(verlooptOp) ? verlooptOp : Date.now() + 50 * 60_000, scopes)
+    const info = await tokenInfo(accessToken)
+    if (!info || !Object.values(SCOPES).some((s) => info.scopes.includes(s))) return
+    // Ingelogd met een ander account dan de afzender (bijv. een eigen account):
+    // dat token niet gebruiken; bij de eerste actie koppelt de app met de afzender.
+    if (await controleerAccount(info)) return
+    const verlooptOp = verloopt ? Date.parse(verloopt.replace(" ", "T")) : info.verlooptOp
+    zetToken(accessToken, Number.isFinite(verlooptOp) ? verlooptOp : info.verlooptOp, info.scopes)
   } catch {
     // Niet erg: dan wordt bij de eerste actie met Google opnieuw gekoppeld.
   }
@@ -112,15 +155,18 @@ export async function koppelGmail(loginHint?: string): Promise<void> {
     const client = window.google!.accounts.oauth2.initTokenClient({
       client_id: config.googleClientId,
       scope: SCOPE,
-      callback: (r) => {
+      callback: async (r) => {
         if (r.error || !r.access_token) return reject(new Error(r.error_description || r.error || "Koppelen mislukt."))
+        const info = await tokenInfo(r.access_token).catch(() => null)
+        const fout = info ? await controleerAccount(info) : null
+        if (fout) return reject(new Error(fout))
         zetToken(r.access_token, Date.now() + (r.expires_in ?? 3600) * 1000, (r.scope ?? SCOPE).split(" "))
         resolve()
       },
       error_callback: (e) => reject(new Error(e.type === "popup_closed" ? "Het Google-venster is gesloten." : e.message || "Koppelen mislukt.")),
     })
     // Geen geforceerd toestemmingsscherm: Google vraagt alleen wat nog niet is gegeven.
-    client.requestAccessToken({ prompt: "", login_hint: loginHint })
+    client.requestAccessToken({ prompt: "", login_hint: loginHint || afzender || undefined })
   })
 }
 
