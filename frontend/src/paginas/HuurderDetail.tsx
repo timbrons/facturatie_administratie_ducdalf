@@ -188,7 +188,7 @@ function VerwijderDialoog({ open, huurder, verblijven, facturen, mails, onSluite
       {klaar ? (
         <div className="flex flex-col gap-3 text-sm">
           <Melding soort="succes">
-            {naam} is verwijderd, met {klaar.boekingen} boeking(en), {klaar.facturen} factu(u)r(en), {klaar.betalingen} betaling(en) en {klaar.mails} mail(s) uit het maillog.
+            {naam} is verwijderd, met {klaar.boekingen} boeking(en), {klaar.facturen} factu(u)r(en), {klaar.betalingen} betaling(en) en {klaar.mails} mail(s) uit het maillog{klaar.aangiften > 0 ? <>, en {klaar.aangiften} maandaangifte(n) toeristenbelasting waar verder geen verblijf bij hoorde</> : null}.
           </Melding>
           {klaar.teruggezet.length > 0 && (
             <p>De factuurnummering is teruggezet; deze nummers worden opnieuw gebruikt: {klaar.teruggezet.slice().reverse().join(", ")}.</p>
@@ -196,15 +196,18 @@ function VerwijderDialoog({ open, huurder, verblijven, facturen, mails, onSluite
           {klaar.driveOver.length > 0 && (
             <Melding soort="waarschuwing">Deze kopieën in Google Drive konden niet worden verwijderd; verwijder ze zelf: {klaar.driveOver.join(", ")}</Melding>
           )}
-          <p className="text-xs text-zacht">Verstuurde e-mails blijven staan in Gmail (Verzonden); verwijder die daar zelf als dat nodig is.</p>
+          <p className="text-xs text-zacht">
+            Verstuurde e-mails blijven staan in Gmail (Verzonden). Kopieën van bewijsstukken toeristenbelasting staan in Google Drive onder
+            Toeristenbelasting/&lt;jaar&gt;. Verwijder die daar zelf als dat nodig is.
+          </p>
           <div className="flex justify-end"><button type="button" className="knop" onClick={sluit}>Sluiten</button></div>
         </div>
       ) : (
         <div className="flex flex-col gap-3 text-sm">
           <p>
             Hiermee verwijder je <strong>{naam}</strong> definitief, met {verblijven.length} boeking(en), {facturen.length} factu(u)r(en)
-            (ook de PDF's en de kopieën in Google Drive), alle betalingen, de statushistorie, het aanmeldformulier en {mails} mail(s) uit het
-            maillog. Dit kan niet ongedaan worden gemaakt.
+            (ook de PDF's en de kopieën in Google Drive), alle betalingen, de statushistorie, het aanmeldformulier, {mails} mail(s) uit het
+            maillog en maandaangiften toeristenbelasting waar daarna geen verblijf meer bij hoort. Dit kan niet ongedaan worden gemaakt.
           </p>
           <Melding soort="waarschuwing">
             Gebruik dit alleen voor testgegevens of vergissingen. Facturen van echte huurders moeten 7 jaar bewaard blijven; gebruik

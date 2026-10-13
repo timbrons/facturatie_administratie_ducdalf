@@ -7,6 +7,8 @@ export interface VerwijderResultaat {
   facturen: number
   betalingen: number
   mails: number
+  /** Maandaangiften toeristenbelasting zonder overgebleven verblijf */
+  aangiften: number
   /** Factuurnummers die weer vrijkomen (de nummerreeks is teruggezet) */
   teruggezet: string[]
   /** Kopieën in Google Drive die niet konden worden verwijderd */
