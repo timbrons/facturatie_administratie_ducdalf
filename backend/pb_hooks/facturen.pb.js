@@ -7,8 +7,9 @@
 //    kent in één transactie het volgende nummer uit `nummerreeksen` toe.
 //  - Na nummeren liggen de inhoud en het nummer vast; alleen de PDF en de
 //    verzendgegevens mogen nog worden toegevoegd.
-//  - Een vergrendelde (verstuurde) factuur kan niet meer worden gewijzigd;
-//    corrigeren gaat met een creditfactuur.
+//  - Een vergrendelde (verstuurde) factuur kan niet meer worden gewijzigd.
+//    Wel kan hij worden geannuleerd (geannuleerd_op); daarna kan zo nodig een
+//    nieuwe factuur worden gemaakt. Er zijn geen creditfacturen.
 //  - Geïmporteerde facturen houden hun eigen nummer; de reeks schuift mee.
 
 onRecordCreateRequest((e) => {
@@ -45,6 +46,9 @@ onRecordCreateRequest((e) => {
 
 onRecordUpdateRequest((e) => {
   const oud = e.record.original()
+  if (oud.getString("geannuleerd_op") && e.record.getString("geannuleerd_op") !== oud.getString("geannuleerd_op")) {
+    throw new BadRequestError("Een geannuleerde factuur blijft geannuleerd. Maak zo nodig een nieuwe factuur.")
+  }
   if (oud.getBool("vergrendeld")) {
     // Een verstuurde factuur ligt vast. Alleen de verwijzing naar de kopie in
     // Google Drive mag nog worden vastgelegd. Bij een geïmporteerde factuur
@@ -53,9 +57,11 @@ onRecordUpdateRequest((e) => {
     const alles = ["boeking", "nummer", "soort", "factuurdatum", "regels", "gegevens", "totaal_cent", "aanbetaling_cent",
       "aanbetaling_vervaldatum", "rest_vervaldatum", "verwijst_naar", "geimporteerd", "verstuurd_op", "vergrendeld"]
     if (!origineelToevoegen) alles.push("pdf")
+    // Annuleren mag (eenmalig: van leeg naar een datum).
+    if (!(oud.getString("geannuleerd_op") === "" && e.record.getString("geannuleerd_op") !== "")) alles.push("geannuleerd_op")
     for (const veld of alles) {
       if (e.record.getString(veld) !== oud.getString(veld)) {
-        throw new BadRequestError("Deze factuur is verstuurd en kan niet meer worden gewijzigd. Maak een creditfactuur.")
+        throw new BadRequestError("Deze factuur is verstuurd en kan niet meer worden gewijzigd. Annuleer hem en maak zo nodig een nieuwe factuur.")
       }
     }
     e.next()

@@ -45,4 +45,18 @@ onRecordUpdateRequest((e) => {
     wijziging.set("opmerking", nieuw === "geannuleerd" ? e.record.getString("geannuleerd_reden") : "")
     e.app.save(wijziging)
   }
+
+  // Annulering: definitieve facturen worden geannuleerd (ze blijven bewaard
+  // met hun nummer), concepten verdwijnen.
+  if (oud !== nieuw && nieuw === "geannuleerd") {
+    const vandaag = new Date().toISOString().slice(0, 10)
+    for (const f of e.app.findRecordsByFilter("facturen", "boeking = {:b}", "", 0, 0, { b: e.record.id })) {
+      if (!f.getString("nummer")) {
+        e.app.delete(f)
+      } else if (!f.getString("geannuleerd_op")) {
+        f.set("geannuleerd_op", vandaag)
+        e.app.save(f)
+      }
+    }
+  }
 }, "boekingen")

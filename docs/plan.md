@@ -35,7 +35,7 @@
 | `boekingen` | huurder, periode, personen, kenteken, status, prijsopbouw, betalingsafspraak, toeristenbelasting (portaal, aangifte), aanmelding (ruwe formulierdata), notities, unieke code |
 | `statuswijzigingen` | historie van de workflow (wordt door de backend gevuld, alleen-lezen) |
 | `workflow_stappen` | statussen, teksten, volgorde, "automatisch overslaan als …", aan/uit |
-| `facturen` | nummer, soort (factuur/credit), vastgelegde regels en gegevens, PDF, vergrendeld na verzenden |
+| `facturen` | nummer, vastgelegde regels en gegevens, PDF, vergrendeld na verzenden, geannuleerd op |
 | `nummerreeksen` | laatste factuurnummer per jaar |
 | `betalingen` | datum, bedrag, soort (aanbetaling/rest/…), gekoppeld aan boeking/factuur |
 | `tb_aangiften` | maandaangifte: periode, indiendatum, referentie, bewijsstukken, afgedragen (datum/bedrag) |
@@ -59,11 +59,12 @@ Alle bedragen zijn centen (`*_cent`). Datums zonder tijd zijn tekst `JJJJ-MM-DD`
    - PDF-factuur in de browser, volgens de voorbeeldfactuur.
    - Een factuur is eerst een **concept** zonder nummer. Bij "Definitief maken" kent de backend in
      één transactie het volgende nummer toe. Daarna liggen inhoud en nummer vast.
-   - "Markeer als verstuurd" vergrendelt de factuur. Corrigeren gaat met een creditfactuur en
-     een nieuwe factuur.
+   - "Markeer als verstuurd" vergrendelt de factuur. Corrigeren of annuleren gaat met "Factuur
+     annuleren" (geen creditfacturen): de factuur blijft bewaard met zijn nummer maar telt niet meer
+     mee; daarna zo nodig een nieuwe factuur. Bij het annuleren van een boeking gebeurt dit vanzelf.
    - Betalingen registreren. De workflow schuift automatisch door naar "Aanbetaling ontvangen" of
      "Volledig betaald".
-   - Betaalstatus per factuur: open, deels betaald, betaald, vervallen of gecrediteerd.
+   - Betaalstatus per factuur: open, deels betaald, betaald, vervallen of geannuleerd.
    - Bij een boeking kort voor aankomst wordt een aanbetaling automatisch één betaaltermijn, met
      minimaal een week betaaltijd.
    - Financieel overzicht per jaar (huur, schoonmaak, parkkosten, extra's, toeristenbelasting,

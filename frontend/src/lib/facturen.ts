@@ -3,7 +3,7 @@ import { aantalNachten } from "./boeking"
 import { huurderNaam, type Betaling, type Boeking, type Factuur, type Instellingen } from "./types"
 import { vandaag } from "../domein/datum"
 import { berekenTermijnen } from "../domein/betaling"
-import { betaaltekst, bouwFactuurregels, creditRegels, totaalVan, type Factuurregel } from "../domein/factuur"
+import { betaaltekst, bouwFactuurregels, totaalVan, type Factuurregel } from "../domein/factuur"
 import { isBijOfVoorbij, type WorkflowStap } from "../domein/workflow"
 import type { FactuurGegevens } from "../pdf/FactuurPdf"
 import { laadAfbeelding, maakFactuurPdf } from "../pdf/genereer"
@@ -11,7 +11,7 @@ import { driveBeschikbaar, zetInDrive } from "./drive"
 import { factuurBestandsnaam, factuurMap } from "../domein/bestandsnamen"
 
 // Alle stappen rond facturen: concept maken, definitief maken (nummeren +
-// PDF), als verstuurd markeren (vergrendelen) en crediteren.
+// PDF), als verstuurd markeren (vergrendelen) en annuleren.
 
 function gegevensVoor(b: Boeking, inst: Instellingen, tekst: string): FactuurGegevens {
   const h = b.expand?.huurder
@@ -78,18 +78,13 @@ export async function vernieuwConcept(f: Factuur, b: Boeking, inst: Instellingen
   return pb.collection("facturen").update<Factuur>(f.id, inhoud(b, inst, vandaag()))
 }
 
-export async function maakCredit(origineel: Factuur): Promise<Factuur> {
-  const regels = creditRegels(origineel.regels ?? [])
-  return pb.collection("facturen").create<Factuur>({
-    boeking: origineel.boeking,
-    soort: "credit",
-    verwijst_naar: origineel.id,
-    factuurdatum: vandaag(),
-    regels,
-    totaal_cent: totaalVan(regels),
-    aanbetaling_cent: 0,
-    gegevens: { ...(origineel.gegevens as FactuurGegevens), betaaltekst: "", creditVoor: origineel.nummer },
-  })
+/**
+ * Factuur annuleren: hij blijft bewaard met zijn nummer, maar telt niet meer
+ * mee. Een terugbetaling spreek je met de huurder af en registreer je als
+ * negatieve betaling. Daarna kan zo nodig een nieuwe factuur worden gemaakt.
+ */
+export async function annuleerFactuur(f: Factuur): Promise<Factuur> {
+  return pb.collection("facturen").update<Factuur>(f.id, { geannuleerd_op: vandaag() })
 }
 
 async function huisfoto(inst: Instellingen): Promise<string | null> {

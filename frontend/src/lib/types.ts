@@ -167,6 +167,8 @@ export interface Factuur extends RecordModel {
   geimporteerd: boolean
   drive_id: string
   drive_link: string
+  /** Datum waarop de factuur is geannuleerd ("" = geldig) */
+  geannuleerd_op: string
 }
 
 export interface Betaling extends RecordModel {

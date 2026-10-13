@@ -56,11 +56,6 @@ export function totaalVan(regels: Factuurregel[]): Cent {
   return regels.reduce((t, r) => t + r.bedrag_cent, 0)
 }
 
-/** Regels van een creditfactuur: dezelfde posten met negatieve bedragen. */
-export function creditRegels(regels: Factuurregel[]): Factuurregel[] {
-  return regels.map((r) => ({ ...r, bedrag_cent: -r.bedrag_cent }))
-}
-
 /** Betaaltekst onder de factuur. */
 export function betaaltekst(t: Betaaltermijnen, aanbetalingPct: number, restWeken: number): string {
   if (t.betaalwijze === "aanbetaling") {
@@ -76,28 +71,31 @@ export function betaaltekst(t: Betaaltermijnen, aanbetalingPct: number, restWeke
 // Betaalstatus
 // ---------------------------------------------------------------------------
 
-export type Betaalstatus = "concept" | "open" | "deels betaald" | "betaald" | "vervallen" | "gecrediteerd" | "credit"
+export type Betaalstatus = "concept" | "open" | "deels betaald" | "betaald" | "vervallen" | "geannuleerd"
 
 export interface StatusFactuur {
   id: string
-  soort: "factuur" | "credit"
   nummer: string
   totaal_cent: Cent
   aanbetaling_cent: Cent
   aanbetaling_vervaldatum: string
   rest_vervaldatum: string
-  verwijst_naar: string
+  /** Gezet als de factuur is geannuleerd (bijv. door een annulering van de boeking) */
+  geannuleerd_op?: string
+}
+
+/** Geldige facturen: definitief (genummerd) en niet geannuleerd. */
+export function geldigeFacturen<T extends Pick<StatusFactuur, "nummer" | "geannuleerd_op">>(facturen: T[]): T[] {
+  return facturen.filter((f) => f.nummer && !f.geannuleerd_op)
 }
 
 /**
  * Betaalstatus van een factuur, op basis van de betalingen bij de boeking.
- * Betalingen worden eerst aan gecrediteerde facturen "gegeven" (die zijn
- * weggestreept), en daarna aan de geldige factuur.
+ * Een geannuleerde factuur telt niet meer mee.
  */
 export function betaalstatus(f: StatusFactuur, alleFacturen: StatusFactuur[], betaaldCent: Cent, vandaag: IsoDatum): Betaalstatus {
   if (!f.nummer) return "concept"
-  if (f.soort === "credit") return "credit"
-  if (alleFacturen.some((c) => c.soort === "credit" && c.nummer && c.verwijst_naar === f.id)) return "gecrediteerd"
+  if (f.geannuleerd_op) return "geannuleerd"
   const saldo = openstaand(alleFacturen, betaaldCent)
   if (saldo <= 0) return "betaald"
   const vervallenDeel =
@@ -107,8 +105,13 @@ export function betaalstatus(f: StatusFactuur, alleFacturen: StatusFactuur[], be
   return betaaldCent > 0 ? "deels betaald" : "open"
 }
 
-/** Totaal gefactureerd (definitieve facturen incl. creditfacturen) min betaald. */
-export function openstaand(facturen: Pick<StatusFactuur, "nummer" | "totaal_cent">[], betaaldCent: Cent): Cent {
-  const gefactureerd = facturen.filter((f) => f.nummer).reduce((t, f) => t + f.totaal_cent, 0)
-  return gefactureerd - betaaldCent
+/**
+ * Totaal van de geldige facturen min wat is betaald. Zonder geldige factuur
+ * (alles geannuleerd) staat er niets open; een eventuele terugbetaling wordt
+ * met de huurder afgesproken en als negatieve betaling geregistreerd.
+ */
+export function openstaand(facturen: Pick<StatusFactuur, "nummer" | "totaal_cent" | "geannuleerd_op">[], betaaldCent: Cent): Cent {
+  const geldig = geldigeFacturen(facturen)
+  if (geldig.length === 0) return 0
+  return geldig.reduce((t, f) => t + f.totaal_cent, 0) - betaaldCent
 }

@@ -48,7 +48,7 @@ function Formulier({ boeking, vooringevuldeHuurder }: { boeking?: Boeking; voori
   const boekingen = useBoekingen().data!
   const facturen = useFacturen().data ?? []
   const vergrendeld = boeking
-    ? facturen.filter((f) => f.boeking === boeking.id && f.soort === "factuur" && f.nummer && !facturen.some((c) => c.soort === "credit" && c.nummer && c.verwijst_naar === f.id))
+    ? facturen.filter((f) => f.boeking === boeking.id && f.soort === "factuur" && f.nummer && !f.geannuleerd_op)
     : []
 
   const [huurderId, setHuurderId] = useState(boeking?.huurder ?? vooringevuldeHuurder)
@@ -185,7 +185,7 @@ function Formulier({ boeking, vooringevuldeHuurder }: { boeking?: Boeking; voori
         <div className="mb-4">
           <Melding soort="waarschuwing">
             Er is al een definitieve factuur ({vergrendeld.map((f) => f.nummer).join(", ")}). Wijzigingen in prijs of periode komen niet vanzelf op die factuur:
-            maak na het opslaan een creditfactuur en daarna een nieuwe factuur.
+            annuleer na het opslaan die factuur (bij Facturen) en maak daarna een nieuwe.
           </Melding>
         </div>
       )}

@@ -421,7 +421,7 @@ function AnnuleerDialoog({ open, onSluiten, onBevestig }: { open: boolean; onSlu
   const [reden, setReden] = useState("")
   return (
     <Dialoog open={open} titel="Boeking annuleren" onSluiten={onSluiten}>
-      <p className="mb-3 text-sm">Geef de reden van de annulering. Is er al een factuur verstuurd? Maak daarna bij Facturen een creditfactuur.</p>
+      <p className="mb-3 text-sm">Geef de reden van de annulering. Een definitieve factuur wordt dan als geannuleerd gemarkeerd (hij blijft bewaard met zijn nummer). Spreek een eventuele terugbetaling met de huurder af en registreer die bij Betalingen met een negatief bedrag.</p>
       <textarea rows={3} value={reden} onChange={(e) => setReden(e.target.value)} placeholder="Reden" />
       <div className="mt-4 flex justify-end gap-2">
         <button type="button" className="knop-rand" onClick={onSluiten}>Terug</button>

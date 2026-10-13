@@ -110,7 +110,9 @@ JavaScript-origins in Google Cloud.
    Vanaf fase 3 gebeurt dit vanzelf bij het versturen via Gmail.
 5. **Betaling registreren** (knop bij de volgende actie of "+ Betaling"). De workflow schuift
    vanzelf door.
-6. Iets veranderd na het versturen? **Crediteren**, en daarna **Nieuwe (gecorrigeerde) factuur**.
+6. Iets veranderd, of geannuleerd? **Factuur annuleren**: hij blijft bewaard met zijn nummer maar telt niet meer mee.
+   Daarna zo nodig **Nieuwe (gecorrigeerde) factuur**. Een terugbetaling spreek je met de huurder af en registreer
+   je als betaling met een negatief bedrag. Bij het annuleren van een boeking gebeurt dit vanzelf.
 
 **Bestaande administratie overnemen**: Instellingen → *Oude administratie importeren*. Download de
 Google Sheet als CSV en kies het bestand. Je ziet eerst een voorbeeld; pas na je klik wordt er iets
