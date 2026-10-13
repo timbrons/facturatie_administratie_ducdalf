@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { pb } from "../lib/pb"
 import { sleutels, useBetalingen, useFacturen } from "../lib/data"
 import type { Betaling, Boeking, Instellingen } from "../lib/types"
-import { factuurBezwaar, kopieNaarDrive, maakConcept, maakCredit, maakDefinitief, markeerVerstuurd, pdfUrl, pdfVoor, statusNaBetaling } from "../lib/facturen"
+import { factuurBezwaar, kopieNaarDrive, maakConcept, maakCredit, maakDefinitief, markeerVerstuurd, nagemaaktePdf, pdfUrl, pdfVoor, statusNaBetaling, voegOrigineelToe } from "../lib/facturen"
 import { SCOPES, zorgVoorGoogle } from "../lib/gmail"
 import { totaalBoeking } from "../lib/boeking"
 import { formatLang, formatTijdstip, vandaag } from "../domein/datum"
@@ -127,6 +127,32 @@ export function FacturenKaart({ boeking: b, inst, stappen }: { boeking: Boeking;
                 )}
                 {f.pdf && (
                   <button type="button" className="knop-klein" onClick={() => actie("pdf", async () => openPdf(await pdfUrl(f)))}>PDF openen</button>
+                )}
+                {f.geimporteerd && !f.pdf && (
+                  <>
+                    <button
+                      type="button"
+                      className="knop-klein"
+                      disabled={!!bezig}
+                      title="Weergave op basis van de overgenomen gegevens; niet de oorspronkelijk verstuurde factuur"
+                      onClick={() => actie("nagemaakt", async () => openPdf(await nagemaaktePdf(f, b, inst)))}
+                    >
+                      {bezig === "nagemaakt" ? "Bezig…" : "Bekijken (nagemaakt)"}
+                    </button>
+                    <label className={`knop-klein cursor-pointer ${bezig ? "pointer-events-none opacity-50" : ""}`}>
+                      {bezig === "origineel" ? "Bezig…" : "Originele PDF toevoegen"}
+                      <input
+                        type="file"
+                        accept="application/pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                          const bestand = e.target.files?.[0]
+                          e.target.value = ""
+                          if (bestand) actie("origineel", () => voegOrigineelToe(f, bestand))
+                        }}
+                      />
+                    </label>
+                  </>
                 )}
                 {f.drive_link && (
                   <a href={f.drive_link} target="_blank" rel="noopener noreferrer" className="knop-klein">In Drive ↗</a>
