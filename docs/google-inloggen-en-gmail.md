@@ -35,8 +35,8 @@ Het client secret en (bij de vaste koppeling) de blijvende sleutel staan alleen 
    - `https://www.googleapis.com/auth/gmail.readonly` (inzendingen van het aanmeldformulier lezen, fase 4)
    - `https://www.googleapis.com/auth/drive.file` (kopieën in Google Drive; de app ziet alleen de
      bestanden die hij zelf maakt, fase 4)
-   - `https://www.googleapis.com/auth/calendar.readonly` (eigen verblijven uit Google Agenda tonen in
-     de kalender; alleen lezen)
+   - `https://www.googleapis.com/auth/calendar.events` (eigen verblijven in Google Agenda tonen,
+     toevoegen en wijzigen vanuit de kalender van de app)
 5. **Testgebruikers (doelgroep)**: voeg `ducdalf.languedoc@gmail.com` toe, plus eventuele andere
    accounts die mogen inloggen.
 6. Laat de publicatiestatus op **Testen** staan. Dat is voor jullie gebruik genoeg. Google toont
@@ -88,11 +88,16 @@ die sleutel dus ook. **Koppeling verbreken** (zelfde plek) trekt de sleutel in b
 ### Eigen verblijven uit Google Agenda
 
 De kalender van de app toont ook de eigen verblijven uit Google Agenda (groen), en waarschuwt als een
-boeking daarmee botst. Instellen bij **Instellingen → Google Agenda (eigen verblijven)**: welke agenda
+boeking daarmee botst. Met **+ Eigen verblijf** voeg je er een toe; klik op een groene dag om hem te
+wijzigen of te verwijderen. De app zet ze in Google Agenda als afspraak voor hele dagen, van de
+aankomstdag tot en met de vertrekdag (zoals je het huis in je agenda blokkeert); in de app is de
+vertrekdag vrij, net als bij boekingen. Huurders komen alleen uit de app (Nieuwe boeking), niet uit de
+agenda. Instellen bij **Instellingen → Google Agenda (eigen verblijven)**: welke agenda
 (`primary` = de hoofdagenda) en eventueel welke woorden in de titel staan (bijv. `eigen, familie`).
-Leeg = alle afspraken van minstens één nacht; afspraken met precies dezelfde periode als een boeking
-worden overgeslagen. Was Google al gekoppeld vóór deze functie, klik dan bij Google-account op
-**Opnieuw koppelen** en vink ook Google Agenda aan.
+Leeg = alle afspraken van minstens één nacht; afspraken die de app zelf maakte tellen altijd mee, en
+afspraken met precies dezelfde periode als een boeking worden overgeslagen. Was Google al gekoppeld vóór deze functie, klik dan bij Google-account op
+**Opnieuw koppelen** en vink ook Google Agenda aan (en voeg in Google Cloud bij Data Access de scope
+`calendar.events` toe).
 
 ### Zonder vaste koppeling (reserve)
 
