@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { useQueryClient } from "@tanstack/react-query"
 import { sleutels, useBetalingen, useFacturen, useMaillog, useSjablonen } from "../lib/data"
-import { gmailBeschikbaar, koppelGmail, SCOPES, useGmailGekoppeld, zorgVoorGoogle } from "../lib/gmail"
+import { gmailBeschikbaar, SCOPES, useGmailGekoppeld, zorgVoorGoogle } from "../lib/gmail"
 import { actueleFactuur, beschikbareBijlagen, kiesSjabloon, variabelenVoor, verstuurMail, type BijlageKeuze } from "../lib/mail"
 import type { Boeking, Instellingen } from "../lib/types"
 import { combineer, vulIn } from "../domein/sjablonen"
@@ -10,27 +10,14 @@ import { formatTijdstip } from "../domein/datum"
 import type { WorkflowStap } from "../domein/workflow"
 import { Dialoog, Fout, Kaart, Melding, Veld } from "./ui"
 
-/** Knop om Gmail te koppelen (token alleen in het geheugen van de browser). */
-export function GmailKnop({ inst, klein = false }: { inst?: Instellingen; klein?: boolean }) {
+/**
+ * Status van de Google-koppeling. Koppelen gebeurt vanzelf bij de eerste actie
+ * die Google nodig heeft (zie zorgVoorGoogle), dus er is geen knop meer.
+ */
+export function GmailKnop({ klein = false }: { inst?: Instellingen; klein?: boolean }) {
   const gekoppeld = useGmailGekoppeld()
-  const [fout, setFout] = useState("")
-  if (!gmailBeschikbaar()) return null
-  if (gekoppeld) return <span className={`${klein ? "text-xs" : "text-sm"} text-olijf-donker`}>✓ Google gekoppeld</span>
-  return (
-    <span className="inline-flex flex-col">
-      <button
-        type="button"
-        className={klein ? "knop-klein" : "knop-rand"}
-        onClick={async () => {
-          setFout("")
-          try { await koppelGmail(inst?.afzender_email) } catch (e) { setFout(e instanceof Error ? e.message : String(e)) }
-        }}
-      >
-        Koppel Google
-      </button>
-      {fout && <span className="mt-1 text-xs text-rood">{fout}</span>}
-    </span>
-  )
+  if (!gmailBeschikbaar() || !gekoppeld) return null
+  return <span className={`${klein ? "text-xs" : "text-sm"} text-olijf-donker`}>✓ Google gekoppeld</span>
 }
 
 export function MailKaart({ boeking: b, inst, stappen, open, sleutels: startSleutels, onOpen, onSluiten }: {
