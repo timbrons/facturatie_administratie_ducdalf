@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { leesVelden, leeftijdOp, maakAanmelding, telPersonen, zoekBoeking } from "./aanmelding"
 import { factuurBestandsnaam, factuurMap, veiligeNaam } from "./bestandsnamen"
-import { eigenVerblijven } from "./agenda"
+import { agendaAfspraak, eigenVerblijven } from "./agenda"
 
 // Fictieve inzending zoals FormSubmit ("_template=table") die mailt.
 const HTML = `
@@ -109,20 +109,31 @@ describe("AVG", () => {
 
 
 describe("eigen verblijven uit Google Agenda", () => {
+  // Hele dagen: in Google 1 t/m 7 mei geblokkeerd = einde 8 mei (exclusief); vertrek 7 mei.
   const items = [
     { id: "a", summary: "Familie in Duc'dalf", start: { date: "2026-05-01" }, end: { date: "2026-05-08" } },
     { id: "b", summary: "Tandarts", start: { dateTime: "2026-05-03T10:00:00+02:00" }, end: { dateTime: "2026-05-03T11:00:00+02:00" } },
-    { id: "c", summary: "Huurder Jansen", start: { date: "2026-07-04" }, end: { date: "2026-07-11" } },
+    { id: "c", summary: "Huurder Jansen", start: { date: "2026-07-04" }, end: { date: "2026-07-12" } },
     { id: "d", summary: "Eigen gebruik", start: { date: "2026-09-01" }, end: { date: "2026-09-05" }, status: "cancelled" },
     { id: "e", summary: "Zelf", start: { dateTime: "2026-10-10T15:00:00+02:00" }, end: { dateTime: "2026-10-12T10:00:00+02:00" } },
+    { id: "f", summary: "Eén dag", start: { date: "2026-06-01" }, end: { date: "2026-06-02" } },
+    { id: "g", summary: "Vakantie", start: { date: "2026-08-01" }, end: { date: "2026-08-04" }, extendedProperties: { private: { ducdalf: "eigen-verblijf" } } },
   ]
   const boekingen = [{ aankomst: "2026-07-04", vertrek: "2026-07-11" }]
-  it("neemt afspraken van minstens één nacht, zonder dubbele boekingen of geannuleerde", () => {
-    expect(eigenVerblijven(items, "", boekingen).map((v) => v.id)).toEqual(["a", "e"])
-    expect(eigenVerblijven(items, "", boekingen)[1]).toMatchObject({ aankomst: "2026-10-10", vertrek: "2026-10-12" })
+  it("neemt afspraken van minstens één nacht, zonder huurders of geannuleerde", () => {
+    const v = eigenVerblijven(items, "", boekingen)
+    expect(v.map((x) => x.id)).toEqual(["a", "g", "e"])
+    expect(v[0]).toMatchObject({ aankomst: "2026-05-01", vertrek: "2026-05-07" })
+    expect(v[2]).toMatchObject({ aankomst: "2026-10-10", vertrek: "2026-10-12" })
   })
-  it("filtert op woorden in de titel", () => {
-    expect(eigenVerblijven(items, "familie, zelf", boekingen).map((v) => v.id)).toEqual(["a", "e"])
-    expect(eigenVerblijven(items, "Familie", boekingen).map((v) => v.id)).toEqual(["a"])
+  it("filtert op woorden in de titel; afspraken uit de app tellen altijd", () => {
+    expect(eigenVerblijven(items, "familie, zelf", boekingen).map((x) => x.id)).toEqual(["a", "g", "e"])
+    expect(eigenVerblijven(items, "Familie", boekingen).map((x) => x.id)).toEqual(["a", "g"])
+  })
+  it("schrijft een afspraak die terugleest als dezelfde periode", () => {
+    const a = agendaAfspraak({ titel: "Eigen verblijf", aankomst: "2026-08-01", vertrek: "2026-08-08" })
+    expect(a.start.date).toBe("2026-08-01")
+    expect(a.end.date).toBe("2026-08-09")
+    expect(eigenVerblijven([{ id: "x", ...a }], "", [])[0]).toMatchObject({ aankomst: "2026-08-01", vertrek: "2026-08-08", vanApp: true })
   })
 })

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { useBoekingen } from "../lib/data"
+import { useBoekingen, useInstellingen } from "../lib/data"
+import { EigenVerblijfDialoog } from "../components/EigenVerblijf"
 import { boekingNaam, type Boeking } from "../lib/types"
 import { datumVan, formatLang, jaarVan, maandNaam, maandVan, plusDagen, vandaag } from "../domein/datum"
 import { alleOverlappen, overlappendeBoekingen } from "../domein/overlap"
@@ -22,8 +23,9 @@ function dagenInMaand(jaar: number, maand: number): string[] {
   return uit
 }
 
-function MaandRaster({ jaar, maand, boekingen, eigen, groot, onKlik }: {
-  jaar: number; maand: number; boekingen: Boeking[]; eigen: EigenVerblijf[]; groot?: boolean; onKlik: (b: Boeking) => void
+function MaandRaster({ jaar, maand, boekingen, eigen, groot, onKlik, onEigen }: {
+  jaar: number; maand: number; boekingen: Boeking[]; eigen: EigenVerblijf[]; groot?: boolean
+  onKlik: (b: Boeking) => void; onEigen: (v: EigenVerblijf) => void
 }) {
   const dagen = dagenInMaand(jaar, maand)
   const eersteWeekdag = (new Date(Date.UTC(jaar, maand - 1, 1)).getUTCDay() + 6) % 7
@@ -46,8 +48,8 @@ function MaandRaster({ jaar, maand, boekingen, eigen, groot, onKlik }: {
             key={d}
             type="button"
             title={namen.length ? namen.join(" + ") : formatLang(d)}
-            onClick={() => b && onKlik(b)}
-            className={`relative ${groot ? "min-h-16 p-1 text-left" : "aspect-square text-[11px]"} ${kleur} ${d === nu ? "outline-2 -outline-offset-2 outline-inkt" : ""} ${b ? "cursor-pointer" : "cursor-default"}`}
+            onClick={() => (b ? onKlik(b) : zelf[0] ? onEigen(zelf[0]) : undefined)}
+            className={`relative ${groot ? "min-h-16 p-1 text-left" : "aspect-square text-[11px]"} ${kleur} ${d === nu ? "outline-2 -outline-offset-2 outline-inkt" : ""} ${b || zelf.length ? "cursor-pointer" : "cursor-default"}`}
           >
             <span className={groot ? "text-xs" : ""}>{Number(d.slice(8))}</span>
             {groot && aankomst && (
@@ -73,6 +75,11 @@ export function Kalender() {
   const actief = useMemo(() => (boekingen.data ?? []).filter((b) => b.status !== "geannuleerd"), [boekingen.data])
   const overlappen = useMemo(() => alleOverlappen(actief), [actief])
   const agenda = useEigenVerblijven()
+  const inst = useInstellingen().data
+  // undefined = dicht, null = nieuw, anders wijzigen
+  const [eigenOpen, setEigenOpen] = useState<EigenVerblijf | null | undefined>(undefined)
+  const kanSchrijven = !!agenda.data?.schrijven && !!inst
+  const openEigen = (v: EigenVerblijf) => (kanSchrijven ? setEigenOpen(v) : undefined)
   const eigen = agenda.data?.verblijven ?? []
   const botsingen = eigen.flatMap((v) => overlappendeBoekingen({ aankomst: v.aankomst, vertrek: v.vertrek }, actief).map((b) => [v, b] as const))
 
@@ -95,7 +102,18 @@ export function Kalender() {
         <button type="button" className="knop-rand" onClick={() => verschuif(-1)}>‹ Vorige</button>
         <button type="button" className="knop-rand" onClick={() => verschuif(1)}>Volgende ›</button>
         {maand && <button type="button" className="knop-rand" onClick={() => setMaand(null)}>Jaaroverzicht</button>}
+        {kanSchrijven && <button type="button" className="knop" onClick={() => setEigenOpen(null)}>+ Eigen verblijf</button>}
       </Paginakop>
+      {eigenOpen !== undefined && inst && (
+        <EigenVerblijfDialoog
+          key={eigenOpen?.id ?? "nieuw"}
+          open
+          verblijf={eigenOpen}
+          inst={inst}
+          boekingen={actief}
+          onSluiten={() => setEigenOpen(undefined)}
+        />
+      )}
 
       <div className="mb-4 flex flex-wrap gap-4 text-xs text-zacht">
         <span className="flex items-center gap-1"><span className="inline-block h-3 w-3 bg-goud" /> Geboekt</span>
@@ -132,6 +150,14 @@ export function Kalender() {
           </Melding>
         </div>
       )}
+      {agenda.data?.beschikbaar && !agenda.data.schrijven && inst?.agenda_tonen && (
+        <div className="mb-4">
+          <Melding soort="info">
+            Om eigen verblijven ook vanuit de app toe te voegen en te wijzigen: koppel Google opnieuw bij{" "}
+            <Link to="/instellingen">Instellingen</Link> en geef toegang tot Google Agenda.
+          </Melding>
+        </div>
+      )}
       {agenda.data && !agenda.data.beschikbaar && (
         <div className="mb-4">
           <Melding soort="info">
@@ -143,7 +169,7 @@ export function Kalender() {
       {agenda.error ? <div className="mb-4"><Fout fout={agenda.error} /></div> : null}
 
       {maand ? (
-        <MaandRaster jaar={jaar} maand={maand} boekingen={actief} eigen={eigen} groot onKlik={open} />
+        <MaandRaster jaar={jaar} maand={maand} boekingen={actief} eigen={eigen} groot onKlik={open} onEigen={openEigen} />
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
@@ -151,7 +177,7 @@ export function Kalender() {
               <button type="button" className="mb-2 font-serif text-lg text-inkt hover:text-goud-tekst" onClick={() => setMaand(m)}>
                 {maandNaam(m)}
               </button>
-              <MaandRaster jaar={jaar} maand={m} boekingen={actief} eigen={eigen} onKlik={open} />
+              <MaandRaster jaar={jaar} maand={m} boekingen={actief} eigen={eigen} onKlik={open} onEigen={openEigen} />
             </div>
           ))}
         </div>

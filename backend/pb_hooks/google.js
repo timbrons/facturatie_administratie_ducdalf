@@ -20,8 +20,8 @@ const SCOPES = [
   "https://www.googleapis.com/auth/gmail.send",
   "https://www.googleapis.com/auth/gmail.readonly",
   "https://www.googleapis.com/auth/drive.file",
-  // Eigen verblijven uit Google Agenda tonen (alleen lezen)
-  "https://www.googleapis.com/auth/calendar.readonly",
+  // Eigen verblijven in Google Agenda tonen, toevoegen en wijzigen (alleen afspraken)
+  "https://www.googleapis.com/auth/calendar.events",
 ]
 
 function provider() {
