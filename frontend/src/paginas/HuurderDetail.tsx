@@ -1,12 +1,13 @@
 import { useState } from "react"
-import { Link, useParams } from "react-router-dom"
+import { Link, useNavigate, useParams } from "react-router-dom"
 import { useQueryClient } from "@tanstack/react-query"
-import { sleutels, useBoekingen, useHuurder, useMaillog, useOpslaan, useStappen } from "../lib/data"
+import { sleutels, useBoekingen, useFacturen, useHuurder, useInstellingen, useMaillog, useOpslaan, useStappen } from "../lib/data"
+import { verwijderHuurder, type VerwijderResultaat } from "../lib/verwijderen"
 import { anonimiseer } from "../lib/avg"
 import { vandaag } from "../domein/datum"
-import { huurderNaam, type Huurder } from "../lib/types"
+import { huurderNaam, type Boeking, type Factuur, type Huurder } from "../lib/types"
 import { formatLang } from "../domein/datum"
-import { Fout, Kaart, Laden, Melding, Paginakop, Veld } from "../components/ui"
+import { Dialoog, Fout, Kaart, Laden, Melding, Paginakop, Veld } from "../components/ui"
 import { StatusLabel } from "../components/Status"
 
 const VELDEN: [keyof Huurder, string, string?][] = [
@@ -41,12 +42,24 @@ function Formulier({ huurder }: { huurder: Huurder }) {
   const qc = useQueryClient()
   const [avgFout, setAvgFout] = useState<unknown>(null)
   const verblijven = (boekingen.data ?? []).filter((b) => b.huurder === huurder.id).sort((a, b) => b.aankomst.localeCompare(a.aankomst))
+  const alleFacturen = useFacturen().data ?? []
+  const facturen = alleFacturen.filter((f) => verblijven.some((b) => b.id === f.boeking))
+  const [verwijderOpen, setVerwijderOpen] = useState(false)
 
   return (
     <>
       <Paginakop wenkbrauw="Huurder" titel={huurderNaam(huurder)}>
         <Link to={`/boekingen/nieuw?huurder=${huurder.id}`} className="knop">Nieuwe boeking</Link>
+        <button type="button" className="knop-rand" onClick={() => setVerwijderOpen(true)}>Verwijderen</button>
       </Paginakop>
+      <VerwijderDialoog
+        open={verwijderOpen}
+        huurder={huurder}
+        verblijven={verblijven}
+        facturen={facturen}
+        mails={(maillog.data ?? []).filter((m) => verblijven.some((b) => b.id === m.boeking)).length}
+        onSluiten={() => setVerwijderOpen(false)}
+      />
       {huurder.geanonimiseerd_op && <div className="mb-4"><Melding soort="info">Deze huurder is geanonimiseerd.</Melding></div>}
       {avgFout ? <div className="mb-4"><Fout fout={avgFout} /></div> : null}
       <div className="grid gap-6 lg:grid-cols-3">
@@ -127,5 +140,92 @@ function Formulier({ huurder }: { huurder: Huurder }) {
         </Kaart>
       </div>
     </>
+  )
+}
+
+function VerwijderDialoog({ open, huurder, verblijven, facturen, mails, onSluiten }: {
+  open: boolean
+  huurder: Huurder
+  verblijven: Boeking[]
+  facturen: Factuur[]
+  mails: number
+  onSluiten: () => void
+}) {
+  const naam = huurderNaam(huurder)
+  const inst = useInstellingen().data
+  const qc = useQueryClient()
+  const navigate = useNavigate()
+  const [invoer, setInvoer] = useState("")
+  const [bezig, setBezig] = useState(false)
+  const [fout, setFout] = useState<unknown>(null)
+  const [klaar, setKlaar] = useState<VerwijderResultaat | null>(null)
+  const definitief = facturen.filter((f) => f.nummer)
+  const verstuurd = definitief.filter((f) => f.vergrendeld && !f.geimporteerd)
+
+  async function verwijder() {
+    setBezig(true)
+    setFout(null)
+    try {
+      setKlaar(await verwijderHuurder(huurder.id, facturen, inst?.afzender_email))
+    } catch (err) {
+      setFout(err)
+    } finally {
+      setBezig(false)
+    }
+  }
+
+  async function sluit() {
+    if (klaar) {
+      await qc.invalidateQueries()
+      navigate("/huurders")
+    }
+    setInvoer("")
+    onSluiten()
+  }
+
+  return (
+    <Dialoog open={open} titel="Huurder verwijderen" onSluiten={sluit}>
+      {klaar ? (
+        <div className="flex flex-col gap-3 text-sm">
+          <Melding soort="succes">
+            {naam} is verwijderd, met {klaar.boekingen} boeking(en), {klaar.facturen} factu(u)r(en), {klaar.betalingen} betaling(en) en {klaar.mails} mail(s) uit het maillog.
+          </Melding>
+          {klaar.teruggezet.length > 0 && (
+            <p>De factuurnummering is teruggezet; deze nummers worden opnieuw gebruikt: {klaar.teruggezet.slice().reverse().join(", ")}.</p>
+          )}
+          {klaar.driveOver.length > 0 && (
+            <Melding soort="waarschuwing">Deze kopieën in Google Drive konden niet worden verwijderd; verwijder ze zelf: {klaar.driveOver.join(", ")}</Melding>
+          )}
+          <p className="text-xs text-zacht">Verstuurde e-mails blijven staan in Gmail (Verzonden); verwijder die daar zelf als dat nodig is.</p>
+          <div className="flex justify-end"><button type="button" className="knop" onClick={sluit}>Sluiten</button></div>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3 text-sm">
+          <p>
+            Hiermee verwijder je <strong>{naam}</strong> definitief, met {verblijven.length} boeking(en), {facturen.length} factu(u)r(en)
+            (ook de PDF's en de kopieën in Google Drive), alle betalingen, de statushistorie, het aanmeldformulier en {mails} mail(s) uit het
+            maillog. Dit kan niet ongedaan worden gemaakt.
+          </p>
+          <Melding soort="waarschuwing">
+            Gebruik dit alleen voor testgegevens of vergissingen. Facturen van echte huurders moeten 7 jaar bewaard blijven; gebruik
+            daarvoor <strong>Anonimiseren</strong>.
+            {verstuurd.length > 0 && <> Let op: {verstuurd.map((f) => f.nummer).join(", ")} is al verstuurd.</>}
+          </Melding>
+          {definitief.length > 0 && (
+            <p className="text-xs text-zacht">Zijn dit de laatste factuurnummers, dan wordt de nummering teruggezet zodat er geen gat ontstaat.</p>
+          )}
+          <Veld label={`Typ de naam "${naam}" om te bevestigen`}>
+            <input value={invoer} onChange={(e) => setInvoer(e.target.value)} autoComplete="off" />
+          </Veld>
+          {fout ? <Fout fout={fout} /> : null}
+          <div className="flex justify-end gap-2">
+            <button type="button" className="knop-rand" onClick={sluit}>Terug</button>
+            <button type="button" className="knop" disabled={bezig || invoer.trim() !== naam.trim()} onClick={verwijder}>
+              {bezig ? "Bezig…" : "Definitief verwijderen"}
+            </button>
+          </div>
+        </div>
+      )}
+    </Dialoog>
   )
 }
