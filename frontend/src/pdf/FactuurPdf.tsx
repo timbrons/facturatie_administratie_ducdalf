@@ -26,6 +26,8 @@ export interface FactuurPdfProps {
   totaalCent: number
   gegevens: FactuurGegevens
   foto: string | null
+  /** Opvallende regel bovenaan, bijv. bij een nagemaakte factuur uit de oude administratie */
+  kenmerk?: string
 }
 
 // Geen automatische woordafbreking (zoals "perso-nen").
@@ -61,12 +63,13 @@ function Bedrag({ cent }: { cent: number }) {
   )
 }
 
-export function FactuurPdf({ nummer, soort, factuurdatum, regels, totaalCent, gegevens: g, foto }: FactuurPdfProps) {
+export function FactuurPdf({ nummer, soort, factuurdatum, regels, totaalCent, gegevens: g, foto, kenmerk }: FactuurPdfProps) {
   const credit = soort === "credit"
   return (
     <Document title={`${credit ? "Creditfactuur" : "Factuur"} ${nummer || "concept"}`} author={g.afzender.naam} language="nl">
       <Page size="A4" style={s.pagina}>
         {!nummer && <Text style={s.concept} fixed>CONCEPT</Text>}
+        {kenmerk ? <Text style={{ marginBottom: 12, fontSize: 9, color: "#a4472d" }}>{kenmerk}</Text> : null}
 
         {/* Adresblokken */}
         <View style={s.rij}>

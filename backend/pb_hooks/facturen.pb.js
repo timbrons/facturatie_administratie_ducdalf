@@ -47,9 +47,12 @@ onRecordUpdateRequest((e) => {
   const oud = e.record.original()
   if (oud.getBool("vergrendeld")) {
     // Een verstuurde factuur ligt vast. Alleen de verwijzing naar de kopie in
-    // Google Drive mag nog worden vastgelegd.
+    // Google Drive mag nog worden vastgelegd. Bij een geïmporteerde factuur
+    // zonder PDF mag eenmalig de originele PDF worden toegevoegd.
+    const origineelToevoegen = oud.getBool("geimporteerd") && oud.getString("pdf") === ""
     const alles = ["boeking", "nummer", "soort", "factuurdatum", "regels", "gegevens", "totaal_cent", "aanbetaling_cent",
-      "aanbetaling_vervaldatum", "rest_vervaldatum", "verwijst_naar", "geimporteerd", "pdf", "verstuurd_op", "vergrendeld"]
+      "aanbetaling_vervaldatum", "rest_vervaldatum", "verwijst_naar", "geimporteerd", "verstuurd_op", "vergrendeld"]
+    if (!origineelToevoegen) alles.push("pdf")
     for (const veld of alles) {
       if (e.record.getString(veld) !== oud.getString(veld)) {
         throw new BadRequestError("Deze factuur is verstuurd en kan niet meer worden gewijzigd. Maak een creditfactuur.")

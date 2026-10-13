@@ -113,6 +113,33 @@ export async function pdfVoor(f: Factuur, inst: Instellingen): Promise<Blob> {
   })
 }
 
+/**
+ * Een geïmporteerde factuur heeft geen PDF. Dit maakt er een weergave van op
+ * basis van de overgenomen gegevens, duidelijk gemarkeerd als nagemaakt.
+ * Ontbreekt het adres, dan wordt het huidige adres van de huurder gebruikt.
+ */
+export async function nagemaaktePdf(f: Factuur, b: Boeking, inst: Instellingen): Promise<Blob> {
+  const g = f.gegevens as FactuurGegevens
+  const huidig = gegevensVoor(b, inst, "").huurder
+  return maakFactuurPdf({
+    nummer: f.nummer,
+    soort: f.soort,
+    factuurdatum: f.factuurdatum,
+    regels: (f.regels ?? []) as Factuurregel[],
+    totaalCent: f.totaal_cent,
+    gegevens: { ...g, huurder: g.huurder?.adres ? g.huurder : { ...huidig, naam: huidig.naam || g.huurder?.naam || "" } },
+    foto: await huisfoto(inst),
+    kenmerk: "Nagemaakt uit de oude administratie; dit is niet de oorspronkelijk verstuurde factuur.",
+  })
+}
+
+/** Voegt de originele PDF toe aan een geïmporteerde factuur (eenmalig). */
+export async function voegOrigineelToe(f: Factuur, bestand: File): Promise<Factuur> {
+  const fd = new FormData()
+  fd.append("pdf", bestand)
+  return pb.collection("facturen").update<Factuur>(f.id, fd)
+}
+
 /** Zet de PDF van een definitieve factuur als kopie in Google Drive en onthoudt de link. */
 export async function kopieNaarDrive(f: Factuur, inst: Instellingen, blob?: Blob): Promise<Factuur> {
   if (!f.nummer) throw new Error("Alleen definitieve facturen gaan naar Drive.")
