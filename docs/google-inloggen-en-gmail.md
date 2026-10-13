@@ -72,8 +72,8 @@ Het client secret (nodig voor A) staat alleen in PocketBase op de NAS.
 3. Het toegangstoken staat alleen in het geheugen van de browser en is ± 1 uur geldig. Is het
    verlopen of heb je de pagina herladen, dan koppelt de app vanzelf opnieuw zodra je iets doet dat
    Google nodig heeft (mail versturen, factuur naar Drive, aanmeldingen ophalen). Er verschijnt dan
-   kort een venster van Google dat zichzelf sluit. De knop **Koppel Google** onderaan blijft als
-   reserve. Er worden geen tokens opgeslagen.
+   kort een venster van Google dat zichzelf sluit. Er is geen aparte koppelknop; onderaan staat
+   "✓ Google gekoppeld" zolang de koppeling actief is. Er worden geen tokens opgeslagen.
 4. De afzender van de mails is het gekoppelde account. Vul bij Instellingen bij "E-mail" van de
    afzender hetzelfde adres in.
 
