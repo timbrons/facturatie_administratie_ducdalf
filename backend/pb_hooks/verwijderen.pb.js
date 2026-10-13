@@ -1,7 +1,8 @@
 /// <reference path="../pb_data/types.d.ts" />
 
 // Een huurder definitief verwijderen, met alle boekingen, facturen (en hun
-// PDF's), betalingen, statushistorie en het maillog. Bedoeld voor
+// PDF's), betalingen, statushistorie, het maillog en maandaangiften
+// toeristenbelasting waar daarna geen verblijf meer bij hoort. Bedoeld voor
 // testgegevens en vergissingen; voor echte huurders is er anonimiseren
 // (facturen moeten 7 jaar bewaard blijven).
 //
@@ -12,12 +13,13 @@
 
 routerAdd("POST", "/api/ducdalf/huurders/{id}/verwijderen", (e) => {
   const id = e.request.pathValue("id")
-  const resultaat = { boekingen: 0, facturen: 0, betalingen: 0, mails: 0, teruggezet: [] }
+  const resultaat = { boekingen: 0, facturen: 0, betalingen: 0, mails: 0, aangiften: 0, teruggezet: [] }
 
   e.app.runInTransaction((tx) => {
     const huurder = tx.findRecordById("huurders", id)
     const boekingen = tx.findRecordsByFilter("boekingen", "huurder = {:h}", "", 0, 0, { h: id })
     const verwijderdeNummers = {}
+    const aangiften = {}
 
     for (const b of boekingen) {
       const filter = "boeking = {:b}"
@@ -41,6 +43,7 @@ routerAdd("POST", "/api/ducdalf/huurders/{id}/verwijderen", (e) => {
         tx.delete(m)
         resultaat.mails++
       }
+      if (b.getString("tb_aangifte")) aangiften[b.getString("tb_aangifte")] = true
       tx.delete(b) // statuswijzigingen gaan mee (cascade)
       resultaat.boekingen++
     }
@@ -62,6 +65,17 @@ routerAdd("POST", "/api/ducdalf/huurders/{id}/verwijderen", (e) => {
         reeks.set("laatste", laatste)
         tx.save(reeks)
       }
+    }
+
+    // Maandaangiften toeristenbelasting waar nu geen enkel verblijf meer bij hoort
+    // (bijv. alleen voor een test geregistreerd) gaan ook weg, met hun bewijsstukken.
+    for (const aid of Object.keys(aangiften)) {
+      const over = tx.findRecordsByFilter("boekingen", "tb_aangifte = {:a}", "", 1, 0, { a: aid })
+      if (over.length > 0) continue
+      try {
+        tx.delete(tx.findRecordById("tb_aangiften", aid))
+        resultaat.aangiften++
+      } catch (_) {}
     }
 
     tx.delete(huurder)

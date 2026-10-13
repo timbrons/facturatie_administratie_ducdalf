@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query"
 import { useMemo, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom"
 import { pb } from "../lib/pb"
@@ -261,6 +262,8 @@ function Toeristenbelasting({ jaar, boekingen, aangiften }: { jaar: number; boek
 
 function MaandRij({ aangifte: m, boekingen }: { aangifte: TbAangifte; boekingen: FinBoeking[] }) {
   const opslaan = useOpslaan<TbAangifte>("tb_aangiften", [sleutels.tbAangiften])
+  const qc = useQueryClient()
+  const [fout, setFout] = useState<unknown>(null)
   const [afgedragenOp, setAfgedragenOp] = useState(m.afgedragen_op)
   const [afgedragen, setAfgedragen] = useState<Cent | null>(m.afgedragen_op ? m.afgedragen_cent : null)
   const [referentie, setReferentie] = useState(m.referentie)
@@ -300,6 +303,27 @@ function MaandRij({ aangifte: m, boekingen }: { aangifte: TbAangifte; boekingen:
       {afgedragen !== null && afgedragenOp && afgedragen !== aangegeven && (
         <p className="mt-2 text-xs text-oranje">Afgedragen bedrag wijkt {formatEuro(afgedragen - aangegeven)} af van het aangegeven bedrag.</p>
       )}
+      {gekoppeld.length === 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-zacht">
+          Bij deze maand hoort geen verblijf (meer).
+          <button
+            type="button"
+            className="underline"
+            onClick={async () => {
+              if (!window.confirm(`Maandaangifte ${maandNaam(mnd)} ${j} verwijderen, met de bewijsstukken? Dit kan niet ongedaan worden gemaakt.`)) return
+              try {
+                await pb.collection("tb_aangiften").delete(m.id)
+                await qc.invalidateQueries({ queryKey: sleutels.tbAangiften })
+              } catch (err) {
+                setFout(err)
+              }
+            }}
+          >
+            Verwijderen
+          </button>
+        </div>
+      )}
+      {fout ? <div className="mt-2"><Fout fout={fout} /></div> : null}
       {opslaan.error ? <div className="mt-2"><Fout fout={opslaan.error} /></div> : null}
       {opslaan.isSuccess && <p className="mt-2 text-xs text-olijf-donker">Opgeslagen.</p>}
     </div>
