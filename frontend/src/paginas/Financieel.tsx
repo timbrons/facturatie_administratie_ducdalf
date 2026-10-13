@@ -102,7 +102,7 @@ function Overzicht({ jaar, boekingen }: { jaar: number; boekingen: FinBoeking[] 
         <Kaart><div className="text-xs text-zacht">Openstaand</div><div className={`font-serif text-3xl ${o.totaal.openstaand > 0 ? "text-oranje" : "text-inkt"}`}>{formatEuro(o.totaal.openstaand)}</div></Kaart>
       </div>
       <Kaart titel="Per verblijf" actie={<button type="button" className="knop-klein" onClick={exporteer}>Exporteer CSV</button>}>
-        <p className="mb-3 text-sm text-zacht">Verblijven met aankomst in {jaar}, op basis van definitieve facturen (inclusief creditfacturen) en geregistreerde betalingen. De toeristenbelasting staat apart voor de afdracht.</p>
+        <p className="mb-3 text-sm text-zacht">Verblijven met aankomst in {jaar}, op basis van de geldige facturen (geannuleerde tellen niet mee) en geregistreerde betalingen. De toeristenbelasting staat apart voor de afdracht.</p>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[56rem] text-left text-sm">
             <thead className="border-b border-lijn text-xs uppercase tracking-wider text-zacht">
@@ -175,11 +175,10 @@ function FacturenLijst({ jaar }: { jaar: number }) {
             <li key={f.id} className="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <Link to={`/boekingen/${f.boeking}`} className="text-inkt">{f.nummer}</Link>
-                {f.soort === "credit" && <span className="ml-2 text-xs text-zacht">credit</span>}
                 <span className="ml-2 text-sm text-zacht">{naam(f.boeking)} · {formatLang(f.factuurdatum)}</span>
               </div>
               <div className="flex items-center gap-3">
-                <span className="tabular-nums">{formatEuro(f.totaal_cent)}</span>
+                <span className={`tabular-nums ${f.geannuleerd_op ? "text-zacht line-through" : ""}`}>{formatEuro(f.totaal_cent)}</span>
                 <StatusFactuur status={betaalstatus(f, vanBoeking, betaald, nu)} />
                 {f.pdf && <button type="button" className="knop-klein" onClick={async () => window.open(await pdfUrl(f), "_blank", "noopener")}>PDF</button>}
               </div>

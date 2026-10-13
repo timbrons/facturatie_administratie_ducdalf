@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { betaalstatus, betaaltekst, bouwFactuurregels, creditRegels, openstaand, totaalVan, type StatusFactuur } from "./factuur"
+import { betaalstatus, betaaltekst, bouwFactuurregels, openstaand, totaalVan, type StatusFactuur } from "./factuur"
 import { berekenTermijnen } from "./betaling"
 import { csvBedrag, leesCsv, schrijfCsv } from "./csv"
 import { importPlan, importRegels, leesAdministratie, leesDatum } from "./importeren"
@@ -31,13 +31,10 @@ describe("factuurregels (testcase 2026-004)", () => {
     const r = bouwFactuurregels({ ...TESTCASE, extras: [{ naam: "Linnenpakket 2 personen", aantal: 2, prijs_cent: 2500, eenheid: "per_stuk" }] })
     expect(r.find((x) => x.soort === "extra")).toMatchObject({ omschrijving: "Linnenpakket 2 personen (2×)", bedrag_cent: 5000 })
   })
-  it("maakt een creditfactuur met negatieve bedragen", () => {
-    expect(totaalVan(creditRegels(regels))).toBe(-108100)
-  })
 })
 
 describe("betaalstatus", () => {
-  const f: StatusFactuur = { id: "f1", soort: "factuur", nummer: "2026-004", totaal_cent: 108100, aanbetaling_cent: 54050, aanbetaling_vervaldatum: "2026-06-27", rest_vervaldatum: "2026-09-19", verwijst_naar: "" }
+  const f: StatusFactuur = { id: "f1", nummer: "2026-004", totaal_cent: 108100, aanbetaling_cent: 54050, aanbetaling_vervaldatum: "2026-06-27", rest_vervaldatum: "2026-09-19" }
   it("open, deels betaald, betaald en vervallen", () => {
     expect(betaalstatus(f, [f], 0, "2026-06-01")).toBe("open")
     expect(betaalstatus(f, [f], 0, "2026-07-01")).toBe("vervallen")
@@ -45,11 +42,16 @@ describe("betaalstatus", () => {
     expect(betaalstatus(f, [f], 54050, "2026-09-20")).toBe("vervallen")
     expect(betaalstatus(f, [f], 108100, "2026-09-20")).toBe("betaald")
   })
-  it("concept en gecrediteerd", () => {
+  it("concept en geannuleerd", () => {
     expect(betaalstatus({ ...f, nummer: "" }, [f], 0, "2026-06-01")).toBe("concept")
-    const c: StatusFactuur = { ...f, id: "c1", soort: "credit", nummer: "2026-007", totaal_cent: -108100, verwijst_naar: "f1" }
-    expect(betaalstatus(f, [f, c], 0, "2026-06-01")).toBe("gecrediteerd")
-    expect(openstaand([f, c], 0)).toBe(0)
+    const g: StatusFactuur = { ...f, geannuleerd_op: "2026-06-15" }
+    expect(betaalstatus(g, [g], 0, "2026-07-01")).toBe("geannuleerd")
+    // Niets meer open, ook niet als er al een aanbetaling was.
+    expect(openstaand([g], 54050)).toBe(0)
+    // Nieuwe factuur na annulering: alleen die telt.
+    const n: StatusFactuur = { ...f, id: "f2", nummer: "2026-009", totaal_cent: 90000 }
+    expect(openstaand([g, n], 54050)).toBe(35950)
+    expect(betaalstatus(n, [g, n], 54050, "2026-06-01")).toBe("deels betaald")
   })
 })
 

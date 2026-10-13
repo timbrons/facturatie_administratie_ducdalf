@@ -8,6 +8,7 @@ export interface FinFactuur {
   factuurdatum: string
   totaal_cent: Cent
   regels: Factuurregel[] | null
+  geannuleerd_op?: string
 }
 
 export interface FinBetaling {
@@ -47,21 +48,23 @@ export interface FinOverzicht {
 
 /**
  * Financieel overzicht van de verblijven met aankomst in `jaar`. Alleen
- * definitieve (genummerde) facturen tellen; creditfacturen verlagen het totaal.
+ * geldige facturen tellen (definitief en niet geannuleerd). Bij een geannuleerde
+ * boeking zonder geldige factuur is "ontvangen" wat er (na een eventuele
+ * terugbetaling) is gehouden, en staat er niets open.
  */
 export function financieelOverzicht(jaar: number, boekingen: FinBoeking[], facturen: FinFactuur[], betalingen: FinBetaling[]): FinOverzicht {
   const rijen: FinRij[] = []
   const totaal = { verdeling: LEEG(), gefactureerd: 0, ontvangen: 0, openstaand: 0 }
   for (const b of boekingen) {
     if (Number(b.aankomst.slice(0, 4)) !== jaar) continue
-    const fs = facturen.filter((f) => f.boeking === b.id && f.nummer)
+    const fs = facturen.filter((f) => f.boeking === b.id && f.nummer && !f.geannuleerd_op)
     const bs = betalingen.filter((p) => p.boeking === b.id)
     if (fs.length === 0 && bs.length === 0) continue
     const verdeling = LEEG()
     for (const f of fs) for (const r of f.regels ?? []) verdeling[r.soort] = (verdeling[r.soort] ?? 0) + r.bedrag_cent
     const gefactureerd = fs.reduce((t, f) => t + f.totaal_cent, 0)
     const ontvangen = bs.reduce((t, p) => t + p.bedrag_cent, 0)
-    const rij = { boeking: b, facturen: fs.map((f) => f.nummer), verdeling, gefactureerd, ontvangen, openstaand: gefactureerd - ontvangen }
+    const rij = { boeking: b, facturen: fs.map((f) => f.nummer), verdeling, gefactureerd, ontvangen, openstaand: fs.length ? gefactureerd - ontvangen : 0 }
     rijen.push(rij)
     for (const k of Object.keys(verdeling) as RegelSoort[]) totaal.verdeling[k] += verdeling[k]
     totaal.gefactureerd += gefactureerd
@@ -85,7 +88,7 @@ export function tbOverzicht(jaar: number, boekingen: FinBoeking[], facturen: Fin
     .filter((b) => Number(b.aankomst.slice(0, 4)) === jaar && b.status !== "geannuleerd")
     .map((b) => {
       const geind = facturen
-        .filter((f) => f.boeking === b.id && f.nummer)
+        .filter((f) => f.boeking === b.id && f.nummer && !f.geannuleerd_op)
         .flatMap((f) => f.regels ?? [])
         .filter((r) => r.soort === "toeristenbelasting")
         .reduce((t, r) => t + r.bedrag_cent, 0)

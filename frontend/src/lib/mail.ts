@@ -10,13 +10,9 @@ import { aanmeldLink, STAP_NA_SJABLOON, type Variabelen } from "../domein/sjablo
 import { adres, bouwMime, naarBase64Url, nieuwMessageId, type MailBijlage } from "../domein/mime"
 import { isBijOfVoorbij, positie, type WorkflowStap } from "../domein/workflow"
 
-/** De geldige (niet gecrediteerde) definitieve factuur van een boeking, of null. */
+/** De geldige (definitieve, niet geannuleerde) factuur van een boeking, of null. */
 export function actueleFactuur(b: Boeking, facturen: Factuur[]): Factuur | null {
-  const vanBoeking = facturen.filter((f) => f.boeking === b.id)
-  const geldig = vanBoeking.filter(
-    (f) => f.soort === "factuur" && f.nummer && !vanBoeking.some((c) => c.soort === "credit" && c.nummer && c.verwijst_naar === f.id),
-  )
-  return geldig.at(-1) ?? null
+  return facturen.filter((f) => f.boeking === b.id && f.soort === "factuur" && f.nummer && !f.geannuleerd_op).at(-1) ?? null
 }
 
 export function variabelenVoor(b: Boeking, inst: Instellingen, facturen: Factuur[], betalingen: Betaling[]): Variabelen {

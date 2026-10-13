@@ -3,13 +3,13 @@ import { useQueryClient } from "@tanstack/react-query"
 import { pb } from "../lib/pb"
 import { sleutels, useBetalingen, useFacturen } from "../lib/data"
 import type { Betaling, Boeking, Instellingen } from "../lib/types"
-import { factuurBezwaar, maakConcept, maakCredit, maakDefinitief, markeerVerstuurd, nagemaaktePdf, pdfUrl, pdfVoor, statusNaBetaling, voegOrigineelToe } from "../lib/facturen"
+import { factuurBezwaar, annuleerFactuur, maakConcept, maakDefinitief, markeerVerstuurd, nagemaaktePdf, pdfUrl, pdfVoor, statusNaBetaling, voegOrigineelToe } from "../lib/facturen"
 import { synchroniseerDrive } from "../lib/driveSync"
 import { SCOPES, zorgVoorGoogle } from "../lib/gmail"
 import { totaalBoeking } from "../lib/boeking"
 import { formatLang, formatTijdstip, vandaag } from "../domein/datum"
 import { formatEuro, type Cent } from "../domein/geld"
-import { betaalstatus, openstaand, type Betaalstatus } from "../domein/factuur"
+import { betaalstatus, geldigeFacturen, openstaand, type Betaalstatus } from "../domein/factuur"
 import type { WorkflowStap } from "../domein/workflow"
 import { BedragVeld, Dialoog, Fout, Kaart, Label, Melding, Veld } from "./ui"
 
@@ -19,8 +19,7 @@ const STATUSKLEUR: Record<Betaalstatus, "zand" | "goud" | "olijf" | "rood" | "or
   "deels betaald": "oranje",
   betaald: "olijf",
   vervallen: "rood",
-  gecrediteerd: "grijs",
-  credit: "grijs",
+  geannuleerd: "grijs",
 }
 
 export function StatusFactuur({ status }: { status: Betaalstatus }) {
@@ -54,7 +53,7 @@ export function FacturenKaart({ boeking: b, inst, stappen }: { boeking: Boeking;
   const lijst = (facturen.data ?? []).filter((f) => f.boeking === b.id)
   const betaald = (betalingen.data ?? []).filter((p) => p.boeking === b.id).reduce((t, p) => t + p.bedrag_cent, 0)
   const nu = vandaag()
-  const geldig = lijst.filter((f) => f.soort === "factuur" && f.nummer && betaalstatus(f, lijst, betaald, nu) !== "gecrediteerd")
+  const geldig = lijst.filter((f) => f.soort === "factuur" && f.nummer && betaalstatus(f, lijst, betaald, nu) !== "geannuleerd")
   const heeftConcept = lijst.some((f) => !f.nummer)
   const bezwaar = factuurBezwaar(b, inst)
   const magNieuw = !heeftConcept && geldig.length === 0 && b.status !== "geannuleerd"
@@ -166,18 +165,18 @@ export function FacturenKaart({ boeking: b, inst, stappen }: { boeking: Boeking;
                     Markeer als verstuurd
                   </button>
                 )}
-                {f.soort === "factuur" && f.vergrendeld && status !== "gecrediteerd" && !lijst.some((c) => c.verwijst_naar === f.id) && (
+                {f.soort === "factuur" && f.nummer && status !== "geannuleerd" && (
                   <button
                     type="button"
                     className="knop-klein"
                     disabled={!!bezig}
                     onClick={() => {
-                      if (window.confirm(`Creditfactuur maken voor ${f.nummer}? Daarna kun je een nieuwe, gecorrigeerde factuur maken.`)) {
-                        actie("credit", () => maakCredit(f))
+                      if (window.confirm(`Factuur ${f.nummer} annuleren? Hij blijft bewaard met zijn nummer, maar telt niet meer mee. Spreek een eventuele terugbetaling af met de huurder en registreer die als betaling met een negatief bedrag. Daarna kun je zo nodig een nieuwe factuur maken.`)) {
+                        actie("annuleren", () => annuleerFactuur(f))
                       }
                     }}
                   >
-                    Crediteren
+                    Factuur annuleren
                   </button>
                 )}
               </div>
@@ -213,10 +212,12 @@ export function BetalingenKaart({ boeking: b, stappen, open, onSluiten, onOpen }
   const lijst = (betalingen.data ?? []).filter((p) => p.boeking === b.id)
   const fs = (facturen.data ?? []).filter((f) => f.boeking === b.id)
   const definitief = fs.filter((f) => f.nummer)
+  const geldig = geldigeFacturen(definitief)
   const betaald = lijst.reduce((t, p) => t + p.bedrag_cent, 0)
-  const gefactureerd = definitief.length ? definitief.reduce((t, f) => t + f.totaal_cent, 0) : null
+  // Alleen geldige facturen tellen; zijn ze allemaal geannuleerd, dan staat er niets open.
+  const gefactureerd = geldig.length ? geldig.reduce((t, f) => t + f.totaal_cent, 0) : definitief.length || b.status === "geannuleerd" ? 0 : null
   const saldo = gefactureerd === null ? totaalBoeking(b) - betaald : openstaand(definitief, betaald)
-  const actueel = definitief.filter((f) => f.soort === "factuur").at(-1)
+  const actueel = geldig.filter((f) => f.soort === "factuur").at(-1)
 
   const voorstel: { bedrag: Cent; soort: Betaling["soort"] } =
     b.betaalwijze === "aanbetaling" && actueel && betaald < actueel.aanbetaling_cent
