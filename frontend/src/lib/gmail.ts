@@ -130,8 +130,20 @@ export function zetToken(waarde: string, verlooptOp: number, scopes: string[]): 
  * Drive heeft meegekregen. Google laat toe om rechten uit te vinken; daarom
  * vragen we op welke rechten het token echt heeft.
  */
-export async function neemLoginTokenOver(accessToken: string | undefined, verloopt: string | undefined): Promise<void> {
-  if (!accessToken || !config.googleClientId) return
+export async function neemLoginTokenOver(email: string | undefined, accessToken: string | undefined, verloopt: string | undefined): Promise<void> {
+  if (!config.googleClientId) return
+  // Onthouden of in deze browser met het afzenderaccount wordt ingelogd; alleen
+  // dan vraagt de volgende login meteen de rechten voor Gmail en Drive mee.
+  // Wie met een eigen account inlogt, krijgt die vraag dus niet.
+  const verwacht = await verwachteAfzender()
+  const isAfzender = !!email && !!verwacht && email.trim().toLowerCase() === verwacht
+  try {
+    if (isAfzender) localStorage.setItem(LOGIN_RECHTEN_SLEUTEL, "1")
+    else localStorage.removeItem(LOGIN_RECHTEN_SLEUTEL)
+  } catch {
+    // Geen opslag beschikbaar: dan koppelt de app bij de eerste actie.
+  }
+  if (!accessToken) return
   try {
     const info = await tokenInfo(accessToken)
     if (!info || !Object.values(SCOPES).some((s) => info.scopes.includes(s))) return
@@ -142,6 +154,18 @@ export async function neemLoginTokenOver(accessToken: string | undefined, verloo
     zetToken(accessToken, Number.isFinite(verlooptOp) ? verlooptOp : info.verlooptOp, info.scopes)
   } catch {
     // Niet erg: dan wordt bij de eerste actie met Google opnieuw gekoppeld.
+  }
+}
+
+const LOGIN_RECHTEN_SLEUTEL = "ducdalf_login_met_google_rechten"
+
+/** Moet "Inloggen met Google" de rechten voor Gmail en Drive meevragen? */
+export function loginVraagtGoogleRechten(): boolean {
+  if (!config.googleClientId) return false
+  try {
+    return localStorage.getItem(LOGIN_RECHTEN_SLEUTEL) === "1"
+  } catch {
+    return false
   }
 }
 
