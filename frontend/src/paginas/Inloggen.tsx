@@ -1,7 +1,6 @@
 import { useState } from "react"
 import { config } from "../lib/config"
 import { foutmelding, pb } from "../lib/pb"
-import { loginVraagtGoogleRechten, neemLoginTokenOver, SCOPES } from "../lib/gmail"
 import { Merk } from "../components/Layout"
 import { Melding } from "../components/ui"
 
@@ -17,18 +16,8 @@ export function Inloggen() {
     // Het venster direct bij de klik openen, anders houdt de pop-upblokkering het tegen.
     const venster = openVenster()
     try {
-      const r = await pb.collection("users").authWithOAuth2({
+      await pb.collection("users").authWithOAuth2({
         provider: "google",
-        // Logt deze browser in met het afzenderaccount, dan meteen ook de rechten
-        // voor Gmail en Drive vragen, zodat Google na het inloggen al gekoppeld
-        // is (het token blijft alleen in het geheugen). Een eigen account krijgt
-        // die vraag niet; dan koppelt de app bij de eerste actie met de afzender.
-        scopes: [
-          "openid",
-          "https://www.googleapis.com/auth/userinfo.email",
-          "https://www.googleapis.com/auth/userinfo.profile",
-          ...(loginVraagtGoogleRechten() ? Object.values(SCOPES) : []),
-        ],
         // Laat Google altijd de accountkeuze tonen, zodat je na een verkeerd account
         // (of in een browser met meerdere Google-accounts) het juiste kunt kiezen.
         urlCallback: (url) => {
@@ -38,7 +27,6 @@ export function Inloggen() {
           else openVenster(u.toString())
         },
       })
-      await neemLoginTokenOver(r.record?.email, r.meta?.accessToken, r.meta?.expiry)
     } catch (err) {
       setFout(foutmelding(err))
     } finally {

@@ -120,9 +120,9 @@ opgeslagen. Stel vóór de import de afzender- en bankgegevens in.
 
 1. Zet de repository-variabele `VITE_GOOGLE_CLIENT_ID` (zie
    [docs/google-inloggen-en-gmail.md](docs/google-inloggen-en-gmail.md)).
-2. **Inloggen met Google** koppelt Gmail en Drive meteen mee. Het toegangstoken blijft alleen in het
-   geheugen van de browser (± 1 uur geldig). Daarna koppelt de app vanzelf opnieuw bij de eerste
-   actie die Google nodig heeft (er verschijnt dan kort een venster van Google).
+2. Koppel eenmalig het afzenderaccount bij **Instellingen → Google-account (Gmail en Drive)**. De
+   blijvende sleutel staat alleen op de NAS; daarna werken mailen, Drive en aanmeldingen in elke
+   browser zonder Google-venster. Zie [docs/google-inloggen-en-gmail.md](docs/google-inloggen-en-gmail.md).
 3. Bij een boeking: **E-mail opstellen**, of de knop bij de volgende actie. Kies of combineer
    sjablonen, pas de preview aan en klik **Versturen**. De mail staat daarna in Gmail onder
    "Verzonden" en in het maillog van de boeking.
