@@ -5,6 +5,9 @@ import type { ExtraEenheid, ExtraRegel } from "../domein/prijs"
 export type Taal = "nl" | "en" | "fr" | "de"
 
 export interface Instellingen extends RecordModel {
+  agenda_tonen: boolean
+  agenda_id: string
+  agenda_filter: string
   afzender_naam: string
   afzender_adres: string
   afzender_telefoon: string

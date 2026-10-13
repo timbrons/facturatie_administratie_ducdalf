@@ -20,6 +20,8 @@ const SCOPES = [
   "https://www.googleapis.com/auth/gmail.send",
   "https://www.googleapis.com/auth/gmail.readonly",
   "https://www.googleapis.com/auth/drive.file",
+  // Eigen verblijven uit Google Agenda tonen (alleen lezen)
+  "https://www.googleapis.com/auth/calendar.readonly",
 ]
 
 function provider() {
@@ -155,6 +157,7 @@ function status() {
   return {
     gekoppeld: !!r.getString("refresh_token"),
     email: r.getString("email"),
+    scopes: r.getString("scopes"),
     gekoppeld_op: r.getString("gekoppeld_op"),
     gekoppeld_door: r.getString("gekoppeld_door"),
   }

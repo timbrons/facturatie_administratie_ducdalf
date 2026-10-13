@@ -11,6 +11,7 @@ import { berekenHuur, berekenPrijsopbouw, huurOpbouw, type ExtraRegel } from "..
 import { HuurOpbouw } from "../components/HuurOpbouw"
 import { aanbetalingZinvol, restVervaldatum } from "../domein/betaling"
 import { overlappendeBoekingen } from "../domein/overlap"
+import { useEigenVerblijven } from "../lib/agenda"
 import { BedragVeld, Fout, Kaart, Laden, Melding, Paginakop, Veld } from "../components/ui"
 
 type HuurderInvoer = Pick<Huurder, "aanhef" | "voornaam" | "achternaam" | "email" | "telefoon_mobiel" | "adres" | "postcode" | "plaats" | "land">
@@ -107,6 +108,8 @@ function Formulier({ boeking, vooringevuldeHuurder }: { boeking?: Boeking; voori
     if (!datumsGeldig) return []
     return overlappendeBoekingen({ id: boeking?.id, aankomst, vertrek }, boekingen.filter((b) => b.status !== "geannuleerd"))
   }, [datumsGeldig, aankomst, vertrek, boekingen, boeking?.id])
+  const agenda = useEigenVerblijven()
+  const eigenOverlap = datumsGeldig ? overlappendeBoekingen({ aankomst, vertrek }, agenda.data?.verblijven ?? []) : []
 
   const minNachten = Math.max(inst.min_nachten, huur?.minNachten ?? 0)
   const gevondenHuurders = huurderZoek.trim()
@@ -261,6 +264,11 @@ function Formulier({ boeking, vooringevuldeHuurder }: { boeking?: Boeking; voori
               {overlap.length > 0 && (
                 <Melding soort="fout">
                   Let op: overlapt met {overlap.map((b) => `${boekingNaam(b)} (${formatLang(b.aankomst)} – ${formatLang(b.vertrek)})`).join(", ")}.
+                </Melding>
+              )}
+              {eigenOverlap.length > 0 && (
+                <Melding soort="fout">
+                  Let op: valt samen met een eigen verblijf in Google Agenda: {eigenOverlap.map((v) => `"${v.titel}" (${formatLang(v.aankomst)} – ${formatLang(v.vertrek)})`).join(", ")}.
                 </Melding>
               )}
               {ontbrekendeNachten.length > 0 && (

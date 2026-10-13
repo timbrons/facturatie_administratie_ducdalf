@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { leesVelden, leeftijdOp, maakAanmelding, telPersonen, zoekBoeking } from "./aanmelding"
 import { factuurBestandsnaam, factuurMap, veiligeNaam } from "./bestandsnamen"
+import { eigenVerblijven } from "./agenda"
 
 // Fictieve inzending zoals FormSubmit ("_template=table") die mailt.
 const HTML = `
@@ -103,5 +104,25 @@ describe("AVG", () => {
       { huurder: "al", vertrek: "2017-01-01", status: "afgerond" },
     ]
     expect(teAnonimiseren(huurders, boekingen, "2026-10-12", 7)).toEqual(["oud"])
+  })
+})
+
+
+describe("eigen verblijven uit Google Agenda", () => {
+  const items = [
+    { id: "a", summary: "Familie in Duc'dalf", start: { date: "2026-05-01" }, end: { date: "2026-05-08" } },
+    { id: "b", summary: "Tandarts", start: { dateTime: "2026-05-03T10:00:00+02:00" }, end: { dateTime: "2026-05-03T11:00:00+02:00" } },
+    { id: "c", summary: "Huurder Jansen", start: { date: "2026-07-04" }, end: { date: "2026-07-11" } },
+    { id: "d", summary: "Eigen gebruik", start: { date: "2026-09-01" }, end: { date: "2026-09-05" }, status: "cancelled" },
+    { id: "e", summary: "Zelf", start: { dateTime: "2026-10-10T15:00:00+02:00" }, end: { dateTime: "2026-10-12T10:00:00+02:00" } },
+  ]
+  const boekingen = [{ aankomst: "2026-07-04", vertrek: "2026-07-11" }]
+  it("neemt afspraken van minstens één nacht, zonder dubbele boekingen of geannuleerde", () => {
+    expect(eigenVerblijven(items, "", boekingen).map((v) => v.id)).toEqual(["a", "e"])
+    expect(eigenVerblijven(items, "", boekingen)[1]).toMatchObject({ aankomst: "2026-10-10", vertrek: "2026-10-12" })
+  })
+  it("filtert op woorden in de titel", () => {
+    expect(eigenVerblijven(items, "familie, zelf", boekingen).map((v) => v.id)).toEqual(["a", "e"])
+    expect(eigenVerblijven(items, "Familie", boekingen).map((v) => v.id)).toEqual(["a"])
   })
 })
