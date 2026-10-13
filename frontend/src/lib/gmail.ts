@@ -3,8 +3,16 @@ import { config } from "./config"
 
 // Google-koppeling vanuit de browser met Google Identity Services (OAuth 2.0
 // token model). Het access token staat ALLEEN in het geheugen van deze
-// pagina: na herladen of na ± 1 uur opnieuw koppelen. Er worden geen
-// wachtwoorden, secrets of refresh tokens opgeslagen.
+// pagina en is ± 1 uur geldig. Er worden geen wachtwoorden, secrets of
+// refresh tokens opgeslagen.
+//
+// Koppelen gaat zoveel mogelijk vanzelf:
+//  - bij "Inloggen met Google" vraagt de app de rechten meteen mee en
+//    bewaart het access token uit die login (zetToken);
+//  - is het token verlopen of de pagina herladen, dan vraagt zorgVoorGoogle()
+//    bij de eerstvolgende actie die Google nodig heeft (versturen, Drive,
+//    aanmeldingen ophalen) een nieuw token. Google toont dan kort een venster
+//    dat zichzelf sluit; toestemming is al eerder gegeven.
 //
 // Rechten:
 //  - gmail.send      mails versturen (fase 3)
@@ -62,24 +70,69 @@ export function useGmailGekoppeld(): boolean {
   )
 }
 
+/** Laadt de Google-component alvast, zodat koppelen later direct bij een klik kan. */
+export function voorladenGoogle(): void {
+  if (config.googleClientId) laadGis().catch(() => {})
+}
+
+/** Zet een access token (bijv. uit "Inloggen met Google") in het geheugen. */
+export function zetToken(waarde: string, verlooptOp: number, scopes: string[]): void {
+  token = { waarde, verlooptOp, scopes }
+  meld()
+}
+
+/**
+ * Bewaart het Google-token uit de app-login, als die de rechten voor Gmail en
+ * Drive heeft meegekregen. Google laat toe om rechten uit te vinken; daarom
+ * vragen we op welke rechten het token echt heeft.
+ */
+export async function neemLoginTokenOver(accessToken: string | undefined, verloopt: string | undefined): Promise<void> {
+  if (!accessToken || !config.googleClientId) return
+  try {
+    const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(accessToken)}`)
+    if (!res.ok) return
+    const info = await res.json()
+    if (info.aud !== config.googleClientId) return
+    const scopes = String(info.scope ?? "").split(" ")
+    if (!Object.values(SCOPES).some((s) => scopes.includes(s))) return
+    const verlooptOp = verloopt ? Date.parse(verloopt.replace(" ", "T")) : Date.now() + Number(info.expires_in ?? 0) * 1000
+    zetToken(accessToken, Number.isFinite(verlooptOp) ? verlooptOp : Date.now() + 50 * 60_000, scopes)
+  } catch {
+    // Niet erg: dan wordt bij de eerste actie met Google opnieuw gekoppeld.
+  }
+}
+
 /** Vraagt toestemming (pop-up van Google) en bewaart het token in het geheugen. */
 export async function koppelGmail(loginHint?: string): Promise<void> {
   if (!config.googleClientId) throw new Error("Er is geen Google Client-ID ingesteld (VITE_GOOGLE_CLIENT_ID).")
-  await laadGis()
+  // Al geladen: direct (binnen de klik) het venster openen, anders houdt de
+  // pop-upblokkering het tegen.
+  if (!window.google?.accounts?.oauth2) await laadGis()
   await new Promise<void>((resolve, reject) => {
     const client = window.google!.accounts.oauth2.initTokenClient({
       client_id: config.googleClientId,
       scope: SCOPE,
       callback: (r) => {
         if (r.error || !r.access_token) return reject(new Error(r.error_description || r.error || "Koppelen mislukt."))
-        token = { waarde: r.access_token, verlooptOp: Date.now() + (r.expires_in ?? 3600) * 1000, scopes: (r.scope ?? SCOPE).split(" ") }
-        meld()
+        zetToken(r.access_token, Date.now() + (r.expires_in ?? 3600) * 1000, (r.scope ?? SCOPE).split(" "))
         resolve()
       },
       error_callback: (e) => reject(new Error(e.type === "popup_closed" ? "Het Google-venster is gesloten." : e.message || "Koppelen mislukt.")),
     })
-    client.requestAccessToken({ prompt: token ? "" : "consent", login_hint: loginHint })
+    // Geen geforceerd toestemmingsscherm: Google vraagt alleen wat nog niet is gegeven.
+    client.requestAccessToken({ prompt: "", login_hint: loginHint })
   })
+}
+
+/**
+ * Zorgt dat er een geldig token is voordat een actie Google gebruikt. Roep dit
+ * aan als eerste stap in de klik-handler (vóór andere await's), zodat het
+ * Google-venster niet door de pop-upblokkering wordt tegengehouden.
+ */
+export async function zorgVoorGoogle(loginHint?: string, nodig?: string): Promise<void> {
+  if (!gmailBeschikbaar()) return
+  if (token && token.verlooptOp > Date.now() + 5 * 60_000 && (!nodig || token.scopes.includes(nodig))) return
+  await koppelGmail(loginHint)
 }
 
 /** Heeft de gebruiker dit recht gegeven? (Google laat toe om rechten uit te vinken.) */
@@ -89,11 +142,11 @@ export function heeftRecht(scope: string): boolean {
 
 /** Geautoriseerd verzoek naar een Google-API. */
 export async function googleFetch(url: string, init: RequestInit = {}): Promise<Response> {
-  if (!isGekoppeld()) throw new Error("Google is niet (meer) gekoppeld. Klik op ‘Koppel Google’ en probeer het opnieuw.")
+  if (!isGekoppeld()) throw new Error("Google is niet (meer) gekoppeld. Probeer het opnieuw; de app koppelt dan opnieuw met Google.")
   const res = await fetch(url, { ...init, headers: { ...(init.headers ?? {}), Authorization: `Bearer ${token!.waarde}` } })
   if (res.status === 401) {
     ontkoppelGmail()
-    throw new Error("De Google-koppeling is verlopen. Koppel opnieuw en probeer het nog een keer.")
+    throw new Error("De Google-koppeling is verlopen. Probeer het nog een keer; de app koppelt dan opnieuw.")
   }
   if (res.status === 403) {
     const data = await res.clone().json().catch(() => ({}))

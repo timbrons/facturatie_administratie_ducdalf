@@ -7,6 +7,7 @@ import { formatKort, formatLang, vandaag } from "../domein/datum"
 import { formatBedrag, formatEuro, type Cent } from "../domein/geld"
 import type { TbBerekening } from "../domein/toeristenbelasting"
 import { driveBeschikbaar, zetInDrive } from "../lib/drive"
+import { SCOPES, zorgVoorGoogle } from "../lib/gmail"
 import { tbMap, veiligeNaam } from "../domein/bestandsnamen"
 import { huurderNaam } from "../lib/types"
 import { BedragVeld, Dialoog, Fout, KopieerKnop, Melding, Veld } from "./ui"
@@ -149,9 +150,12 @@ export function TbAangifteDialoog({
 
   async function opslaan() {
     if (bedrag === null) return
+    // Voor de kopie van de bewijsstukken in Drive (binnen de klik; mag mislukken).
+    const google = inst.drive_kopie && bestanden.length > 0 ? zorgVoorGoogle(inst.afzender_email, SCOPES.drive).catch(() => {}) : Promise.resolve()
     setBezig(true)
     setFout(null)
     try {
+      await google
       const fd = new FormData()
       fd.append("periode", periode)
       if (!maand?.ingediend_op) fd.append("ingediend_op", datum)

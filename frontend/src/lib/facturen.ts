@@ -148,7 +148,7 @@ export async function maakDefinitief(f: Factuur, b: Boeking, inst: Instellingen)
   let driveMelding: string | undefined
   if (inst.drive_kopie) {
     if (!driveBeschikbaar()) {
-      driveMelding = "Er is nog geen kopie in Google Drive gezet: Google is niet gekoppeld. Koppel Google en klik op ‘Naar Drive’."
+      driveMelding = "Er is nog geen kopie in Google Drive gezet: Google is niet gekoppeld. Klik op ‘Naar Drive’ om het opnieuw te proberen."
     } else {
       try {
         metPdf = await kopieNaarDrive(metPdf, inst, blob)

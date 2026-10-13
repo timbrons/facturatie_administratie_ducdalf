@@ -2,8 +2,8 @@ import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { useQueryClient } from "@tanstack/react-query"
 import { sleutels, useBoekingen, useInstellingen, useStappen } from "../lib/data"
-import { gmailBeschikbaar } from "../lib/gmail"
-import { haalInzendingen, lezenBeschikbaar, neemOver, verwerktBij, type Inzending } from "../lib/aanmeldingen"
+import { gmailBeschikbaar, SCOPES, zorgVoorGoogle } from "../lib/gmail"
+import { haalInzendingen, neemOver, verwerktBij, type Inzending } from "../lib/aanmeldingen"
 import { boekingNaam, type Boeking } from "../lib/types"
 import { telPersonen, zoekBoeking } from "../domein/aanmelding"
 import { formatLang, formatTijdstip } from "../domein/datum"
@@ -25,6 +25,7 @@ export function Aanmeldingen() {
     setBezig(true)
     setFout(null)
     try {
+      await zorgVoorGoogle(inst.data?.afzender_email, SCOPES.lezen)
       setInzendingen(await haalInzendingen(inst.data?.aanmelding_zoekopdracht ?? ""))
     } catch (err) {
       setFout(err)
@@ -37,7 +38,7 @@ export function Aanmeldingen() {
     <>
       <Paginakop wenkbrauw="Aanmeldformulier" titel="Aanmeldingen">
         <GmailKnop inst={inst.data} />
-        <button type="button" className="knop" disabled={bezig || !lezenBeschikbaar()} onClick={ophalen}>
+        <button type="button" className="knop" disabled={bezig || !gmailBeschikbaar()} onClick={ophalen}>
           {bezig ? "Ophalen…" : "Ophalen uit Gmail"}
         </button>
       </Paginakop>
@@ -48,7 +49,6 @@ export function Aanmeldingen() {
           na controle over in de huurder en de boeking. Er wordt niets automatisch gewijzigd.
         </p>
         {!gmailBeschikbaar() && <Melding soort="waarschuwing">De Google-koppeling is niet ingesteld (VITE_GOOGLE_CLIENT_ID).</Melding>}
-        {gmailBeschikbaar() && !lezenBeschikbaar() && <Melding soort="info">Koppel eerst Google (met toestemming om mail te lezen) om aanmeldingen op te halen.</Melding>}
         {fout ? <Fout fout={fout} /> : null}
       </div>
 

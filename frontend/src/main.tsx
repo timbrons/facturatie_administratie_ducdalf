@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { App } from "./App"
 import { isVerbindingsfout } from "./lib/pb"
+import { voorladenGoogle } from "./lib/gmail"
 import "./index.css"
 
 const queryClient = new QueryClient({
@@ -15,6 +16,9 @@ const queryClient = new QueryClient({
     },
   },
 })
+
+// De Google-component alvast laden, zodat koppelen later direct bij een klik kan.
+voorladenGoogle()
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
