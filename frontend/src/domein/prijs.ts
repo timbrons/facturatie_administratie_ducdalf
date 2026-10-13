@@ -117,6 +117,20 @@ export function splitsParkkosten(totaalInclParkCent: Cent, nachten: number, inst
   return { huurCent: Math.max(0, totaalInclParkCent - park), parkkostenCent: park }
 }
 
+/**
+ * Opbouw van de huur per seizoen voor het prijsoverzicht, bijv. 6 nachten
+ * middenseizoen en 1 nacht laagseizoen. Staan de parkkosten apart op de
+ * factuur, dan zijn ze hier van de nachtprijs af, zodat de regels optellen
+ * tot de huur.
+ */
+export function huurOpbouw(huur: HuurBerekening, inst: PrijsInstellingen) {
+  const park = inst.parkkosten_apart_op_factuur ? inst.parkkosten_per_nacht_cent : 0
+  return huur.perSeizoen.map((s) => {
+    const prijsPerNachtCent = Math.max(0, s.prijsPerNachtCent - park)
+    return { naam: s.naam, nachten: s.nachten, prijsPerNachtCent, bedragCent: prijsPerNachtCent * s.nachten }
+  })
+}
+
 export function berekenPrijsopbouw(input: {
   aankomst: IsoDatum
   vertrek: IsoDatum

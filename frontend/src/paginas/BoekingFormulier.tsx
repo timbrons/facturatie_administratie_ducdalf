@@ -7,7 +7,8 @@ import { boekingNaam, huurderNaam, type Boeking, type Huurder } from "../lib/typ
 import { tbRichtbedrag } from "../lib/boeking"
 import { dagenTussen, formatLang, isIsoDatum, vandaag } from "../domein/datum"
 import { formatEuro, type Cent } from "../domein/geld"
-import { berekenHuur, berekenPrijsopbouw, type ExtraRegel } from "../domein/prijs"
+import { berekenHuur, berekenPrijsopbouw, huurOpbouw, type ExtraRegel } from "../domein/prijs"
+import { HuurOpbouw } from "../components/HuurOpbouw"
 import { aanbetalingZinvol, restVervaldatum } from "../domein/betaling"
 import { overlappendeBoekingen } from "../domein/overlap"
 import { BedragVeld, Fout, Kaart, Laden, Melding, Paginakop, Veld } from "../components/ui"
@@ -308,6 +309,7 @@ function Formulier({ boeking, vooringevuldeHuurder }: { boeking?: Boeking; voori
               <div className="flex flex-col gap-4">
                 <dl className="flex flex-col gap-1 text-sm">
                   <Regel label={`Huur (${prijs.nachten} nachten)`} bedrag={prijs.huurCent} markering={prijs.huurHandmatig ? "aangepast" : undefined} />
+                  {huur && <HuurOpbouw regels={huurOpbouw(huur, inst)} berekend={prijs.huurHandmatig} />}
                   {prijs.parkkostenCent > 0 && <Regel label="Parkkosten" bedrag={prijs.parkkostenCent} />}
                   <Regel label="Eindschoonmaak" bedrag={prijs.schoonmaakCent} />
                   {prijs.extras.map((x) => <Regel key={x.naam} label={`${x.naam} × ${x.aantal}`} bedrag={x.bedragCent} />)}

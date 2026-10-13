@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { Link, useParams, useSearchParams } from "react-router-dom"
 import { useQueryClient } from "@tanstack/react-query"
 import { pb } from "../lib/pb"
-import { sleutels, useBoeking, useFacturen, useHistorie, useInstellingen, useStappen, useTbTarieven } from "../lib/data"
+import { sleutels, useBoeking, useFacturen, useHistorie, useInstellingen, useSeizoenen, useStappen, useTbTarieven } from "../lib/data"
 import { gmailBeschikbaar } from "../lib/gmail"
 import { actueleFactuur } from "../lib/mail"
 import { boekingNaam, huurderNaam, type Boeking, type Instellingen } from "../lib/types"
@@ -16,6 +16,8 @@ import { TbAangifteDialoog, TbBerekenDialoog } from "../components/Toeristenbela
 import { BetalingenKaart, FacturenKaart } from "../components/FacturenBetalingen"
 import { MailKaart } from "../components/Mail"
 import { AanmeldingKaart } from "../components/AanmeldingKaart"
+import { HuurOpbouw } from "../components/HuurOpbouw"
+import { berekenHuur, huurOpbouw } from "../domein/prijs"
 
 const BRONNEN: Record<string, string> = {
   website: "Eigen website",
@@ -42,6 +44,7 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
   const qc = useQueryClient()
   const historie = useHistorie(b.id)
   const tarieven = useTbTarieven().data ?? []
+  const seizoenen = useSeizoenen().data ?? []
   const [fout, setFout] = useState<unknown>(null)
   const [bezig, setBezig] = useState(false)
   const [dialoog, setDialoog] = useState<"" | "annuleren" | "status" | "tb_berekend" | "tb_aangegeven" | "betaling" | "mail">("")
@@ -71,6 +74,9 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
   const nachten = aantalNachten(b)
   const richt = tbRichtbedrag(b, tarieven)
   const tbFactuur = tbOpFactuur(b)
+  // Huur per seizoen; alleen tonen als die (nog) optelt tot de vastgelegde huur.
+  const opbouw = b.huur_handmatig ? [] : huurOpbouw(berekenHuur(b.aankomst, b.vertrek, seizoenen), inst)
+  const opbouwKlopt = opbouw.length > 0 && opbouw.reduce((t, r) => t + r.bedragCent, 0) === b.huur_cent
 
   async function ververs() {
     await Promise.all([
@@ -215,6 +221,7 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
           <Kaart titel="Prijsopbouw">
             <dl className="flex flex-col gap-1 text-sm">
               <PrijsRegel label={`Huur (${nachten} nachten)`} bedrag={b.huur_cent} markering={b.huur_handmatig ? "aangepast" : undefined} />
+              {opbouwKlopt && <HuurOpbouw regels={opbouw} />}
               {b.parkkosten_cent > 0 && <PrijsRegel label="Parkkosten" bedrag={b.parkkosten_cent} />}
               <PrijsRegel label="Eindschoonmaak" bedrag={b.schoonmaak_cent} />
               {(b.extras ?? []).map((x) => (

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { dagenTussen, formatKort, formatLang, nachten, plusMaanden, isIsoDatum } from "./datum"
 import { formatEuro, parseEuro, rondAf } from "./geld"
-import { berekenHuur, berekenPrijsopbouw, seizoenVoorNacht, type Seizoen } from "./prijs"
+import { berekenHuur, berekenPrijsopbouw, huurOpbouw, seizoenVoorNacht, type Seizoen } from "./prijs"
 import { berekenToeristenbelasting, tariefOpDatum, type TbTarief } from "./toeristenbelasting"
 import { aanbetalingZinvol, berekenTermijnen } from "./betaling"
 import { formatFactuurnummer, normaliseerFactuurnummer, parseFactuurnummer, volgendFactuurnummer } from "./factuurnummer"
@@ -86,6 +86,20 @@ describe("prijsberekening", () => {
     expect(h.perNacht.filter((n) => n.seizoen === "Hoogseizoen")).toHaveLength(3)
     expect(h.totaalCent).toBe(4 * 12800 + 3 * 15700)
     expect(h.ontbrekend).toEqual([])
+  })
+  it("splitst de huur per seizoen, zonder parkkosten, en telt op tot de huur", () => {
+    // 10 t/m 17 oktober: 6 nachten midden (10–15), 1 nacht laag (16)
+    const huur = berekenHuur("2026-10-10", "2026-10-17", SEIZOENEN_2026)
+    const regels = huurOpbouw(huur, INSTELLINGEN)
+    expect(regels).toEqual([
+      { naam: "Middenseizoen", nachten: 6, prijsPerNachtCent: 11800, bedragCent: 70800 },
+      { naam: "Laagseizoen", nachten: 1, prijsPerNachtCent: 8500, bedragCent: 8500 },
+    ])
+    const p = berekenPrijsopbouw({ aankomst: "2026-10-10", vertrek: "2026-10-17", seizoenen: SEIZOENEN_2026, instellingen: INSTELLINGEN })
+    expect(regels.reduce((t, r) => t + r.bedragCent, 0)).toBe(p.huurCent)
+    expect(p.huurCent).toBe(79300)
+    // Parkkosten niet apart: de seizoensprijs zelf
+    expect(huurOpbouw(huur, { ...INSTELLINGEN, parkkosten_apart_op_factuur: false })[0].prijsPerNachtCent).toBe(12800)
   })
   it("laat een grensdatum bij het nieuwe seizoen horen", () => {
     expect(seizoenVoorNacht("2026-04-24", SEIZOENEN_2026)?.naam).toBe("Middenseizoen")
