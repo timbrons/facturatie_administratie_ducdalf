@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { stelAfzenderIn } from "./gmail"
 import { pb } from "./pb"
 import type {
   Betaling, Factuur, MailLog, MailSjabloon, TbAangifte,
@@ -31,7 +32,11 @@ export const sleutels = {
 export function useInstellingen() {
   return useQuery({
     queryKey: sleutels.instellingen,
-    queryFn: () => pb.collection("instellingen").getFirstListItem<Instellingen>(""),
+    queryFn: async () => {
+      const inst = await pb.collection("instellingen").getFirstListItem<Instellingen>("")
+      stelAfzenderIn(inst.afzender_email)
+      return inst
+    },
     staleTime: 60_000,
   })
 }

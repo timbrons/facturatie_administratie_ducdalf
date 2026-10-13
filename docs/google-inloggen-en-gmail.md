@@ -89,3 +89,17 @@ Het client secret (nodig voor A) staat alleen in PocketBase op de NAS.
 **Werkt de pop-up niet?** Sta pop-ups toe voor de site. Krijg je `redirect_uri_mismatch`? Controleer dan
 of de omleidings-URI exact `https://api.vakantiehuis-ducdalf.nl/api/oauth2-redirect` is en of in
 PocketBase de Application URL op `https://api.vakantiehuis-ducdalf.nl` staat.
+
+## Een extra persoon toegang geven
+
+Iemand kan ook met een eigen Google-account inloggen, bijvoorbeeld `naam@gmail.com`:
+
+1. **NAS**: zet het adres in `.env` achter `DUCDALF_ALLOWED_EMAILS`, gescheiden door een komma:
+   `DUCDALF_ALLOWED_EMAILS=ducdalf.languedoc@gmail.com,naam@gmail.com`. Container Manager →
+   Project `ducdalf` → **Stoppen** en daarna **Bouwen** (alleen herstarten leest `.env` niet opnieuw in).
+2. **Google Cloud**: Google Auth Platform → **Doelgroep** → Testgebruikers → **Add users** → het adres.
+
+Mails, Drive-kopieën en aanmeldingen horen bij het afzenderaccount (Instellingen → afzender
+e-mail). Wie met een eigen account is ingelogd, koppelt Google dus met het afzenderaccount; kies dat
+account in het Google-venster. Koppelen met een ander account weigert de app, zodat er nooit per
+ongeluk iets vanuit een persoonlijk account wordt verstuurd.
