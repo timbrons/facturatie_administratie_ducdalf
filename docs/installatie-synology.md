@@ -311,3 +311,10 @@ Bij de eerste keer inloggen maakt PocketBase zelf de gebruiker aan. In versies v
 `1760600000_oauth2_nieuwe_gebruiker.js` mocht dat niet. Werk de map `backend` bij en start het
 project opnieuw (zie hoofdstuk 7). Registreren via de API blijft geblokkeerd en alleen adressen uit
 `DUCDALF_ALLOWED_EMAILS` komen erin.
+
+### Na Inloggen met Google verschijnt de Cloudflare-code of het superuser-inlogscherm
+
+PocketBase stuurt het inlogvenster na de Google-login standaard door naar het beheerscherm (`/_/`),
+dat achter Cloudflare Access staat. Sinds `backend/pb_hooks/oauth2_venster.pb.js` sluit het venster
+zonder langs het beheerscherm te gaan. Zie je dit toch, werk dan de map `backend` bij en start het
+project opnieuw (hoofdstuk 7).
