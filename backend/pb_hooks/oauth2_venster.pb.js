@@ -31,6 +31,19 @@ routerUse((e) => {
   const fout = query.get("error")
   if (!state) return pagina(false)
 
+  // Vaste koppeling met het Google-account (Instellingen → Google-account).
+  const google = require(`${__hooks}/google.js`)
+  if (google.isKoppelState(state)) {
+    const melding = google.afronden(state, code, fout)
+    return e.html(
+      200,
+      '<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>Duc\'dalf verhuurbeheer</title></head>' +
+        '<body style="font-family:sans-serif;padding:2rem;color:#3c362c;background:#faf7ef">' +
+        "<p>" + (melding ? String(melding).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : "Google is vast gekoppeld. Dit venster sluit vanzelf.") + "</p>" +
+        (melding ? "" : "<script>window.close()</script>") + "</body></html>",
+    )
+  }
+
   let client
   try {
     client = $app.subscriptionsBroker().clientById(state)

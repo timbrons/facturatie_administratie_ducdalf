@@ -7,7 +7,7 @@ De app gebruikt Google op twee manieren, met **één** Google Cloud-project en *
   rechtstreeks vanuit de browser. Het toegangstoken blijft alleen in het geheugen van de browser.
 
 Er komen **geen wachtwoorden, client secrets of refresh tokens** in de code of de repository.
-Het client secret (nodig voor A) staat alleen in PocketBase op de NAS.
+Het client secret en (bij de vaste koppeling) de blijvende sleutel staan alleen in PocketBase op de NAS.
 
 ---
 
@@ -63,19 +63,32 @@ Het client secret (nodig voor A) staat alleen in PocketBase op de NAS.
 
 ## Google in de app gebruiken (Gmail en Drive)
 
-1. Zet `VITE_GOOGLE_CLIENT_ID` als repository-variabele (zie de tabel hierboven) en publiceer opnieuw.
-2. Log in met het afzenderaccount. De eerste keer koppelt de app Google bij de eerste actie die het
-   nodig heeft; vink dan **alle gevraagde rechten aan**: mail versturen, mail lezen en de eigen
-   bestanden in Drive. Daarna onthoudt de browser dat er met het afzenderaccount wordt ingelogd en
-   vraagt **Inloggen met Google** die rechten meteen mee: onderaan staat dan direct
-   "✓ Google gekoppeld". Wie met een eigen account inlogt, krijgt die vraag niet.
-3. Het toegangstoken staat alleen in het geheugen van de browser en is ± 1 uur geldig. Is het
-   verlopen of heb je de pagina herladen, dan koppelt de app vanzelf opnieuw zodra je iets doet dat
-   Google nodig heeft (mail versturen, factuur naar Drive, aanmeldingen ophalen). Er verschijnt dan
-   kort een venster van Google dat zichzelf sluit. Er is geen aparte koppelknop; onderaan staat
-   "✓ Google gekoppeld" zolang de koppeling actief is. Er worden geen tokens opgeslagen.
-4. De afzender van de mails is het gekoppelde account. Vul bij Instellingen bij "E-mail" van de
-   afzender hetzelfde adres in.
+Mails, Drive-kopieën en aanmeldingen lopen altijd via het afzenderaccount (Instellingen → afzender
+e-mail), ook als iemand met een eigen account in de app is ingelogd.
+
+### Vaste koppeling (aanbevolen)
+
+1. **Google Cloud**: Google Auth Platform → **Doelgroep** → Publicatiestatus → **App publiceren**
+   (In productie). Een beoordeling door Google aanvragen is voor eigen gebruik niet nodig. In de
+   status "Testen" laat Google de blijvende sleutel na 7 dagen verlopen.
+2. **NAS**: werk de map `backend` bij en start het project opnieuw (installatiehandleiding,
+   hoofdstuk 7). Dat voegt de collectie `google_koppeling` en de routes toe.
+3. **App**: Instellingen → **Google-account (Gmail en Drive)** → **Google-account koppelen**. Kies in
+   het Google-venster het afzenderaccount, klik bij "Google heeft deze app niet geverifieerd" op
+   **Geavanceerd → Doorgaan** en vink alle rechten aan.
+
+Daarna geeft de NAS iedere ingelogde gebruiker automatisch een kortlevende sleutel (± 1 uur) voor het
+afzenderaccount: in elke browser, op elk apparaat en na het wissen van cookies, zonder
+Google-venster. De blijvende sleutel (refresh token) staat alleen op de NAS, in een collectie zonder
+API-toegang; hij komt nooit in de browser of in de repository. Let op: de back-ups van de NAS bevatten
+die sleutel dus ook. **Koppeling verbreken** (zelfde plek) trekt de sleutel in bij Google en wist hem.
+
+### Zonder vaste koppeling (reserve)
+
+Is er geen vaste koppeling, dan vraagt de app bij de eerste actie die Google nodig heeft (mail
+versturen, factuur naar Drive, aanmeldingen ophalen) een sleutel via een Google-venster. Die staat
+alleen in het geheugen van de browser en is ± 1 uur geldig. Kies het afzenderaccount; een ander
+account wordt geweigerd.
 
 > Vervolgmails aan dezelfde huurder komen in dezelfde Gmail-thread. Bij de huurder groepeert Gmail
 > mails op onderwerp; met een ander onderwerp kan de mail daar als nieuw gesprek verschijnen.
@@ -101,7 +114,5 @@ Iemand kan ook met een eigen Google-account inloggen, bijvoorbeeld `naam@gmail.c
    Project `ducdalf` → **Stoppen** en daarna **Bouwen** (alleen herstarten leest `.env` niet opnieuw in).
 2. **Google Cloud**: Google Auth Platform → **Doelgroep** → Testgebruikers → **Add users** → het adres.
 
-Mails, Drive-kopieën en aanmeldingen horen bij het afzenderaccount (Instellingen → afzender
-e-mail). Wie met een eigen account is ingelogd, koppelt Google dus met het afzenderaccount; kies dat
-account in het Google-venster. Koppelen met een ander account weigert de app, zodat er nooit per
-ongeluk iets vanuit een persoonlijk account wordt verstuurd.
+Mails, Drive-kopieën en aanmeldingen lopen via het afzenderaccount. Met de vaste koppeling hoeft de
+extra persoon daar niets voor te doen.

@@ -73,8 +73,9 @@ Alle bedragen zijn centen (`*_cent`). Datums zonder tijd zijn tekst `JJJJ-MM-DD`
      behouden en de nummerreeks schuift mee.
 3. **Fase 3 – E-mail (opgeleverd)**
    - **Gmail-koppeling** vanuit de browser met Google Identity Services (scope `gmail.send`). Het
-     token staat alleen in het geheugen en verloopt na ± 1 uur; daarna koppelt de app vanzelf
-     opnieuw bij de eerste actie die Google nodig heeft.
+     token staat alleen in het geheugen en verloopt na ± 1 uur. Later toegevoegd: een vaste koppeling
+     met het afzenderaccount; de blijvende sleutel staat alleen op de NAS en de app krijgt daar steeds
+     een kortlevende sleutel (Instellingen → Google-account).
    - **Sjablonen** (beheer onder Instellingen → E-mailsjablonen) met variabelen zoals `{voornaam}`,
      `{factuurnummer}` en `{link_aanmeldformulier}`. Taalvarianten (en/fr/de) per sjabloon kunnen
      worden toegevoegd; de taal van de huurder bepaalt welke wordt gebruikt.

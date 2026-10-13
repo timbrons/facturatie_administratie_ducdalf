@@ -7,13 +7,13 @@ import { pb } from "./pb"
 // pagina en is ± 1 uur geldig. Er worden geen wachtwoorden, secrets of
 // refresh tokens opgeslagen.
 //
-// Koppelen gaat zoveel mogelijk vanzelf:
-//  - bij "Inloggen met Google" vraagt de app de rechten meteen mee en
-//    bewaart het access token uit die login (zetToken);
-//  - is het token verlopen of de pagina herladen, dan vraagt zorgVoorGoogle()
-//    bij de eerstvolgende actie die Google nodig heeft (versturen, Drive,
-//    aanmeldingen ophalen) een nieuw token. Google toont dan kort een venster
-//    dat zichzelf sluit; toestemming is al eerder gegeven.
+// Koppelen gaat vanzelf:
+//  - Vaste koppeling (aanbevolen): bij Instellingen → Google-account koppelt
+//    iemand eenmalig het afzenderaccount. De blijvende sleutel staat alleen op
+//    de NAS; de app krijgt daar steeds een kortlevende sleutel (haalServerToken).
+//    Geen Google-venster meer, in elke browser.
+//  - Zonder vaste koppeling vraagt zorgVoorGoogle() bij de eerste actie die
+//    Google nodig heeft een sleutel via een Google-venster (reserve).
 //
 // Rechten:
 //  - gmail.send      mails versturen (fase 3)
@@ -126,45 +126,20 @@ export function zetToken(waarde: string, verlooptOp: number, scopes: string[]): 
 }
 
 /**
- * Bewaart het Google-token uit de app-login, als die de rechten voor Gmail en
- * Drive heeft meegekregen. Google laat toe om rechten uit te vinken; daarom
- * vragen we op welke rechten het token echt heeft.
+ * Vaste koppeling via de NAS (Instellingen → Google-account): de server
+ * bewaart de blijvende sleutel en geeft de app een kortlevende sleutel van het
+ * afzenderaccount. Geeft false als er (nog) geen vaste koppeling is.
  */
-export async function neemLoginTokenOver(email: string | undefined, accessToken: string | undefined, verloopt: string | undefined): Promise<void> {
-  if (!config.googleClientId) return
-  // Onthouden of in deze browser met het afzenderaccount wordt ingelogd; alleen
-  // dan vraagt de volgende login meteen de rechten voor Gmail en Drive mee.
-  // Wie met een eigen account inlogt, krijgt die vraag dus niet.
-  const verwacht = await verwachteAfzender()
-  const isAfzender = !!email && !!verwacht && email.trim().toLowerCase() === verwacht
+let serverMelding = ""
+export async function haalServerToken(): Promise<boolean> {
   try {
-    if (isAfzender) localStorage.setItem(LOGIN_RECHTEN_SLEUTEL, "1")
-    else localStorage.removeItem(LOGIN_RECHTEN_SLEUTEL)
-  } catch {
-    // Geen opslag beschikbaar: dan koppelt de app bij de eerste actie.
-  }
-  if (!accessToken) return
-  try {
-    const info = await tokenInfo(accessToken)
-    if (!info || !Object.values(SCOPES).some((s) => info.scopes.includes(s))) return
-    // Ingelogd met een ander account dan de afzender (bijv. een eigen account):
-    // dat token niet gebruiken; bij de eerste actie koppelt de app met de afzender.
-    if (await controleerAccount(info)) return
-    const verlooptOp = verloopt ? Date.parse(verloopt.replace(" ", "T")) : info.verlooptOp
-    zetToken(accessToken, Number.isFinite(verlooptOp) ? verlooptOp : info.verlooptOp, info.scopes)
-  } catch {
-    // Niet erg: dan wordt bij de eerste actie met Google opnieuw gekoppeld.
-  }
-}
-
-const LOGIN_RECHTEN_SLEUTEL = "ducdalf_login_met_google_rechten"
-
-/** Moet "Inloggen met Google" de rechten voor Gmail en Drive meevragen? */
-export function loginVraagtGoogleRechten(): boolean {
-  if (!config.googleClientId) return false
-  try {
-    return localStorage.getItem(LOGIN_RECHTEN_SLEUTEL) === "1"
-  } catch {
+    const r = await pb.send<{ access_token: string; verloopt: number; scope: string }>("/api/ducdalf/google/token", { method: "POST" })
+    zetToken(r.access_token, r.verloopt, r.scope.split(" "))
+    serverMelding = ""
+    return true
+  } catch (err) {
+    const fout = err as { status?: number; response?: { message?: string } }
+    serverMelding = fout.status === 409 ? fout.response?.message ?? "" : ""
     return false
   }
 }
@@ -200,8 +175,12 @@ export async function koppelGmail(loginHint?: string): Promise<void> {
  * Google-venster niet door de pop-upblokkering wordt tegengehouden.
  */
 export async function zorgVoorGoogle(loginHint?: string, nodig?: string): Promise<void> {
-  if (!gmailBeschikbaar()) return
-  if (token && token.verlooptOp > Date.now() + 5 * 60_000 && (!nodig || token.scopes.includes(nodig))) return
+  const geldig = () => !!token && token.verlooptOp > Date.now() + 5 * 60_000 && (!nodig || token.scopes.includes(nodig))
+  if (geldig()) return
+  // Eerst de vaste koppeling op de NAS: geen Google-venster nodig.
+  if ((await haalServerToken()) && geldig()) return
+  if (!gmailBeschikbaar()) throw new Error(serverMelding || "Google is niet gekoppeld. Koppel het Google-account bij Instellingen.")
+  // Reserve: koppelen in de browser (Google-venster).
   await koppelGmail(loginHint)
 }
 

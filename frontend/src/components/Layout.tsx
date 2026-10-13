@@ -1,8 +1,9 @@
-import { useState, type ReactNode } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { NavLink } from "react-router-dom"
 import { pb } from "../lib/pb"
 import { useServerBereikbaar } from "../lib/verbinding"
 import { GmailKnop } from "./Mail"
+import { haalServerToken } from "../lib/gmail"
 
 const MENU = [
   { naar: "/", label: "Overzicht" },
@@ -26,6 +27,9 @@ export function Merk({ licht = false }: { licht?: boolean }) {
 export function Layout({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false)
   const bereikbaar = useServerBereikbaar()
+  // Vaste Google-koppeling op de NAS: meteen een sleutel ophalen, zodat Gmail en
+  // Drive direct klaarstaan (zonder Google-venster).
+  useEffect(() => { haalServerToken() }, [])
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-40 border-b border-lijn bg-creme/95 backdrop-blur">

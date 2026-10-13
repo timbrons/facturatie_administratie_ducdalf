@@ -8,6 +8,7 @@ import { volgendFactuurnummer } from "../domein/factuurnummer"
 import type { Cent } from "../domein/geld"
 import { VOORWAARDEN } from "../domein/workflow"
 import { BedragVeld, Fout, Kaart, Laden, Melding, Paginakop, Veld } from "../components/ui"
+import { GoogleKoppelingKaart } from "../components/GoogleKoppeling"
 
 export function InstellingenPagina() {
   const inst = useInstellingen()
@@ -21,6 +22,7 @@ export function InstellingenPagina() {
         <Link to="/importeren" className="knop-rand">Oude administratie importeren</Link>
       </Paginakop>
       <div className="flex flex-col gap-6">
+        <GoogleKoppelingKaart afzender={inst.data!.afzender_email} />
         <Algemeen key={inst.data!.updated} inst={inst.data!} />
         <Bestanden inst={inst.data!} />
         <Nummering />
