@@ -104,6 +104,9 @@ Alle bedragen zijn centen (`*_cent`). Datums zonder tijd zijn tekst `JJJJ-MM-DD`
      overzichten als CSV en alle bestanden.
    - **AVG**: anonimiseren van huurders van wie het laatste verblijf langer dan de bewaartermijn
      (standaard 7 jaar) geleden is, of los per huurder. Facturen en betalingen blijven bewaard.
+   - **Huurder verwijderen** (huurderspagina): voor testgegevens en vergissingen. Verwijdert de huurder
+     met alle boekingen, facturen (PDF's en Drive-kopieën), betalingen, historie en maillog in één
+     transactie. Waren de facturen de laatste nummers, dan schuift de nummerreeks terug.
 5. **Fase 5 (optioneel)**: aanvragen uit de Gmail-inbox omzetten naar boekingen; meertalige sjablonen.
 
 ## Aanmeldformulier (oorspronkelijk advies, uitgevoerd in fase 4)
