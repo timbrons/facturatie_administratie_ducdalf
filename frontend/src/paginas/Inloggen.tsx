@@ -13,11 +13,24 @@ export function Inloggen() {
   async function metGoogle() {
     setFout("")
     setBezig(true)
+    // Het venster direct bij de klik openen, anders houdt de pop-upblokkering het tegen.
+    const venster = openVenster()
     try {
-      await pb.collection("users").authWithOAuth2({ provider: "google" })
+      await pb.collection("users").authWithOAuth2({
+        provider: "google",
+        // Laat Google altijd de accountkeuze tonen, zodat je na een verkeerd account
+        // (of in een browser met meerdere Google-accounts) het juiste kunt kiezen.
+        urlCallback: (url) => {
+          const u = new URL(url)
+          u.searchParams.set("prompt", "select_account")
+          if (venster && !venster.closed) venster.location.href = u.toString()
+          else openVenster(u.toString())
+        },
+      })
     } catch (err) {
       setFout(foutmelding(err))
     } finally {
+      venster?.close()
       setBezig(false)
     }
   }
@@ -67,4 +80,12 @@ export function Inloggen() {
       </main>
     </div>
   )
+}
+
+function openVenster(url = ""): Window | null {
+  const b = Math.min(1024, window.innerWidth)
+  const h = Math.min(768, window.innerHeight)
+  const links = window.innerWidth / 2 - b / 2
+  const boven = window.innerHeight / 2 - h / 2
+  return window.open(url, "google_inloggen", `width=${b},height=${h},top=${boven},left=${links},resizable,menubar=no`)
 }
