@@ -3,7 +3,9 @@ import { Link, useNavigate } from "react-router-dom"
 import { useBoekingen } from "../lib/data"
 import { boekingNaam, type Boeking } from "../lib/types"
 import { datumVan, formatLang, jaarVan, maandNaam, maandVan, plusDagen, vandaag } from "../domein/datum"
-import { alleOverlappen } from "../domein/overlap"
+import { alleOverlappen, overlappendeBoekingen } from "../domein/overlap"
+import { useEigenVerblijven } from "../lib/agenda"
+import type { EigenVerblijf } from "../domein/agenda"
 import { Fout, Laden, Melding, Paginakop } from "../components/ui"
 
 const WEEKDAGEN = ["ma", "di", "wo", "do", "vr", "za", "zo"]
@@ -20,8 +22,8 @@ function dagenInMaand(jaar: number, maand: number): string[] {
   return uit
 }
 
-function MaandRaster({ jaar, maand, boekingen, groot, onKlik }: {
-  jaar: number; maand: number; boekingen: Boeking[]; groot?: boolean; onKlik: (b: Boeking) => void
+function MaandRaster({ jaar, maand, boekingen, eigen, groot, onKlik }: {
+  jaar: number; maand: number; boekingen: Boeking[]; eigen: EigenVerblijf[]; groot?: boolean; onKlik: (b: Boeking) => void
 }) {
   const dagen = dagenInMaand(jaar, maand)
   const eersteWeekdag = (new Date(Date.UTC(jaar, maand - 1, 1)).getUTCDay() + 6) % 7
@@ -32,21 +34,27 @@ function MaandRaster({ jaar, maand, boekingen, groot, onKlik }: {
       {Array.from({ length: eersteWeekdag }).map((_, i) => <div key={`l${i}`} className="bg-creme" />)}
       {dagen.map((d) => {
         const bezet = bezetting(boekingen, d)
+        const zelf = eigen.filter((v) => v.aankomst <= d && d < v.vertrek)
         const aankomst = boekingen.find((b) => b.aankomst === d)
-        const dubbel = bezet.length > 1
+        const eigenStart = eigen.find((v) => v.aankomst === d)
+        const dubbel = bezet.length + zelf.length > 1
         const b = bezet[0]
-        const kleur = !b ? "bg-white" : dubbel ? "bg-rood text-white" : b.optie ? "bg-zand-donker text-inkt" : "bg-goud text-white"
+        const kleur = dubbel ? "bg-rood text-white" : b ? (b.optie ? "bg-zand-donker text-inkt" : "bg-goud text-white") : zelf.length ? "bg-olijf text-white" : "bg-white"
+        const namen = [...bezet.map((x) => `${boekingNaam(x)}${x.optie ? " (optie)" : ""}`), ...zelf.map((v) => `Eigen verblijf: ${v.titel}`)]
         return (
           <button
             key={d}
             type="button"
-            title={bezet.length ? bezet.map((x) => `${boekingNaam(x)}${x.optie ? " (optie)" : ""}`).join(" + ") : formatLang(d)}
+            title={namen.length ? namen.join(" + ") : formatLang(d)}
             onClick={() => b && onKlik(b)}
             className={`relative ${groot ? "min-h-16 p-1 text-left" : "aspect-square text-[11px]"} ${kleur} ${d === nu ? "outline-2 -outline-offset-2 outline-inkt" : ""} ${b ? "cursor-pointer" : "cursor-default"}`}
           >
             <span className={groot ? "text-xs" : ""}>{Number(d.slice(8))}</span>
             {groot && aankomst && (
               <span className="mt-0.5 block truncate text-[11px] leading-tight">{boekingNaam(aankomst)}</span>
+            )}
+            {groot && !aankomst && eigenStart && (
+              <span className="mt-0.5 block truncate text-[11px] leading-tight">{eigenStart.titel}</span>
             )}
           </button>
         )
@@ -64,6 +72,9 @@ export function Kalender() {
 
   const actief = useMemo(() => (boekingen.data ?? []).filter((b) => b.status !== "geannuleerd"), [boekingen.data])
   const overlappen = useMemo(() => alleOverlappen(actief), [actief])
+  const agenda = useEigenVerblijven()
+  const eigen = agenda.data?.verblijven ?? []
+  const botsingen = eigen.flatMap((v) => overlappendeBoekingen({ aankomst: v.aankomst, vertrek: v.vertrek }, actief).map((b) => [v, b] as const))
 
   if (boekingen.isLoading) return <Laden />
   if (boekingen.error) return <Fout fout={boekingen.error} />
@@ -89,6 +100,7 @@ export function Kalender() {
       <div className="mb-4 flex flex-wrap gap-4 text-xs text-zacht">
         <span className="flex items-center gap-1"><span className="inline-block h-3 w-3 bg-goud" /> Geboekt</span>
         <span className="flex items-center gap-1"><span className="inline-block h-3 w-3 bg-zand-donker" /> Optie</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-3 w-3 bg-olijf" /> Eigen verblijf (Google Agenda)</span>
         <span className="flex items-center gap-1"><span className="inline-block h-3 w-3 bg-rood" /> Dubbel geboekt</span>
         <span>Een dag is bezet als er die nacht iemand slaapt; de vertrekdag is dus vrij.</span>
       </div>
@@ -107,8 +119,31 @@ export function Kalender() {
         </div>
       )}
 
+      {botsingen.length > 0 && (
+        <div className="mb-4">
+          <Melding soort="fout">
+            Boeking tijdens een eigen verblijf:{" "}
+            {botsingen.map(([v, b], i) => (
+              <span key={i}>
+                {i > 0 && "; "}
+                <Link to={`/boekingen/${b.id}`}>{boekingNaam(b)}</Link> en "{v.titel}" ({formatLang(v.aankomst)} – {formatLang(v.vertrek)})
+              </span>
+            ))}
+          </Melding>
+        </div>
+      )}
+      {agenda.data && !agenda.data.beschikbaar && (
+        <div className="mb-4">
+          <Melding soort="info">
+            Eigen verblijven uit Google Agenda worden nog niet getoond. Koppel het Google-account (opnieuw) bij{" "}
+            <Link to="/instellingen">Instellingen</Link> en geef daarbij ook toegang tot Google Agenda.
+          </Melding>
+        </div>
+      )}
+      {agenda.error ? <div className="mb-4"><Fout fout={agenda.error} /></div> : null}
+
       {maand ? (
-        <MaandRaster jaar={jaar} maand={maand} boekingen={actief} groot onKlik={open} />
+        <MaandRaster jaar={jaar} maand={maand} boekingen={actief} eigen={eigen} groot onKlik={open} />
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
@@ -116,7 +151,7 @@ export function Kalender() {
               <button type="button" className="mb-2 font-serif text-lg text-inkt hover:text-goud-tekst" onClick={() => setMaand(m)}>
                 {maandNaam(m)}
               </button>
-              <MaandRaster jaar={jaar} maand={m} boekingen={actief} onKlik={open} />
+              <MaandRaster jaar={jaar} maand={m} boekingen={actief} eigen={eigen} onKlik={open} />
             </div>
           ))}
         </div>

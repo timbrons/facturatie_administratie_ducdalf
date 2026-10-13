@@ -123,6 +123,17 @@ function Algemeen({ inst }: { inst: Instellingen }) {
         </div>
       </Kaart>
 
+      <Kaart titel="Google Agenda (eigen verblijven)">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="flex items-center gap-2 pt-6 text-inkt sm:col-span-2">
+            <input type="checkbox" checked={d.agenda_tonen ?? false} onChange={(e) => setD({ ...d, agenda_tonen: e.target.checked })} />
+            Eigen verblijven uit Google Agenda tonen in de kalender
+          </label>
+          {tekst("agenda_id", "Agenda", { hint: '"primary" is de hoofdagenda van het gekoppelde account; een andere agenda vind je in Google Agenda bij Instellingen → Agenda-ID' })}
+          {tekst("agenda_filter", "Alleen afspraken met in de titel", { hint: 'Bijv. "eigen, familie" (gescheiden door komma\'s). Leeg = alle afspraken van minstens één nacht' })}
+        </div>
+      </Kaart>
+
       <Kaart titel="Links">
         <div className="grid gap-4 sm:grid-cols-2">
           {tekst("tb_portaal_url", "Portaal toeristenbelasting", { type: "url" })}

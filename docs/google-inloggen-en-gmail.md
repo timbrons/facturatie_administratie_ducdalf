@@ -35,6 +35,8 @@ Het client secret en (bij de vaste koppeling) de blijvende sleutel staan alleen 
    - `https://www.googleapis.com/auth/gmail.readonly` (inzendingen van het aanmeldformulier lezen, fase 4)
    - `https://www.googleapis.com/auth/drive.file` (kopieën in Google Drive; de app ziet alleen de
      bestanden die hij zelf maakt, fase 4)
+   - `https://www.googleapis.com/auth/calendar.readonly` (eigen verblijven uit Google Agenda tonen in
+     de kalender; alleen lezen)
 5. **Testgebruikers (doelgroep)**: voeg `ducdalf.languedoc@gmail.com` toe, plus eventuele andere
    accounts die mogen inloggen.
 6. Laat de publicatiestatus op **Testen** staan. Dat is voor jullie gebruik genoeg. Google toont
@@ -82,6 +84,15 @@ afzenderaccount: in elke browser, op elk apparaat en na het wissen van cookies, 
 Google-venster. De blijvende sleutel (refresh token) staat alleen op de NAS, in een collectie zonder
 API-toegang; hij komt nooit in de browser of in de repository. Let op: de back-ups van de NAS bevatten
 die sleutel dus ook. **Koppeling verbreken** (zelfde plek) trekt de sleutel in bij Google en wist hem.
+
+### Eigen verblijven uit Google Agenda
+
+De kalender van de app toont ook de eigen verblijven uit Google Agenda (groen), en waarschuwt als een
+boeking daarmee botst. Instellen bij **Instellingen → Google Agenda (eigen verblijven)**: welke agenda
+(`primary` = de hoofdagenda) en eventueel welke woorden in de titel staan (bijv. `eigen, familie`).
+Leeg = alle afspraken van minstens één nacht; afspraken met precies dezelfde periode als een boeking
+worden overgeslagen. Was Google al gekoppeld vóór deze functie, klik dan bij Google-account op
+**Opnieuw koppelen** en vink ook Google Agenda aan.
 
 ### Zonder vaste koppeling (reserve)
 

@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react"
 import { pb } from "../lib/pb"
-import { haalServerToken, ontkoppelGmail } from "../lib/gmail"
+import { haalServerToken, ontkoppelGmail, SCOPES } from "../lib/gmail"
+import { useQueryClient } from "@tanstack/react-query"
 import { formatTijdstip } from "../domein/datum"
 import { Fout, Kaart, Melding } from "./ui"
 
-interface Status { gekoppeld: boolean; email: string; gekoppeld_op: string; gekoppeld_door: string }
+interface Status { gekoppeld: boolean; email: string; gekoppeld_op: string; gekoppeld_door: string; scopes?: string }
 
 function openVenster(): Window | null {
   const b = Math.min(1024, window.innerWidth)
@@ -21,6 +22,8 @@ export function GoogleKoppelingKaart({ afzender }: { afzender: string }) {
   const [status, setStatus] = useState<Status | null>(null)
   const [fout, setFout] = useState<unknown>(null)
   const [bezig, setBezig] = useState(false)
+  const qc = useQueryClient()
+  const zonderAgenda = !!status?.gekoppeld && !(status.scopes ?? "").includes(SCOPES.agenda)
 
   async function laad() {
     try {
@@ -46,7 +49,9 @@ export function GoogleKoppelingKaart({ afzender }: { afzender: string }) {
         const s = await pb.send<Status>("/api/ducdalf/google/status", {})
         if (s.gekoppeld && s.gekoppeld_op !== status?.gekoppeld_op) {
           setStatus(s)
+          ontkoppelGmail()
           await haalServerToken()
+          await qc.invalidateQueries({ queryKey: ["agenda"] })
           venster.close()
           return
         }
@@ -91,7 +96,16 @@ export function GoogleKoppelingKaart({ afzender }: { afzender: string }) {
               {status.gekoppeld_door && <> (door {status.gekoppeld_door})</>}. Iedereen die in de app is ingelogd, mailt en
               gebruikt Drive via dit account, zonder Google-venster.
             </Melding>
-            <div>
+            {zonderAgenda && (
+              <Melding soort="info">
+                Deze koppeling heeft nog geen toegang tot Google Agenda (voor eigen verblijven in de kalender). Klik op
+                Opnieuw koppelen en vink ook Google Agenda aan.
+              </Melding>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className={zonderAgenda ? "knop" : "knop-rand"} disabled={bezig} onClick={koppelen}>
+                {bezig ? "Wachten op Google…" : "Opnieuw koppelen"}
+              </button>
               <button type="button" className="knop-rand" disabled={bezig} onClick={verbreken}>Koppeling verbreken</button>
             </div>
           </>
@@ -99,7 +113,8 @@ export function GoogleKoppelingKaart({ afzender }: { afzender: string }) {
           <>
             <p>
               Koppel eenmalig het Google-account van de afzender{afzender ? <> (<strong>{afzender}</strong>)</> : null}. Daarna
-              werken mailen, de kopie in Drive en het ophalen van aanmeldingen in elke browser zonder Google-venster. De
+              werken mailen, de kopie in Drive, het ophalen van aanmeldingen en de eigen verblijven uit Google Agenda in
+              elke browser zonder Google-venster. De
               blijvende sleutel staat alleen op de NAS.
             </p>
             <p className="text-xs text-zacht">
