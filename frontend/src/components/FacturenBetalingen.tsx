@@ -3,7 +3,8 @@ import { useQueryClient } from "@tanstack/react-query"
 import { pb } from "../lib/pb"
 import { sleutels, useBetalingen, useFacturen } from "../lib/data"
 import type { Betaling, Boeking, Instellingen } from "../lib/types"
-import { factuurBezwaar, kopieNaarDrive, maakConcept, maakCredit, maakDefinitief, markeerVerstuurd, nagemaaktePdf, pdfUrl, pdfVoor, statusNaBetaling, voegOrigineelToe } from "../lib/facturen"
+import { factuurBezwaar, maakConcept, maakCredit, maakDefinitief, markeerVerstuurd, nagemaaktePdf, pdfUrl, pdfVoor, statusNaBetaling, voegOrigineelToe } from "../lib/facturen"
+import { synchroniseerDrive } from "../lib/driveSync"
 import { SCOPES, zorgVoorGoogle } from "../lib/gmail"
 import { totaalBoeking } from "../lib/boeking"
 import { formatLang, formatTijdstip, vandaag } from "../domein/datum"
@@ -148,7 +149,7 @@ export function FacturenKaart({ boeking: b, inst, stappen }: { boeking: Boeking;
                         onChange={(e) => {
                           const bestand = e.target.files?.[0]
                           e.target.value = ""
-                          if (bestand) actie("origineel", () => voegOrigineelToe(f, bestand))
+                          if (bestand) actie("origineel", async () => { await voegOrigineelToe(f, bestand); await synchroniseerDrive() })
                         }}
                       />
                     </label>
@@ -158,17 +159,7 @@ export function FacturenKaart({ boeking: b, inst, stappen }: { boeking: Boeking;
                   <a href={f.drive_link} target="_blank" rel="noopener noreferrer" className="knop-klein">In Drive ↗</a>
                 )}
                 {inst.drive_kopie && f.nummer && f.pdf && !f.drive_link && (
-                  <button
-                    type="button"
-                    className="knop-klein"
-                    disabled={!!bezig}
-                    onClick={() => {
-                      const google = zorgVoorGoogle(inst.afzender_email, SCOPES.drive)
-                      actie("drive", async () => { await google; await kopieNaarDrive(f, inst); setMelding("") })
-                    }}
-                  >
-                    {bezig === "drive" ? "Bezig…" : "Naar Drive"}
-                  </button>
+                  <span className="self-center text-xs text-zacht">Kopie in Drive volgt automatisch</span>
                 )}
                 {f.nummer && !f.vergrendeld && (
                   <button type="button" className="knop-klein" disabled={!!bezig} onClick={() => actie("verstuurd", () => markeerVerstuurd(f, b, stappen))}>

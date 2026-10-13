@@ -175,12 +175,12 @@ export async function maakDefinitief(f: Factuur, b: Boeking, inst: Instellingen)
   let driveMelding: string | undefined
   if (inst.drive_kopie) {
     if (!driveBeschikbaar()) {
-      driveMelding = "Er is nog geen kopie in Google Drive gezet: Google is niet gekoppeld. Klik op ‘Naar Drive’ om het opnieuw te proberen."
+      driveMelding = "Er is nog geen kopie in Google Drive gezet: Google is niet gekoppeld. De kopie volgt automatisch zodra Google gekoppeld is (Instellingen → Google-account)."
     } else {
       try {
         metPdf = await kopieNaarDrive(metPdf, inst, blob)
       } catch (err) {
-        driveMelding = `Kopie naar Google Drive mislukt: ${err instanceof Error ? err.message : String(err)}`
+        driveMelding = `Kopie naar Google Drive mislukt: ${err instanceof Error ? err.message : String(err)}. Er volgt later automatisch een nieuwe poging.`
       }
     }
   }

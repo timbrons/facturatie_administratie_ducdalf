@@ -4,6 +4,9 @@ import { pb } from "../lib/pb"
 import { useServerBereikbaar } from "../lib/verbinding"
 import { GmailKnop } from "./Mail"
 import { haalServerToken } from "../lib/gmail"
+import { synchroniseerDrive } from "../lib/driveSync"
+import { useQueryClient } from "@tanstack/react-query"
+import { sleutels } from "../lib/data"
 
 const MENU = [
   { naar: "/", label: "Overzicht" },
@@ -29,7 +32,14 @@ export function Layout({ children }: { children: ReactNode }) {
   const bereikbaar = useServerBereikbaar()
   // Vaste Google-koppeling op de NAS: meteen een sleutel ophalen, zodat Gmail en
   // Drive direct klaarstaan (zonder Google-venster).
-  useEffect(() => { haalServerToken() }, [])
+  // Daarna ontbrekende factuurkopieën automatisch in Google Drive zetten.
+  const qc = useQueryClient()
+  useEffect(() => {
+    haalServerToken()
+      .then(() => synchroniseerDrive())
+      .then((n) => { if (n > 0) qc.invalidateQueries({ queryKey: sleutels.facturen }) })
+      .catch(() => {})
+  }, [qc])
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-40 border-b border-lijn bg-creme/95 backdrop-blur">

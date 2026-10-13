@@ -98,7 +98,8 @@ Alle bedragen zijn centen (`*_cent`). Datums zonder tijd zijn tekst `JJJJ-MM-DD`
    - **Google Drive**: bij "Definitief maken" gaat een kopie van de factuur-PDF naar
      `Duc'dalf verhuurbeheer/Facturen/<jaar>/`. Bewijsstukken van de aangifte gaan naar
      `Toeristenbelasting/<jaar>/`. De app krijgt alleen toegang tot de eigen bestanden (`drive.file`).
-     Lukt de kopie niet, dan staat er een knop "Naar Drive".
+     Lukt de kopie niet, dan volgt automatisch een nieuwe poging; facturen die nog niet in Drive staan
+     (ook als een originele PDF later wordt toegevoegd) gaan er vanzelf heen.
    - **Exporteer alles** (Instellingen → Export en privacy): één zip met alle gegevens als JSON,
      overzichten als CSV en alle bestanden.
    - **AVG**: anonimiseren van huurders van wie het laatste verblijf langer dan de bewaartermijn
