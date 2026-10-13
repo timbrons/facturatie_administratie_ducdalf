@@ -4,7 +4,7 @@ import { pb } from "../lib/pb"
 import { sleutels, useBetalingen, useFacturen } from "../lib/data"
 import type { Betaling, Boeking, Instellingen } from "../lib/types"
 import { factuurBezwaar, kopieNaarDrive, maakConcept, maakCredit, maakDefinitief, markeerVerstuurd, pdfUrl, pdfVoor, statusNaBetaling } from "../lib/facturen"
-import { driveBeschikbaar } from "../lib/drive"
+import { SCOPES, zorgVoorGoogle } from "../lib/gmail"
 import { totaalBoeking } from "../lib/boeking"
 import { formatLang, formatTijdstip, vandaag } from "../domein/datum"
 import { formatEuro, type Cent } from "../domein/geld"
@@ -111,7 +111,10 @@ export function FacturenKaart({ boeking: b, inst, stappen }: { boeking: Boeking;
                       disabled={!!bezig}
                       onClick={() => {
                         if (window.confirm("Factuur definitief maken? Hij krijgt dan een factuurnummer en kan niet meer worden gewijzigd.")) {
+                          // Voor de kopie in Drive; lukt koppelen niet, dan gaat de factuur gewoon door.
+                          const google = inst.drive_kopie ? zorgVoorGoogle(inst.afzender_email, SCOPES.drive).catch(() => {}) : Promise.resolve()
                           actie("definitief", async () => {
+                            await google
                             const r = await maakDefinitief(f, b, inst)
                             setMelding(r.driveMelding ?? "")
                           })
@@ -133,8 +136,10 @@ export function FacturenKaart({ boeking: b, inst, stappen }: { boeking: Boeking;
                     type="button"
                     className="knop-klein"
                     disabled={!!bezig}
-                    title={driveBeschikbaar() ? "" : "Koppel eerst Google (onderaan de pagina)"}
-                    onClick={() => actie("drive", async () => { await kopieNaarDrive(f, inst); setMelding("") })}
+                    onClick={() => {
+                      const google = zorgVoorGoogle(inst.afzender_email, SCOPES.drive)
+                      actie("drive", async () => { await google; await kopieNaarDrive(f, inst); setMelding("") })
+                    }}
                   >
                     {bezig === "drive" ? "Bezig…" : "Naar Drive"}
                   </button>

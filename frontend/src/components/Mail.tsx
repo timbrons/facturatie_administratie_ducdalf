@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { useQueryClient } from "@tanstack/react-query"
 import { sleutels, useBetalingen, useFacturen, useMaillog, useSjablonen } from "../lib/data"
-import { gmailBeschikbaar, koppelGmail, useGmailGekoppeld } from "../lib/gmail"
+import { gmailBeschikbaar, koppelGmail, SCOPES, useGmailGekoppeld, zorgVoorGoogle } from "../lib/gmail"
 import { actueleFactuur, beschikbareBijlagen, kiesSjabloon, variabelenVoor, verstuurMail, type BijlageKeuze } from "../lib/mail"
 import type { Boeking, Instellingen } from "../lib/types"
 import { combineer, vulIn } from "../domein/sjablonen"
@@ -132,6 +132,8 @@ function MailDialoog({ boeking: b, inst, stappen, startSleutels, onSluiten }: {
     setBezig(true)
     setFout(null)
     try {
+      // Eerst (binnen de klik) zorgen voor een geldige Google-koppeling.
+      await zorgVoorGoogle(inst.afzender_email, SCOPES.verzenden)
       await verstuurMail({ boeking: b, inst, stappen, factuur, eerdere: log, aan, onderwerp, tekst, bijlagen, sjablonen: gekozen })
       await Promise.all([
         qc.invalidateQueries({ queryKey: sleutels.maillog }),
@@ -202,7 +204,7 @@ function MailDialoog({ boeking: b, inst, stappen, startSleutels, onSluiten }: {
             <Melding soort="waarschuwing">Er is nog geen brochure geüpload. <Link to="/instellingen">Upload hem bij Instellingen</Link>.</Melding>
           )}
           {!gekoppeld && (
-            <Melding soort="info">Koppel eerst Google om te kunnen versturen. <GmailKnop inst={inst} klein /></Melding>
+            <p className="text-xs text-zacht">Bij Versturen koppelt de app zo nodig eerst met Google (er verschijnt kort een venster van Google).</p>
           )}
           {fout ? <Fout fout={fout} /> : null}
           <div className="flex justify-end gap-2">
@@ -210,7 +212,7 @@ function MailDialoog({ boeking: b, inst, stappen, startSleutels, onSluiten }: {
             <button
               type="button"
               className="knop"
-              disabled={bezig || !gekoppeld || !aan || !onderwerp.trim() || !tekst.trim()}
+              disabled={bezig || !aan || !onderwerp.trim() || !tekst.trim()}
               onClick={verstuur}
             >
               {bezig ? "Versturen…" : "Versturen"}

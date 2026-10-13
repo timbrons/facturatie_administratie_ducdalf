@@ -64,11 +64,14 @@ Het client secret (nodig voor A) staat alleen in PocketBase op de NAS.
 ## Google in de app gebruiken (Gmail en Drive)
 
 1. Zet `VITE_GOOGLE_CLIENT_ID` als repository-variabele (zie de tabel hierboven) en publiceer opnieuw.
-2. Klik in de app op **Koppel Google** (onderaan de pagina, bij E-mails van een boeking of bij
-   Aanmeldingen). Kies `ducdalf.languedoc@gmail.com` en **vink alle gevraagde rechten aan**: mail
-   versturen, mail lezen en de eigen bestanden in Drive.
-3. Het toegangstoken staat alleen in het geheugen van de browser. Na het herladen van de pagina of
-   na ± 1 uur klik je opnieuw op Koppel Google. Er worden geen tokens opgeslagen.
+2. **Inloggen met Google** vraagt meteen ook de rechten voor Gmail en Drive. Vink bij de eerste keer
+   **alle gevraagde rechten aan**: mail versturen, mail lezen en de eigen bestanden in Drive. Na het
+   inloggen staat onderaan "✓ Google gekoppeld".
+3. Het toegangstoken staat alleen in het geheugen van de browser en is ± 1 uur geldig. Is het
+   verlopen of heb je de pagina herladen, dan koppelt de app vanzelf opnieuw zodra je iets doet dat
+   Google nodig heeft (mail versturen, factuur naar Drive, aanmeldingen ophalen). Er verschijnt dan
+   kort een venster van Google dat zichzelf sluit. De knop **Koppel Google** onderaan blijft als
+   reserve. Er worden geen tokens opgeslagen.
 4. De afzender van de mails is het gekoppelde account. Vul bij Instellingen bij "E-mail" van de
    afzender hetzelfde adres in.
 
