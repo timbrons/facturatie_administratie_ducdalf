@@ -3,10 +3,10 @@ import { ClientResponseError } from "pocketbase"
 import { config } from "../lib/config"
 import { pb } from "../lib/pb"
 import { Melding } from "../components/ui"
-import { naarEersteFout, OpenbarePagina, Sectie, Valkuil, Veld, WEBSITE } from "../components/Openbaar"
+import { naarEersteFout, Sectie, Valkuil, Veld, WEBSITE, WebsitePagina } from "../components/Openbaar"
 import { Beschikbaarheid } from "../components/Beschikbaarheid"
 import { dagenTussen, formatLang, formatMiddel, vandaag } from "../domein/datum"
-import { controleer, LEGE_AANVRAAG, minNachtenVanaf, type Aanvraag, type Periode, type Regels } from "../domein/boekingsformulier"
+import { controleer, LEGE_AANVRAAG, type Aanvraag, type Periode, type Regels } from "../domein/boekingsformulier"
 
 // Openbaar boekingsformulier (zonder inloggen). Te bereiken via <app>/boeken/
 // of <app>/#/boeken. Een aanvraag wordt in de app direct een boeking met
@@ -95,7 +95,11 @@ export function Boeken() {
   const maxPersonen = regels?.max_personen ?? 6
 
   return (
-    <OpenbarePagina titel="Boekingsaanvraag" breed>
+    <WebsitePagina
+      eyebrow="Reserveren"
+      titel="Boekingsaanvraag & beschikbaarheid"
+      intro="Kies in de kalender je aankomst- en vertrekdatum en dien je aanvraag in via het formulier."
+    >
       {klaar ? (
         <div className="mx-auto max-w-3xl kaart">
           <div className="wenkbrauw mb-3">Ontvangen</div>
@@ -108,19 +112,15 @@ export function Boeken() {
         </div>
       ) : (
         <form ref={formRef} onSubmit={verstuur} noValidate className="flex flex-col gap-8">
-          <div className="flex flex-col gap-3 text-tekst">
-            <p>
-              Kies in de kalender je aankomst- en vertrekdatum en vul je gegevens in. Je aanvraag is nog geen definitieve boeking:
-              we nemen zo snel mogelijk contact met je op om alles af te stemmen.
-            </p>
-            <p>Velden met een <span className="text-rood">*</span> zijn verplicht.</p>
-          </div>
-
           <Valkuil waarde={website} zet={setWebsite} />
 
-          <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+          <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
             {/* Links de invulvelden, rechts de kalender (op de telefoon de kalender eerst). */}
             <div className="flex flex-col gap-8 lg:order-1 order-2">
+              <p className="text-sm text-tekst">
+                Je aanvraag is nog geen definitieve boeking: we nemen zo snel mogelijk contact met je op om alles af te stemmen.
+                Velden met een <span className="text-rood">*</span> zijn verplicht.
+              </p>
               <Sectie titel="Gegevens">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Veld label="Voornaam" verplicht fout={fouten.voornaam}>
@@ -174,7 +174,7 @@ export function Boeken() {
               </div>
             </div>
             <div className="order-1 lg:order-2">
-              <Sectie titel="Beschikbaarheid" intro={regels?.min_nachten ? `Minimaal ${regels.min_nachten} nachten.` : undefined}>
+              <Sectie titel="Beschikbaarheid">
                 {laadFout ? (
                   <Melding soort="fout">
                     De beschikbaarheid kon niet worden geladen.{" "}
@@ -199,15 +199,12 @@ export function Boeken() {
                     <div className="font-serif text-base text-inkt sm:text-xl">{nachten || "—"}</div>
                   </div>
                   {(fouten.aankomst || fouten.vertrek) && <div className="text-xs text-rood col-span-3">{fouten.aankomst || fouten.vertrek}</div>}
-                  {a.aankomst && !a.vertrek && regels && !fouten.vertrek && (
-                    <div className="text-xs text-zacht col-span-3">Vanaf deze datum verhuren we minimaal {minNachtenVanaf(a.aankomst, regels)} nachten.</div>
-                  )}
                 </div>
               </Sectie>
             </div>
           </div>
         </form>
       )}
-    </OpenbarePagina>
+    </WebsitePagina>
   )
 }
