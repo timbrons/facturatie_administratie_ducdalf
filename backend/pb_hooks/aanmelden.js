@@ -107,8 +107,8 @@ function controleer(invoer) {
   }
   if (aantal >= 1 && aantal <= MAX_PERSONEN && n !== aantal - 1) {
     fouten.extra_personen = aantal === 2
-      ? "Vul de gegevens in van de persoon die met u meereist."
-      : "Vul de gegevens in van alle " + (aantal - 1) + " personen die met u meereizen."
+      ? "Vul de gegevens in van de persoon die met je meereist."
+      : "Vul de gegevens in van alle " + (aantal - 1) + " personen die met je meereizen."
   }
 
   if (v.postcode) v.postcode = v.postcode.toUpperCase()
