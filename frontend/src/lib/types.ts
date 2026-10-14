@@ -33,7 +33,6 @@ export interface Instellingen extends RecordModel {
   huisfoto: string
   drive_kopie: boolean
   drive_map: string
-  aanmelding_zoekopdracht: string
 }
 
 export interface AanmeldingRecord extends RecordModel {
