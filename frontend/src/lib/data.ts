@@ -4,7 +4,7 @@ import { pb } from "./pb"
 import type {
   Betaling, Factuur, MailLog, MailSjabloon, TbAangifte,
   Boeking, ExtraRecord, Huurder, Instellingen, Nummerreeks, SeizoenRecord, Statuswijziging, TbTariefRecord,
-  WorkflowStapRecord,
+  WorkflowStapRecord, AanmeldingRecord,
 } from "./types"
 
 // Kleine laag boven PocketBase + React Query. Alle schermen halen hun data
@@ -27,6 +27,16 @@ export const sleutels = {
   tbAangiften: ["tb_aangiften"] as const,
   sjablonen: ["mail_sjablonen"] as const,
   maillog: ["mail_log"] as const,
+  aanmeldingen: ["aanmeldingen"] as const,
+}
+
+/** Inzendingen van het eigen aanmeldformulier, nieuwste eerst. */
+export function useAanmeldingen() {
+  return useQuery({
+    queryKey: sleutels.aanmeldingen,
+    queryFn: () => pb.collection("aanmeldingen").getFullList<AanmeldingRecord>({ sort: "-created" }),
+    refetchInterval: 5 * 60_000,
+  })
 }
 
 export function useInstellingen() {

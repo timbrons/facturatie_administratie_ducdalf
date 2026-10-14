@@ -1,3 +1,4 @@
+import { formulierUrl } from "./aanmeldingen"
 import { pb } from "./pb"
 import { aantalNachten } from "./boeking"
 import { markeerVerstuurd, pdfUrl } from "./facturen"
@@ -39,7 +40,8 @@ export function variabelenVoor(b: Boeking, inst: Instellingen, facturen: Factuur
     betaalinstructie: f?.gegevens?.betaaltekst ?? "",
     iban: inst.bank_iban,
     rekeninghouder: inst.bank_tnv,
-    link_aanmeldformulier: aanmeldLink(inst.aanmeldformulier_url, b.code),
+    // Zonder eigen adres: het formulier van deze app.
+    link_aanmeldformulier: aanmeldLink(inst.aanmeldformulier_url || formulierUrl(), b.code),
     afzender: inst.afzender_naam,
   }
 }

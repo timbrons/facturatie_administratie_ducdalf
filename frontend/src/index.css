@@ -82,6 +82,9 @@
   .kaart {
     @apply border border-lijn bg-white/70 p-5;
   }
+  .veld-fout input, .veld-fout select, .veld-fout textarea {
+    @apply border-rood;
+  }
   .infoblok {
     @apply border-l-2 border-olijf bg-zand px-5 py-4;
   }

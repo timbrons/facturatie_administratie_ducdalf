@@ -36,6 +36,18 @@ export interface Instellingen extends RecordModel {
   aanmelding_zoekopdracht: string
 }
 
+export interface AanmeldingRecord extends RecordModel {
+  status: "nieuw" | "gekoppeld" | "verwerkt"
+  velden: Record<string, string> | null
+  naam: string
+  email: string
+  aankomst: string
+  vertrek: string
+  boekingscode: string
+  toelichting: string
+  boeking: string
+}
+
 export interface SeizoenRecord extends RecordModel {
   jaar: number
   naam: string

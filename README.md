@@ -144,9 +144,9 @@ Sjablonen beheer je onder **Instellingen → E-mailsjablonen**.
 
 ## Aanmeldingen, Google Drive, export en privacy
 
-- **Aanmeldingen** (menu): ingevulde aanmeldformulieren ophalen uit Gmail en na controle overnemen in
-  de huurder en de boeking. Zie [docs/aanmeldformulier.md](docs/aanmeldformulier.md), met de kleine
-  aanpassing voor de website.
+- **Aanmeldformulier**: een eigen, openbaar formulier op `<app>/aanmelden/`. Inzendingen komen direct in
+  de app. Met de persoonlijke link (boekingscode) worden ze automatisch bij de boeking verwerkt, anders
+  staan ze onder **Aanmeldingen** klaar om over te nemen. Zie [docs/aanmeldformulier.md](docs/aanmeldformulier.md).
 - **Google Drive**: definitieve facturen en bewijsstukken toeristenbelasting komen als kopie in
   `Duc'dalf verhuurbeheer/…` in Google Drive. Aan of uit te zetten onder Instellingen.
 - **Instellingen → Export en privacy**:

@@ -11,6 +11,9 @@ export async function anonimiseer(huurderId: string, boekingen: Boeking[], maill
   const eigen = boekingen.filter((b) => b.huurder === huurderId)
   for (const b of eigen) {
     await pb.collection("boekingen").update(b.id, { aanmelding: null, kenteken: "", notities: "" })
+    // Ingevulde aanmeldformulieren bij deze boeking verdwijnen helemaal.
+    const formulieren = await pb.collection("aanmeldingen").getFullList({ filter: pb.filter("boeking = {:b}", { b: b.id }), fields: "id" })
+    for (const f of formulieren) await pb.collection("aanmeldingen").delete(f.id)
     for (const m of maillog.filter((x) => x.boeking === b.id && (x.aan || x.tekst))) {
       await pb.collection("mail_log").update(m.id, { aan: "", tekst: "" })
     }

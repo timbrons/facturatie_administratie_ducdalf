@@ -1,17 +1,44 @@
 import { pb } from "./pb"
 import { googleFetch, heeftRecht, SCOPES } from "./gmail"
-import type { Boeking, Huurder } from "./types"
+import type { AanmeldingRecord, Boeking, Huurder } from "./types"
 import { leesVelden, maakAanmelding, telPersonen, type Aanmelding } from "../domein/aanmelding"
 import { isBijOfVoorbij, type WorkflowStap } from "../domein/workflow"
 
-// Inzendingen van het aanmeldformulier ophalen uit Gmail (alleen lezen) en
-// na bevestiging overnemen in de huurder en de boeking.
+// Inzendingen van het aanmeldformulier: uit de eigen collectie `aanmeldingen`
+// (het formulier in deze app) of, voor het oude formulier, uit Gmail (alleen
+// lezen). Na bevestiging overnemen in de huurder en de boeking.
 
 export interface Inzending {
-  gmailId: string
+  bron: "formulier" | "gmail"
+  id: string
   ontvangen: string
   onderwerp: string
   aanmelding: Aanmelding
+  /** Formulier: de boeking die de server bij de boekingscode vond. */
+  boekingId?: string
+  /** Formulier: waarom de server niet automatisch koppelde. */
+  toelichting?: string
+}
+
+/** Adres van het aanmeldformulier van deze app (bijv. https://verhuur.…/aanmelden/). */
+export function formulierUrl(): string {
+  return `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, "")}aanmelden/`
+}
+
+export function uitFormulier(r: AanmeldingRecord): Inzending {
+  return {
+    bron: "formulier",
+    id: r.id,
+    ontvangen: r.created,
+    onderwerp: "",
+    aanmelding: maakAanmelding(r.velden ?? {}),
+    boekingId: r.boeking || undefined,
+    toelichting: r.toelichting || undefined,
+  }
+}
+
+export async function verwijderInzending(id: string): Promise<void> {
+  await pb.collection("aanmeldingen").delete(id)
 }
 
 export function lezenBeschikbaar(): boolean {
@@ -42,7 +69,8 @@ export async function haalInzendingen(zoekopdracht: string, max = 30): Promise<I
     const velden = leesVelden(inhoud)
     if (Object.keys(velden).length === 0) continue
     uit.push({
-      gmailId: m.id,
+      bron: "gmail",
+      id: m.id,
       ontvangen: new Date(Number(bericht.internalDate)).toISOString(),
       onderwerp: (bericht.payload?.headers ?? []).find((h: { name: string }) => h.name.toLowerCase() === "subject")?.value ?? "",
       aanmelding: maakAanmelding(velden),
@@ -51,9 +79,10 @@ export async function haalInzendingen(zoekopdracht: string, max = 30): Promise<I
   return uit
 }
 
-/** Bij welke boeking is deze Gmail-inzending al verwerkt? */
-export function verwerktBij(gmailId: string, boekingen: Boeking[]): Boeking | undefined {
-  return boekingen.find((b) => (b.aanmelding as { gmail_id?: string } | null)?.gmail_id === gmailId)
+/** Bij welke boeking is deze inzending al verwerkt? */
+export function verwerktBij(i: Inzending, boekingen: Boeking[]): Boeking | undefined {
+  const sleutel = i.bron === "gmail" ? "gmail_id" : "aanmelding_id"
+  return boekingen.find((b) => (b.aanmelding as Record<string, unknown> | null)?.[sleutel] === i.id)
 }
 
 export interface Overname { huurder: boolean; personen: boolean; kenteken: boolean }
@@ -78,7 +107,7 @@ export async function neemOver(
   }
   const telling = telPersonen(a, boeking.aankomst)
   const data: Record<string, unknown> = {
-    aanmelding: { ...a, gmail_id: inzending.gmailId, ontvangen: inzending.ontvangen },
+    aanmelding: { ...a, [inzending.bron === "gmail" ? "gmail_id" : "aanmelding_id"]: inzending.id, ontvangen: inzending.ontvangen },
     aanmelding_op: new Date().toISOString(),
   }
   if (keuze.kenteken && a.kenteken) data.kenteken = a.kenteken
@@ -90,4 +119,7 @@ export async function neemOver(
     data.status = "aanmeldformulier_ontvangen"
   }
   await pb.collection("boekingen").update(boeking.id, data)
+  if (inzending.bron === "formulier") {
+    await pb.collection("aanmeldingen").update(inzending.id, { status: "verwerkt", boeking: boeking.id })
+  }
 }
