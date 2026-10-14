@@ -86,6 +86,17 @@ Eenmalig instellen in de repository op GitHub:
 De app staat daarna op `https://timbrons.github.io/facturatie_administratie_ducdalf/`. Zonder login
 ziet een bezoeker alleen het inlogscherm. `robots.txt` en `noindex` houden zoekmachines weg.
 
+**Eigen domein** (bijv. `https://verhuur.vakantiehuis-ducdalf.nl`): de build gebruikt relatieve paden en
+werkt dus onder elk adres. Stappen:
+
+1. **Cloudflare → DNS → Add record**: type `CNAME`, naam `verhuur`, doel `timbrons.github.io`, Proxy status
+   **DNS only** (grijze wolk).
+2. **GitHub → Settings → Pages → Custom domain**: `verhuur.vakantiehuis-ducdalf.nl` → Save. Wacht tot de
+   DNS-controle groen is en zet **Enforce HTTPS** aan. Het oude github.io-adres stuurt daarna vanzelf door.
+3. **NAS**: in `.env` `PB_ORIGINS=https://timbrons.github.io,https://verhuur.vakantiehuis-ducdalf.nl`, daarna
+   in Container Manager het project opschonen en opnieuw bouwen (zodat `.env` opnieuw wordt gelezen).
+4. **Google Cloud → Clients → Duc'dalf app → Authorized JavaScript origins**: `https://verhuur.vakantiehuis-ducdalf.nl` toevoegen.
+
 **Later alles op de NAS?** Bouw met `VITE_BASE=/` en `VITE_API_URL=https://api.vakantiehuis-ducdalf.nl`
 en zet de inhoud van `frontend/dist/` in de map `pb_public/` op de NAS. PocketBase serveert de app
 dan zelf op `https://api.vakantiehuis-ducdalf.nl/`. Voeg dat adres toe aan `PB_ORIGINS` en aan de
