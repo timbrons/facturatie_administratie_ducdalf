@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState, type ReactNode } from "react"
+import { useEffect, useRef, useState } from "react"
 import { ClientResponseError } from "pocketbase"
 import { config } from "../lib/config"
 import { pb } from "../lib/pb"
-import { Merk } from "../components/Layout"
+import { naarEersteFout, OpenbarePagina, Sectie, Valkuil, Veld, WEBSITE } from "../components/Openbaar"
 import { Melding } from "../components/ui"
 import { formatLang, isIsoDatum, plusDagen, vandaag } from "../domein/datum"
 import {
@@ -13,8 +13,6 @@ import {
 // Openbaar aanmeldformulier voor huurders (zonder inloggen). Te bereiken via
 // <app>/aanmelden/ of <app>/#/aanmelden, met ?boeking=<code> uit de mail.
 
-const WEBSITE = "https://vakantiehuis-ducdalf.nl"
-const FOTO = `${import.meta.env.BASE_URL}inloggen.jpg`
 
 interface Vooraf { aankomst: string; vertrek: string; personen: number; al_ontvangen: boolean }
 
@@ -69,12 +67,7 @@ export function Aanmelden() {
 
   function toonFouten(nieuw: Fouten) {
     setFouten(nieuw)
-    // Naar het eerste veld met een fout.
-    requestAnimationFrame(() => {
-      const veld = formRef.current?.querySelector(".veld-fout")
-      veld?.scrollIntoView({ behavior: "smooth", block: "center" })
-      veld?.querySelector<HTMLElement>("input, select, textarea")?.focus({ preventScroll: true })
-    })
+    naarEersteFout(formRef.current)
   }
 
   async function verstuur(e: React.FormEvent) {
@@ -109,17 +102,7 @@ export function Aanmelden() {
   }
 
   return (
-    <div className="min-h-screen bg-creme">
-      <div className="relative h-56 sm:h-72">
-        <img src={FOTO} alt="" className="absolute inset-0 h-full w-full object-cover object-[50%_45%]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-inkt/50 via-inkt/10 to-inkt/40" />
-        <div className="absolute left-5 top-5 sm:left-10 sm:top-8"><Merk licht /></div>
-        <div className="absolute bottom-6 left-5 right-5 sm:bottom-8 sm:left-10">
-          <h1 className="text-white">Aanmeldformulier</h1>
-        </div>
-      </div>
-
-      <main className="mx-auto w-full max-w-3xl px-5 py-10 sm:px-8">
+    <OpenbarePagina titel="Aanmeldformulier">
         {klaar ? (
           <div className="kaart">
             <div className="wenkbrauw mb-3">Ontvangen</div>
@@ -153,10 +136,7 @@ export function Aanmelden() {
               </Melding>
             )}
 
-            {/* Valkuil voor robots: mensen zien dit veld niet. */}
-            <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
-              <label>Website <input tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} /></label>
-            </div>
+            <Valkuil waarde={website} zet={setWebsite} />
 
             <Sectie titel="Huurperiode">
               <div className="grid gap-4 sm:grid-cols-3">
@@ -293,39 +273,6 @@ export function Aanmelden() {
             </div>
           </form>
         )}
-      </main>
-
-      <footer className="border-t border-lijn bg-zand">
-        <div className="mx-auto flex max-w-3xl flex-col gap-2 px-5 py-6 text-sm text-zacht sm:flex-row sm:justify-between sm:px-8">
-          <Merk />
-          <a href={WEBSITE} className="text-zacht">vakantiehuis-ducdalf.nl</a>
-        </div>
-      </footer>
-    </div>
-  )
-}
-
-function Sectie({ titel, intro, children }: { titel: string; intro?: string; children: ReactNode }) {
-  return (
-    <section className="kaart flex flex-col gap-4">
-      <div>
-        <h2>{titel}</h2>
-        {intro && <p className="mt-1 text-sm text-zacht">{intro}</p>}
-      </div>
-      {children}
-    </section>
-  )
-}
-
-function Veld({ label, verplicht, fout, hint, children }: { label: string; verplicht?: boolean; fout?: string; hint?: string; children: ReactNode }) {
-  return (
-    <label className={`flex flex-col gap-1 ${fout ? "veld-fout" : ""}`}>
-      <span className="text-sm text-tekst">
-        {label}
-        {verplicht && <span className="text-rood"> *</span>}
-      </span>
-      {children}
-      {fout ? <span className="text-xs text-rood">{fout}</span> : hint ? <span className="text-xs text-zacht">{hint}</span> : null}
-    </label>
+    </OpenbarePagina>
   )
 }

@@ -18,6 +18,7 @@ import { Sjablonen } from "./paginas/Sjablonen"
 import { Aanmeldingen } from "./paginas/Aanmeldingen"
 import { Beheer } from "./paginas/Beheer"
 import { Aanmelden } from "./paginas/Aanmelden"
+import { Boeken } from "./paginas/Boeken"
 
 function useIngelogd(): boolean {
   const [ingelogd, setIngelogd] = useState(pb.authStore.isValid)
@@ -36,8 +37,9 @@ export function App() {
     })
   }, [])
 
-  // Het aanmeldformulier is openbaar: huurders hoeven niet in te loggen.
+  // Het aanmeld- en boekingsformulier zijn openbaar: gasten hoeven niet in te loggen.
   if (/^#\/aanmelden(\?|$)/.test(window.location.hash)) return <Aanmelden />
+  if (/^#\/boeken(\?|$)/.test(window.location.hash)) return <Boeken />
   if (!ingelogd) return <Inloggen />
 
   return (
