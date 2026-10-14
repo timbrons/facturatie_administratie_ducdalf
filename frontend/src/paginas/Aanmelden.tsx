@@ -133,10 +133,13 @@ export function Aanmelden() {
           </div>
         ) : (
           <form ref={formRef} onSubmit={verstuur} noValidate className="flex flex-col gap-8">
-            <p className="text-tekst">
-              Fijn dat u bij ons komt logeren! Met dit formulier geeft u de gegevens door die we voor uw verblijf en de verplichte
-              registratie nodig hebben. Velden met een <span className="text-rood">*</span> zijn verplicht.
-            </p>
+            <div className="flex flex-col gap-3 text-tekst">
+              <p>
+                Fijn dat je ons huis wilt huren! Via dit formulier geef je de gegevens door die we voor jouw verblijf en de registratie
+                bij Parc le Duc nodig hebben.
+              </p>
+              <p>Velden met een <span className="text-rood">*</span> zijn verplicht.</p>
+            </div>
 
             {vooraf && !vooraf.al_ontvangen && (
               <Melding soort="info">
@@ -156,7 +159,7 @@ export function Aanmelden() {
               <label>Website <input tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} /></label>
             </div>
 
-            <Sectie titel="Uw verblijf">
+            <Sectie titel="Huurperiode">
               <div className="grid gap-4 sm:grid-cols-3">
                 <Veld label="Aankomstdatum" verplicht fout={fouten.aankomstdatum}>
                   <input type="date" value={f.aankomstdatum} min={vandaag()} onChange={(e) => zet("aankomstdatum", e.target.value)} />
@@ -173,7 +176,7 @@ export function Aanmelden() {
               </div>
             </Sectie>
 
-            <Sectie titel="Uw gegevens">
+            <Sectie titel="Gegevens">
               <div className="grid gap-4 sm:grid-cols-[8rem_1fr_1fr]">
                 <Veld label="Aanhef" verplicht fout={fouten.aanhef}>
                   <select value={f.aanhef} onChange={(e) => zet("aanhef", e.target.value)}>
@@ -252,7 +255,7 @@ export function Aanmelden() {
               </Sectie>
             )}
 
-            <Sectie titel="In geval van nood" intro="Wie kunnen we bereiken als er tijdens uw verblijf iets met u gebeurt?">
+            <Sectie titel="In geval van nood waarschuwen" intro="Wie kunnen we bereiken als er tijdens uw verblijf iets met u gebeurt?">
               <div className="grid gap-4 sm:grid-cols-2">
                 <Veld label="Naam" verplicht fout={fouten.noodcontact_naam}>
                   <input value={f.noodcontact_naam} onChange={(e) => zet("noodcontact_naam", e.target.value)} />
@@ -270,7 +273,7 @@ export function Aanmelden() {
             </Sectie>
 
             <Sectie titel="Vragen of opmerkingen">
-              <Veld label="Uw bericht" fout={fouten.opmerkingen}>
+              <Veld label="Type hier je bericht" fout={fouten.opmerkingen}>
                 <textarea rows={4} value={f.opmerkingen} onChange={(e) => zet("opmerkingen", e.target.value)} />
               </Veld>
             </Sectie>
