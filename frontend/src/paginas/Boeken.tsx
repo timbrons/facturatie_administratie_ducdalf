@@ -5,7 +5,7 @@ import { pb } from "../lib/pb"
 import { Melding } from "../components/ui"
 import { naarEersteFout, OpenbarePagina, Sectie, Valkuil, Veld, WEBSITE } from "../components/Openbaar"
 import { Beschikbaarheid } from "../components/Beschikbaarheid"
-import { dagenTussen, formatLang, vandaag } from "../domein/datum"
+import { dagenTussen, formatLang, formatMiddel, vandaag } from "../domein/datum"
 import { controleer, LEGE_AANVRAAG, minNachtenVanaf, type Aanvraag, type Periode, type Regels } from "../domein/boekingsformulier"
 
 // Openbaar boekingsformulier (zonder inloggen). Te bereiken via <app>/boeken/
@@ -118,91 +118,93 @@ export function Boeken() {
 
           <Valkuil waarde={website} zet={setWebsite} />
 
-          <Sectie titel="Huurperiode" intro={regels?.min_nachten ? `Minimaal ${regels.min_nachten} nachten.` : undefined}>
-            {laadFout ? (
-              <Melding soort="fout">
-                De beschikbaarheid kon niet worden geladen.{" "}
-                <button type="button" className="underline" onClick={laad}>Opnieuw proberen</button>
-              </Melding>
-            ) : !bezet || !regels ? (
-              <p className="text-sm text-zacht">Beschikbaarheid laden…</p>
-            ) : (
-              <Beschikbaarheid bezet={bezet} regels={regels} aankomst={a.aankomst} vertrek={a.vertrek} kies={kiesData} />
-            )}
-            <div className={`grid gap-4 border-t border-lijn pt-4 sm:grid-cols-3 ${fouten.aankomst || fouten.vertrek ? "veld-fout" : ""}`}>
-              <div>
-                <div className="text-sm text-tekst">Aankomst <span className="text-rood">*</span></div>
-                <div className="font-serif text-xl text-inkt">{a.aankomst ? formatLang(a.aankomst) : "—"}</div>
-              </div>
-              <div>
-                <div className="text-sm text-tekst">Vertrek <span className="text-rood">*</span></div>
-                <div className="font-serif text-xl text-inkt">{a.vertrek ? formatLang(a.vertrek) : "—"}</div>
-              </div>
-              <div>
-                <div className="text-sm text-tekst">Aantal nachten</div>
-                <div className="font-serif text-xl text-inkt">{nachten || "—"}</div>
-              </div>
-              {(fouten.aankomst || fouten.vertrek) && <div className="text-xs text-rood sm:col-span-3">{fouten.aankomst || fouten.vertrek}</div>}
-              {a.aankomst && !a.vertrek && regels && !fouten.vertrek && (
-                <div className="text-xs text-zacht sm:col-span-3">Vanaf deze datum verhuren we minimaal {minNachtenVanaf(a.aankomst, regels)} nachten.</div>
+          <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+            {/* Links de invulvelden, rechts de kalender (op de telefoon de kalender eerst). */}
+            <div className="flex flex-col gap-8 lg:order-1 order-2">
+              <Sectie titel="Gegevens">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Veld label="Voornaam" verplicht fout={fouten.voornaam}>
+                    <input value={a.voornaam} autoComplete="given-name" onChange={(e) => zet("voornaam", e.target.value)} />
+                  </Veld>
+                  <Veld label="Achternaam" verplicht fout={fouten.achternaam}>
+                    <input value={a.achternaam} autoComplete="family-name" onChange={(e) => zet("achternaam", e.target.value)} />
+                  </Veld>
+                  <Veld label="E-mailadres" verplicht fout={fouten.email}>
+                    <input type="email" value={a.email} autoComplete="email" onChange={(e) => zet("email", e.target.value)} />
+                  </Veld>
+                  <Veld label="Telefoonnummer" fout={fouten.telefoon}>
+                    <input type="tel" value={a.telefoon} autoComplete="tel" onChange={(e) => zet("telefoon", e.target.value)} />
+                  </Veld>
+                </div>
+              </Sectie>
+              <Sectie titel="Gezelschap">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Veld label="Volwassenen" verplicht fout={fouten.volwassenen} hint="18 jaar en ouder">
+                    <select value={a.volwassenen} onChange={(e) => zet("volwassenen", e.target.value)}>
+                      {Array.from({ length: maxPersonen }, (_, i) => <option key={i} value={String(i + 1)}>{i + 1}</option>)}
+                    </select>
+                  </Veld>
+                  <Veld label="Kinderen" fout={fouten.kinderen} hint="Jonger dan 18 jaar">
+                    <select value={a.kinderen} onChange={(e) => zet("kinderen", e.target.value)}>
+                      {Array.from({ length: maxPersonen }, (_, i) => <option key={i} value={String(i)}>{i}</option>)}
+                    </select>
+                  </Veld>
+                </div>
+                <p className="text-xs text-zacht">Het huis is geschikt voor maximaal {maxPersonen} personen.</p>
+              </Sectie>
+              <Sectie titel="Vragen of opmerkingen">
+                <Veld label="Type hier je bericht" fout={fouten.opmerkingen}>
+                  <textarea rows={4} value={a.opmerkingen} onChange={(e) => zet("opmerkingen", e.target.value)} />
+                </Veld>
+              </Sectie>
+
+              {Object.keys(fouten).length > 0 && !algemeneFout && (
+                <Melding soort="fout">Niet alles is goed ingevuld. Kijk de rood gemarkeerde onderdelen na.</Melding>
               )}
+              {algemeneFout && <Melding soort="fout">{algemeneFout}</Melding>}
+
+              <div className="flex flex-col gap-4 border-t border-lijn pt-6 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs text-zacht sm:max-w-md">
+                  We gebruiken je gegevens alleen om je aanvraag af te handelen. Lees meer in onze{" "}
+                  <a href={`${config.apiUrl}/privacy`} target="_blank" rel="noreferrer">privacyverklaring</a>.
+                </p>
+                <button type="submit" className="knop px-8 py-3.5" disabled={bezig || !regels}>
+                  {bezig ? "Versturen…" : "Aanvraag versturen"}
+                </button>
+              </div>
             </div>
-          </Sectie>
-
-          <div className="grid gap-8 lg:grid-cols-2">
-            <Sectie titel="Gezelschap">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Veld label="Volwassenen" verplicht fout={fouten.volwassenen} hint="18 jaar en ouder">
-                  <select value={a.volwassenen} onChange={(e) => zet("volwassenen", e.target.value)}>
-                    {Array.from({ length: maxPersonen }, (_, i) => <option key={i} value={String(i + 1)}>{i + 1}</option>)}
-                  </select>
-                </Veld>
-                <Veld label="Kinderen" fout={fouten.kinderen} hint="Jonger dan 18 jaar">
-                  <select value={a.kinderen} onChange={(e) => zet("kinderen", e.target.value)}>
-                    {Array.from({ length: maxPersonen }, (_, i) => <option key={i} value={String(i)}>{i}</option>)}
-                  </select>
-                </Veld>
-              </div>
-              <p className="text-xs text-zacht">Het huis is geschikt voor maximaal {maxPersonen} personen.</p>
-            </Sectie>
-
-            <Sectie titel="Gegevens">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Veld label="Voornaam" verplicht fout={fouten.voornaam}>
-                  <input value={a.voornaam} autoComplete="given-name" onChange={(e) => zet("voornaam", e.target.value)} />
-                </Veld>
-                <Veld label="Achternaam" verplicht fout={fouten.achternaam}>
-                  <input value={a.achternaam} autoComplete="family-name" onChange={(e) => zet("achternaam", e.target.value)} />
-                </Veld>
-                <Veld label="E-mailadres" verplicht fout={fouten.email}>
-                  <input type="email" value={a.email} autoComplete="email" onChange={(e) => zet("email", e.target.value)} />
-                </Veld>
-                <Veld label="Telefoonnummer" fout={fouten.telefoon}>
-                  <input type="tel" value={a.telefoon} autoComplete="tel" onChange={(e) => zet("telefoon", e.target.value)} />
-                </Veld>
-              </div>
-            </Sectie>
-          </div>
-
-          <Sectie titel="Vragen of opmerkingen">
-            <Veld label="Type hier je bericht" fout={fouten.opmerkingen}>
-              <textarea rows={4} value={a.opmerkingen} onChange={(e) => zet("opmerkingen", e.target.value)} />
-            </Veld>
-          </Sectie>
-
-          {Object.keys(fouten).length > 0 && !algemeneFout && (
-            <Melding soort="fout">Niet alles is goed ingevuld. Kijk de rood gemarkeerde onderdelen na.</Melding>
-          )}
-          {algemeneFout && <Melding soort="fout">{algemeneFout}</Melding>}
-
-          <div className="flex flex-col gap-4 border-t border-lijn pt-6 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-zacht sm:max-w-md">
-              We gebruiken je gegevens alleen om je aanvraag af te handelen. Lees meer in onze{" "}
-              <a href={`${config.apiUrl}/privacy`} target="_blank" rel="noreferrer">privacyverklaring</a>.
-            </p>
-            <button type="submit" className="knop px-8 py-3.5" disabled={bezig || !regels}>
-              {bezig ? "Versturen…" : "Aanvraag versturen"}
-            </button>
+            <div className="order-1 lg:order-2">
+              <Sectie titel="Beschikbaarheid" intro={regels?.min_nachten ? `Minimaal ${regels.min_nachten} nachten.` : undefined}>
+                {laadFout ? (
+                  <Melding soort="fout">
+                    De beschikbaarheid kon niet worden geladen.{" "}
+                    <button type="button" className="underline" onClick={laad}>Opnieuw proberen</button>
+                  </Melding>
+                ) : !bezet || !regels ? (
+                  <p className="text-sm text-zacht">Beschikbaarheid laden…</p>
+                ) : (
+                  <Beschikbaarheid bezet={bezet} regels={regels} aankomst={a.aankomst} vertrek={a.vertrek} kies={kiesData} maanden={1} />
+                )}
+                <div className={`grid gap-4 border-t border-lijn pt-4 grid-cols-3 ${fouten.aankomst || fouten.vertrek ? "veld-fout" : ""}`}>
+                  <div>
+                    <div className="text-sm text-tekst">Aankomst <span className="text-rood">*</span></div>
+                    <div className="font-serif text-base text-inkt sm:text-xl">{a.aankomst ? formatMiddel(a.aankomst) : "—"}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-tekst">Vertrek <span className="text-rood">*</span></div>
+                    <div className="font-serif text-base text-inkt sm:text-xl">{a.vertrek ? formatMiddel(a.vertrek) : "—"}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-tekst">Nachten</div>
+                    <div className="font-serif text-base text-inkt sm:text-xl">{nachten || "—"}</div>
+                  </div>
+                  {(fouten.aankomst || fouten.vertrek) && <div className="text-xs text-rood col-span-3">{fouten.aankomst || fouten.vertrek}</div>}
+                  {a.aankomst && !a.vertrek && regels && !fouten.vertrek && (
+                    <div className="text-xs text-zacht col-span-3">Vanaf deze datum verhuren we minimaal {minNachtenVanaf(a.aankomst, regels)} nachten.</div>
+                  )}
+                </div>
+              </Sectie>
+            </div>
           </div>
         </form>
       )}
