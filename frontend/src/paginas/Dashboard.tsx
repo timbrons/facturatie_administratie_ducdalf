@@ -46,7 +46,7 @@ export function Dashboard() {
 
   return (
     <>
-      <Paginakop wenkbrauw={`Vandaag, ${formatMiddel(nu)}`} titel="Wat moet ik doen?">
+      <Paginakop wenkbrauw={`Vandaag, ${formatMiddel(nu)}`} titel="Acties">
         <Link to="/boekingen/nieuw" className="knop sm:hidden">Nieuwe boeking</Link>
       </Paginakop>
 
@@ -76,6 +76,11 @@ export function Dashboard() {
         </div>
 
         <div className="flex flex-col gap-6">
+          <img
+            src={`${import.meta.env.BASE_URL}inloggen.jpg`}
+            alt="Vakantiehuis Duc’dalf"
+            className="aspect-[4/3] w-full border border-lijn object-cover object-[50%_48%]"
+          />
           <Kaart titel={`Seizoen ${jaar}`}>
             <dl className="grid grid-cols-2 gap-4">
               <div>
