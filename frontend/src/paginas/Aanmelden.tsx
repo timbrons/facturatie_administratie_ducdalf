@@ -115,8 +115,7 @@ export function Aanmelden() {
         <div className="absolute inset-0 bg-gradient-to-b from-inkt/50 via-inkt/10 to-inkt/40" />
         <div className="absolute left-5 top-5 sm:left-10 sm:top-8"><Merk licht /></div>
         <div className="absolute bottom-6 left-5 right-5 sm:bottom-8 sm:left-10">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/85">Aanmeldformulier</div>
-          <h1 className="mt-1 text-white">Welkom in Duc’dalf</h1>
+          <h1 className="text-white">Aanmeldformulier</h1>
         </div>
       </div>
 
