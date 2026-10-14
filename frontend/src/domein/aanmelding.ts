@@ -1,53 +1,10 @@
 import { isIsoDatum, type IsoDatum } from "./datum"
 import { leesDatum } from "./importeren"
 
-// Inzendingen van het aanmeldformulier (FormSubmit, template "table") lezen en
-// aan de juiste boeking koppelen. Veldnamen zoals op
-// vakantiehuis-ducdalf.nl/aanmelden/ (plus het verborgen veld "boekingscode").
+// Inzendingen van het aanmeldformulier omzetten en aan de juiste boeking
+// koppelen. Veldnamen zoals het formulier ze opslaat (aanmeldingen.velden).
 
 export type Velden = Record<string, string>
-
-function sleutel(s: string): string {
-  return s.trim().toLowerCase().replace(/[\s-]+/g, "_").replace(/[^a-z0-9_]/g, "")
-}
-
-function decodeerEntiteiten(s: string): string {
-  return s
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;|&#x27;/g, "'")
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
-}
-
-function tekstVan(html: string): string {
-  return decodeerEntiteiten(html.replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "")).replace(/[ \t]+/g, " ").trim()
-}
-
-/** Leest de velden uit een FormSubmit-mail (HTML-tabel of platte tekst "veld: waarde"). */
-export function leesVelden(inhoud: { html?: string; tekst?: string }): Velden {
-  const velden: Velden = {}
-  if (inhoud.html) {
-    for (const rij of inhoud.html.match(/<tr[\s\S]*?<\/tr>/gi) ?? []) {
-      const cellen = (rij.match(/<t[hd][^>]*>[\s\S]*?<\/t[hd]>/gi) ?? []).map(tekstVan)
-      if (cellen.length >= 2 && cellen[0]) {
-        const k = sleutel(cellen[0])
-        if (k && !["name", "naam_veld", "field"].includes(k) && !(k === "naam" && cellen[cellen.length - 1].toLowerCase() === "waarde")) {
-          velden[k] = cellen[cellen.length - 1]
-        }
-      }
-    }
-  }
-  if (Object.keys(velden).length === 0 && inhoud.tekst) {
-    for (const regel of inhoud.tekst.split(/\r?\n/)) {
-      const m = /^\s*([A-Za-z][\w \-]*?)\s*:\s*(.*)$/.exec(regel)
-      if (m) velden[sleutel(m[1])] = m[2].trim()
-    }
-  }
-  return velden
-}
 
 export interface Persoon { naam: string; geboortedatum: IsoDatum | null; geboorteplaats: string }
 

@@ -32,7 +32,6 @@ Het client secret en (bij de vaste koppeling) de blijvende sleutel staan alleen 
 4. **Bereiken (scopes / gegevenstoegang)**: voeg toe:
    - `openid`, `.../auth/userinfo.email`, `.../auth/userinfo.profile` (inloggen)
    - `https://www.googleapis.com/auth/gmail.send` (mail versturen, fase 3)
-   - `https://www.googleapis.com/auth/gmail.readonly` (inzendingen van het aanmeldformulier lezen, fase 4)
    - `https://www.googleapis.com/auth/drive.file` (kopieën in Google Drive; de app ziet alleen de
      bestanden die hij zelf maakt, fase 4)
    - `https://www.googleapis.com/auth/calendar.events` (eigen verblijven in Google Agenda tonen,

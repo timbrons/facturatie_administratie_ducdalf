@@ -139,7 +139,6 @@ function Algemeen({ inst }: { inst: Instellingen }) {
         <div className="grid gap-4 sm:grid-cols-2">
           {tekst("tb_portaal_url", "Portaal toeristenbelasting", { type: "url" })}
           {tekst("aanmeldformulier_url", "Aanmeldformulier", { type: "url", hint: `Leeg = het formulier van deze app (${formulierUrl()})` })}
-          {tekst("aanmelding_zoekopdracht", "Gmail-zoekopdracht voor het oude formulier", { hint: "Standaard: from:formsubmit.co aanmelding" })}
         </div>
       </Kaart>
 

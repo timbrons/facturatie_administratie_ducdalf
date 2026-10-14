@@ -2,23 +2,17 @@ import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { useQueryClient } from "@tanstack/react-query"
 import { sleutels, useAanmeldingen, useBoekingen, useInstellingen, useStappen } from "../lib/data"
-import { gmailBeschikbaar, SCOPES, zorgVoorGoogle } from "../lib/gmail"
-import { formulierUrl, haalInzendingen, neemOver, uitFormulier, verwerktBij, verwijderInzending, type Inzending } from "../lib/aanmeldingen"
+import { formulierUrl, neemOver, uitFormulier, verwerktBij, verwijderInzending, type Inzending } from "../lib/aanmeldingen"
 import { boekingNaam, type Boeking } from "../lib/types"
 import { telPersonen, zoekBoeking } from "../domein/aanmelding"
 import { formatLang, formatTijdstip } from "../domein/datum"
 import { Fout, Kaart, Laden, Melding, Paginakop } from "../components/ui"
-import { GmailKnop } from "../components/Mail"
 
 export function Aanmeldingen() {
   const inst = useInstellingen()
   const boekingen = useBoekingen()
   const stappen = useStappen()
   const aanmeldingen = useAanmeldingen()
-  const [inzendingen, setInzendingen] = useState<Inzending[] | null>(null)
-  const [bezig, setBezig] = useState(false)
-  const [fout, setFout] = useState<unknown>(null)
-  const [oudOpen, setOudOpen] = useState(false)
 
   if (inst.isLoading || boekingen.isLoading || stappen.isLoading || aanmeldingen.isLoading) return <Laden />
   if (aanmeldingen.error) return <Fout fout={aanmeldingen.error} />
@@ -26,19 +20,6 @@ export function Aanmeldingen() {
   const nieuw = (aanmeldingen.data ?? []).filter((a) => a.status === "nieuw")
   const verwerkt = (aanmeldingen.data ?? []).filter((a) => a.status !== "nieuw").slice(0, 15)
   const formulierAdres = formulierUrl()
-
-  async function ophalen() {
-    setBezig(true)
-    setFout(null)
-    try {
-      await zorgVoorGoogle(inst.data?.afzender_email, SCOPES.lezen)
-      setInzendingen(await haalInzendingen(inst.data?.aanmelding_zoekopdracht ?? ""))
-    } catch (err) {
-      setFout(err)
-    } finally {
-      setBezig(false)
-    }
-  }
 
   return (
     <>
@@ -83,25 +64,6 @@ export function Aanmeldingen() {
         </Kaart>
       )}
 
-      <div className="border-t border-lijn pt-6">
-        <button type="button" className="text-sm text-goud-tekst underline" onClick={() => setOudOpen(!oudOpen)}>
-          {oudOpen ? "Verberg" : "Toon"} inzendingen van het oude formulier (FormSubmit, via Gmail)
-        </button>
-        {oudOpen && (
-          <div className="mt-4 flex flex-col gap-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <GmailKnop inst={inst.data} />
-              <button type="button" className="knop" disabled={bezig || !gmailBeschikbaar()} onClick={ophalen}>
-                {bezig ? "Ophalen…" : "Ophalen uit Gmail"}
-              </button>
-            </div>
-            {!gmailBeschikbaar() && <Melding soort="waarschuwing">De Google-koppeling is niet ingesteld (VITE_GOOGLE_CLIENT_ID).</Melding>}
-            {fout ? <Fout fout={fout} /> : null}
-            {inzendingen && inzendingen.length === 0 && <div className="infoblok">Geen inzendingen gevonden met zoekopdracht “{inst.data?.aanmelding_zoekopdracht}”.</div>}
-            {(inzendingen ?? []).map((i) => <InzendingKaart key={i.id} inzending={i} boekingen={lijst} />)}
-          </div>
-        )}
-      </div>
     </>
   )
 }
@@ -205,26 +167,24 @@ function InzendingKaart({ inzending: i, boekingen }: { inzending: Inzending; boe
                 >
                   {bezig ? "Bezig…" : "Overnemen"}
                 </button>
-                {i.bron === "formulier" && (
-                  <button
-                    type="button"
-                    className="ml-3 text-sm text-rood underline"
-                    disabled={bezig}
-                    onClick={async () => {
-                      if (!window.confirm("Deze aanmelding verwijderen? Doe dit alleen bij spam of een dubbele inzending.")) return
-                      setBezig(true)
-                      try {
-                        await verwijderInzending(i.id)
-                        await qc.invalidateQueries({ queryKey: sleutels.aanmeldingen })
-                      } catch (err) {
-                        setFout(err)
-                        setBezig(false)
-                      }
-                    }}
-                  >
-                    Verwijderen
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="ml-3 text-sm text-rood underline"
+                  disabled={bezig}
+                  onClick={async () => {
+                    if (!window.confirm("Deze aanmelding verwijderen? Doe dit alleen bij spam of een dubbele inzending.")) return
+                    setBezig(true)
+                    try {
+                      await verwijderInzending(i.id)
+                      await qc.invalidateQueries({ queryKey: sleutels.aanmeldingen })
+                    } catch (err) {
+                      setFout(err)
+                      setBezig(false)
+                    }
+                  }}
+                >
+                  Verwijderen
+                </button>
               </div>
             </>
           )}

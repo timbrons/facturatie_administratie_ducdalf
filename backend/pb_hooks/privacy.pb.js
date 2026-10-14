@@ -32,7 +32,7 @@ routerAdd("GET", "/privacy", (e) => {
 <ul>
 <li>in te loggen (naam en e-mailadres);</li>
 <li>e-mails aan huurders te versturen vanuit dat account (gmail.send);</li>
-<li>ingevulde aanmeldformulieren uit de inbox te lezen om ze over te nemen in de boeking (gmail.readonly);</li>
+<li>eigen verblijven in Google Agenda te tonen, toe te voegen en te wijzigen, en de bezette periodes te bepalen (calendar.events);</li>
 <li>kopieën van facturen en bewijsstukken in Google Drive te zetten; de app ziet alleen de bestanden die zij zelf heeft gemaakt (drive.file).</li>
 </ul>
 <p>Gegevens uit Google worden niet verkocht, niet gedeeld met derden, niet gebruikt voor advertenties en niet gebruikt om AI-modellen te trainen. Het gebruik voldoet aan het <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, inclusief de eisen voor beperkt gebruik (Limited Use).</p>

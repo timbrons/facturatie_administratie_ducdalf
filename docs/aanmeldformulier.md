@@ -1,6 +1,6 @@
 # Aanmeldformulier
 
-Het aanmeldformulier hoort bij de app zelf. Er is geen externe formulierdienst meer nodig. Huurders
+Het aanmeldformulier hoort bij de app zelf, zonder externe formulierdienst. Huurders
 hoeven niet in te loggen. Wat ze invullen komt rechtstreeks in de database op de NAS, in de collectie
 `aanmeldingen`.
 
@@ -52,12 +52,6 @@ links (`https://vakantiehuis-ducdalf.nl/aanmelden/?boeking=…`) blijven werken?
 <script>location.replace('https://verhuur.vakantiehuis-ducdalf.nl/aanmelden/' + location.search);</script>
 </head><body><a href="https://verhuur.vakantiehuis-ducdalf.nl/aanmelden/">Naar het aanmeldformulier</a></body></html>
 ```
-
-## Het oude formulier (FormSubmit)
-
-Inzendingen die nog via FormSubmit in Gmail staan, haal je op onder **Aanmeldingen → Toon inzendingen van
-het oude formulier**. Ze worden op dezelfde manier overgenomen. De zoekopdracht in Gmail stel je in bij
-Instellingen → Links. Standaard is dat `from:formsubmit.co aanmelding`.
 
 ## Privacy
 

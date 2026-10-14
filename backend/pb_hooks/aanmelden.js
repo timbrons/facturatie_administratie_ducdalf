@@ -4,8 +4,7 @@
 // als de boekingscode klopt en er niets te twijfelen valt → melding per e-mail
 // aan de eigenaren zelf (nooit aan de huurder).
 //
-// De velden heten hetzelfde als op het oude formulier (FormSubmit), zodat de
-// app ze op dezelfde manier leest (frontend/src/domein/aanmelding.ts).
+// De velden worden zo opgeslagen dat de app ze direct leest (frontend/src/domein/aanmelding.ts).
 
 const MAX_EXTRA = 5
 const MAX_PERSONEN = 6

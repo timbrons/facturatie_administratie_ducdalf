@@ -1,44 +1,23 @@
 import { describe, expect, it } from "vitest"
-import { leesVelden, leeftijdOp, maakAanmelding, telPersonen, zoekBoeking } from "./aanmelding"
+import { leeftijdOp, maakAanmelding, telPersonen, zoekBoeking } from "./aanmelding"
 import { factuurBestandsnaam, factuurMap, veiligeNaam } from "./bestandsnamen"
 import { agendaAfspraak, eigenVerblijven } from "./agenda"
 
-// Fictieve inzending zoals FormSubmit ("_template=table") die mailt.
-const HTML = `
-<table>
-  <tr><th>Name</th><th>Value</th></tr>
-  <tr><td><strong>boekingscode</strong></td><td>AbCdEf123</td></tr>
-  <tr><td><strong>aankomstdatum</strong></td><td>2026-10-17</td></tr>
-  <tr><td><strong>vertrekdatum</strong></td><td>2026-10-26</td></tr>
-  <tr><td><strong>aantal_personen</strong></td><td>4</td></tr>
-  <tr><td><strong>aanhef</strong></td><td>Mevr.</td></tr>
-  <tr><td><strong>voornaam</strong></td><td>Anna</td></tr>
-  <tr><td><strong>achternaam</strong></td><td>de Testvrouw</td></tr>
-  <tr><td><strong>adres</strong></td><td>Voorbeeldlaan 1</td></tr>
-  <tr><td><strong>postcode</strong></td><td>1234 ab</td></tr>
-  <tr><td><strong>plaats</strong></td><td>Utrecht</td></tr>
-  <tr><td><strong>telefoon_vast</strong></td><td>-</td></tr>
-  <tr><td><strong>telefoon_mobiel</strong></td><td>06 00 00 00 00</td></tr>
-  <tr><td><strong>email</strong></td><td>Anna@Example.com</td></tr>
-  <tr><td><strong>kenteken_auto</strong></td><td>ts-001-a</td></tr>
-  <tr><td><strong>geboortedatum</strong></td><td>1980-01-01</td></tr>
-  <tr><td><strong>geboorteplaats</strong></td><td>Utrecht</td></tr>
-  <tr><td><strong>extra_persoon_1_naam</strong></td><td>Bram de Testvrouw</td></tr>
-  <tr><td><strong>extra_persoon_1_geboortedatum</strong></td><td>1979-05-05</td></tr>
-  <tr><td><strong>extra_persoon_2_naam</strong></td><td>Kim</td></tr>
-  <tr><td><strong>extra_persoon_2_geboortedatum</strong></td><td>2008-10-18</td></tr>
-  <tr><td><strong>extra_persoon_3_naam</strong></td><td>Sam</td></tr>
-  <tr><td><strong>extra_persoon_3_geboortedatum</strong></td><td></td></tr>
-  <tr><td><strong>noodcontact_naam</strong></td><td>Opa &amp; Oma</td></tr>
-  <tr><td><strong>opmerkingen</strong></td><td>We komen &#39;s avonds aan.</td></tr>
-</table>`
+// Fictieve inzending zoals het aanmeldformulier hem opslaat (aanmeldingen.velden).
+const VELDEN: Record<string, string> = {
+  boekingscode: "AbCdEf123", aankomstdatum: "2026-10-17", vertrekdatum: "2026-10-26", aantal_personen: "4",
+  aanhef: "Mevr.", voornaam: "Anna", achternaam: "de Testvrouw", adres: "Voorbeeldlaan 1", postcode: "1234 ab",
+  plaats: "Utrecht", telefoon_vast: "-", telefoon_mobiel: "06 00 00 00 00", email: "Anna@Example.com",
+  kenteken_auto: "ts-001-a", geboortedatum: "1980-01-01", geboorteplaats: "Utrecht",
+  extra_persoon_1_naam: "Bram de Testvrouw", extra_persoon_1_geboortedatum: "1979-05-05",
+  extra_persoon_2_naam: "Kim", extra_persoon_2_geboortedatum: "2008-10-18",
+  extra_persoon_3_naam: "Sam", extra_persoon_3_geboortedatum: "",
+  noodcontact_naam: "Opa & Oma", opmerkingen: "We komen 's avonds aan.",
+}
 
 describe("aanmeldformulier", () => {
-  const v = leesVelden({ html: HTML })
-  const a = maakAanmelding(v)
-  it("leest de velden uit de FormSubmit-tabel", () => {
-    expect(v.aankomstdatum).toBe("2026-10-17")
-    expect(v.name).toBeUndefined()
+  const a = maakAanmelding(VELDEN)
+  it("zet de velden om naar een aanmelding", () => {
     expect(a).toMatchObject({
       boekingscode: "AbCdEf123", aankomst: "2026-10-17", vertrek: "2026-10-26", aantalPersonen: 4,
       voornaam: "Anna", achternaam: "de Testvrouw", postcode: "1234 AB", email: "anna@example.com",
@@ -46,10 +25,6 @@ describe("aanmeldformulier", () => {
     })
     expect(a.noodcontact.naam).toBe("Opa & Oma")
     expect(a.extraPersonen).toHaveLength(3)
-  })
-  it("leest ook platte tekst", () => {
-    const t = leesVelden({ tekst: "voornaam: Piet\naankomstdatum: 17-10-2026\nkenteken auto: ab-12-cd" })
-    expect(maakAanmelding(t)).toMatchObject({ voornaam: "Piet", aankomst: "2026-10-17", kenteken: "AB-12-CD" })
   })
   it("telt volwassenen en minderjarigen op de aankomstdatum", () => {
     // Kim wordt op 18-10-2026 achttien: bij aankomst op 17-10 nog minderjarig.
