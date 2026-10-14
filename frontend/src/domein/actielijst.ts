@@ -10,6 +10,7 @@ export interface ActieBoeking extends WorkflowBoeking {
   aanbetaling_vervaldatum?: string | null
   rest_vervaldatum?: string | null
   optie?: boolean
+  bron?: string
 }
 
 export interface ActieInstellingen {
@@ -154,7 +155,14 @@ export function bouwActielijst(
 
     // Volgende workflowstap (alleen stappen waarbij wij iets moeten doen)
     const volgende = volgendeStap(stappen, b)
-    if (volgende && !["aanbetaling_ontvangen", "volledig_betaald", "verblijf", "tb_aangegeven", AFGEROND].includes(volgende.sleutel)) {
+    if (b.status === "aanvraag" && b.bron === "website") {
+      // Nieuwe aanvraag via het boekingsformulier: valt op tot er contact is.
+      acties.push({
+        boekingId: b.id, soort: "volgende_stap", urgentie: "oranje", datum: b.aankomst,
+        titel: `Nieuwe boekingsaanvraag – ${b.naam}`,
+        toelichting: `${formatLang(b.aankomst)} – ${formatLang(b.vertrek)}, via de website. Neem contact op en zet de status op In afstemming.`,
+      })
+    } else if (volgende && !["aanbetaling_ontvangen", "volledig_betaald", "verblijf", "tb_aangegeven", AFGEROND].includes(volgende.sleutel)) {
       acties.push({
         boekingId: b.id, soort: "volgende_stap", urgentie: "normaal", datum: b.aankomst,
         titel: `${volgende.actie_label || volgende.label} – ${b.naam}`,
