@@ -89,10 +89,11 @@ Maak op je computer een tekstbestand `.env` (met de punt vooraan) met deze inhou
 ```
 TUNNEL_TOKEN=plak-hier-het-token-uit-stap-2
 DUCDALF_ALLOWED_EMAILS=ducdalf.languedoc@gmail.com
-PB_ORIGINS=https://timbrons.github.io
+PB_ORIGINS=https://timbrons.github.io,https://verhuur.vakantiehuis-ducdalf.nl
 ```
 
 - `DUCDALF_ALLOWED_EMAILS`: alleen deze Google-accounts kunnen inloggen. Meer accounts? Scheid met komma's.
+- `PB_ORIGINS`: de adressen waarvandaan de app de server mag gebruiken (GitHub Pages en eventueel een eigen domein), gescheiden door komma's.
 - Dit bestand bevat een geheim en komt **nooit** in de repository.
 
 ---

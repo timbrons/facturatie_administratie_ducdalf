@@ -77,7 +77,6 @@ jobs:
       - name: Bouwen voor GitHub Pages
         working-directory: frontend
         env:
-          VITE_BASE: /${{ github.event.repository.name }}/
           VITE_API_URL: ${{ vars.VITE_API_URL }}
           VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}
           VITE_DEV_LOGIN: "false"
