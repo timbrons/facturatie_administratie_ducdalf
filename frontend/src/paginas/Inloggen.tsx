@@ -71,7 +71,7 @@ export function Inloggen() {
         <main className="flex flex-1 items-center justify-center px-6 py-10 sm:px-10">
           <div className="w-full max-w-sm">
             <div className="wenkbrauw mb-3">Beheeromgeving</div>
-            <h1 className="mb-4">Welkom terug</h1>
+            <h1 className="mb-4">Portaal verhuur Duc’dalf</h1>
             <p className="mb-8 text-zacht">
               Hier beheren de eigenaren van Duc’dalf boekingen, facturen en betalingen. Log in met je Google-account.
             </p>
