@@ -31,6 +31,47 @@ export interface Actie {
   datum: IsoDatum | null
   /** Sjabloon voor een herinnering of bericht dat bij deze actie hoort */
   mail?: string
+  /** Wij wachten op de huurder (geen actie van ons nodig) */
+  wachten?: boolean
+}
+
+/**
+ * Wat er bij de volgende workflowstap te doen is, als taak geformuleerd. De
+ * labels in workflow_stappen beschrijven de stap als die gedaan is ("Huurder
+ * heeft toegezegd"); hier staat wat wij nu moeten doen of waarop we wachten.
+ * Onbekende (zelf toegevoegde) stappen vallen terug op het label.
+ */
+const TE_DOEN: Record<string, { titel: string; toelichting: string; wachten?: boolean }> = {
+  in_afstemming: {
+    titel: "Contact opnemen",
+    toelichting: "Stem beschikbaarheid en prijs af met de huurder en zet de status op In afstemming.",
+  },
+  bevestigd: {
+    titel: "Wachten op bevestiging",
+    toelichting: "We wachten op de bevestiging van de huurder. Zet de status op Bevestigd zodra de huurder heeft toegezegd.",
+    wachten: true,
+  },
+  aanmeldformulier_verstuurd: {
+    titel: "Aanmeldformulier versturen",
+    toelichting: "De huurder heeft bevestigd. Stuur de link naar het aanmeldformulier.",
+  },
+  aanmeldformulier_ontvangen: {
+    titel: "Wachten op aanmeldformulier",
+    toelichting: "Het aanmeldformulier is verstuurd. Zodra de huurder het invult, wordt het verwerkt.",
+    wachten: true,
+  },
+  brochure_verstuurd: {
+    titel: "Brochure versturen",
+    toelichting: "Stuur de huurder de informatiebrochure.",
+  },
+  tb_berekend: {
+    titel: "Toeristenbelasting berekenen",
+    toelichting: "Doe de simulatie in het portaal en leg het bedrag vast.",
+  },
+  factuur_verstuurd: {
+    titel: "Factuur versturen",
+    toelichting: "Maak de factuur en stuur hem naar de huurder.",
+  },
 }
 
 /** Eerder verstuurde mails (uit het maillog), om herinneringen te tonen of te onderdrukken. */
@@ -163,10 +204,12 @@ export function bouwActielijst(
         toelichting: `${formatLang(b.aankomst)} – ${formatLang(b.vertrek)}, via de website. Neem contact op en zet de status op In afstemming.`,
       })
     } else if (volgende && !["aanbetaling_ontvangen", "volledig_betaald", "verblijf", "tb_aangegeven", AFGEROND].includes(volgende.sleutel)) {
+      const taak = TE_DOEN[volgende.sleutel]
       acties.push({
         boekingId: b.id, soort: "volgende_stap", urgentie: "normaal", datum: b.aankomst,
-        titel: `${volgende.actie_label || volgende.label} – ${b.naam}`,
-        toelichting: volgende.omschrijving ?? "",
+        titel: `${taak?.titel || volgende.actie_label || volgende.label} – ${b.naam}`,
+        toelichting: taak?.toelichting ?? volgende.omschrijving ?? "",
+        wachten: taak?.wachten,
       })
     }
     if (volgende?.sleutel === "verblijf" && b.aankomst <= vandaag) {

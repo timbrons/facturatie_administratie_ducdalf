@@ -371,6 +371,13 @@ describe("actielijst", () => {
     )
     expect(acties.some((a) => a.soort === "overlap")).toBe(true)
   })
+  it("formuleert de volgende stap als taak, of als wachten op de huurder", () => {
+    const wacht = bouwActielijst([{ ...basis, id: "1", status: "in_afstemming", aankomst: "2027-05-16", vertrek: "2027-06-05" }], STAPPEN, inst, "2026-10-14")
+    expect(wacht[0]).toMatchObject({ titel: "Wachten op bevestiging – Fam. Testman", wachten: true })
+    const doen = bouwActielijst([{ ...basis, id: "1", status: "bevestigd", aankomst: "2027-05-16", vertrek: "2027-06-05" }], STAPPEN, inst, "2026-10-14")
+    expect(doen[0]).toMatchObject({ titel: "Aanmeldformulier versturen – Fam. Testman" })
+    expect(doen[0].wachten).toBeFalsy()
+  })
   it("negeert geannuleerde en afgeronde boekingen", () => {
     const acties = bouwActielijst(
       [{ ...basis, id: "1", status: "geannuleerd", aankomst: "2026-10-17", vertrek: "2026-10-26" }],

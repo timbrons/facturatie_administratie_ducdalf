@@ -67,9 +67,9 @@ export function Dashboard() {
             <ul className="flex flex-col gap-2">
               {acties.map((a, i) => (
                 <li key={`${a.boekingId}-${a.soort}-${i}`}>
-                  <div className={`flex flex-col gap-2 border border-lijn border-l-4 px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${KLEUR[a.urgentie]}`}>
+                  <div className={`flex flex-col gap-2 border border-lijn border-l-4 px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${a.wachten ? "border-l-lijn bg-transparent" : KLEUR[a.urgentie]}`}>
                     <Link to={`/boekingen/${a.boekingId}`} className="no-underline">
-                      <div className="font-medium text-inkt">{a.titel}</div>
+                      <div className={a.wachten ? "text-zacht" : "font-medium text-inkt"}>{a.titel}</div>
                       {a.toelichting && <div className="text-sm text-tekst">{a.toelichting}</div>}
                     </Link>
                     {a.mail && (
