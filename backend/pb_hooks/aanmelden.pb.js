@@ -9,7 +9,7 @@ routerAdd("GET", "/api/ducdalf/aanmelden/{code}", (e) => {
   const aanmelden = require(`${__hooks}/aanmelden.js`)
   const b = aanmelden.boekingBijCode(e.app, e.request.pathValue("code"))
   if (!b || b.getString("status") === "geannuleerd") {
-    return e.json(404, { message: "Deze link is niet (meer) geldig. U kunt het formulier gewoon invullen." })
+    return e.json(404, { message: "Deze link is niet (meer) geldig. Je kunt het formulier gewoon invullen." })
   }
   const bestaand = b.getString("aanmelding")
   return e.json(200, {

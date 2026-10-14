@@ -99,9 +99,9 @@ export function Aanmelden() {
         toonFouten(err.response.fouten as Fouten)
         if (err.response.fouten.extra_personen) setAlgemeneFout(String(err.response.fouten.extra_personen))
       } else if (err instanceof ClientResponseError && err.status === 429) {
-        setAlgemeneFout("Er zijn vanaf uw verbinding te veel formulieren verstuurd. Probeer het over tien minuten opnieuw.")
+        setAlgemeneFout("Er zijn vanaf je verbinding te veel formulieren verstuurd. Probeer het over tien minuten opnieuw.")
       } else {
-        setAlgemeneFout("Het versturen is niet gelukt. Controleer uw internetverbinding en probeer het opnieuw. Lukt het niet, mail ons dan.")
+        setAlgemeneFout("Het versturen is niet gelukt. Controleer je internetverbinding en probeer het opnieuw. Lukt het niet, mail ons dan.")
       }
     } finally {
       setBezig(false)
@@ -126,8 +126,8 @@ export function Aanmelden() {
             <div className="wenkbrauw mb-3">Ontvangen</div>
             <h2 className="mb-3 text-3xl">Bedankt{f.voornaam ? `, ${f.voornaam}` : ""}!</h2>
             <p className="mb-6">
-              We hebben uw aanmelding goed ontvangen. We nemen contact met u op als er nog iets nodig is.
-              We wensen u alvast een fijn verblijf in de Languedoc.
+              We hebben je aanmelding goed ontvangen. We nemen contact met je op als er nog iets nodig is.
+              We wensen je alvast een fijn verblijf in de Languedoc.
             </p>
             <a href={WEBSITE} className="knop">Naar de website</a>
           </div>
@@ -143,13 +143,13 @@ export function Aanmelden() {
 
             {vooraf && !vooraf.al_ontvangen && (
               <Melding soort="info">
-                Dit formulier hoort bij uw verblijf van <strong>{formatLang(vooraf.aankomst)}</strong> tot <strong>{formatLang(vooraf.vertrek)}</strong>.
+                Dit formulier hoort bij je verblijf van <strong>{formatLang(vooraf.aankomst)}</strong> tot <strong>{formatLang(vooraf.vertrek)}</strong>.
                 De datums zijn alvast ingevuld.
               </Melding>
             )}
             {vooraf?.al_ontvangen && (
               <Melding soort="waarschuwing">
-                We hebben voor dit verblijf al een aanmeldformulier ontvangen. Wilt u iets wijzigen? Vul het formulier dan opnieuw in;
+                We hebben voor dit verblijf al een aanmeldformulier ontvangen. Wil je iets wijzigen? Vul het formulier dan opnieuw in;
                 wij verwerken de wijziging.
               </Melding>
             )}
@@ -167,7 +167,7 @@ export function Aanmelden() {
                 <Veld label="Vertrekdatum" verplicht fout={fouten.vertrekdatum}>
                   <input type="date" value={f.vertrekdatum} min={f.aankomstdatum ? plusDagen(f.aankomstdatum, 1) : vandaag()} onChange={(e) => zet("vertrekdatum", e.target.value)} />
                 </Veld>
-                <Veld label="Aantal personen" verplicht fout={fouten.aantal_personen} hint="Uzelf meegerekend">
+                <Veld label="Aantal personen" verplicht fout={fouten.aantal_personen} hint="Jezelf meegerekend">
                   <select value={f.aantal_personen} onChange={(e) => zet("aantal_personen", e.target.value)}>
                     <option value="">Kies…</option>
                     {Array.from({ length: MAX_PERSONEN }, (_, i) => <option key={i} value={String(i + 1)}>{i + 1}</option>)}
@@ -233,7 +233,7 @@ export function Aanmelden() {
             </Sectie>
 
             {f.extra_personen.length > 0 && (
-              <Sectie titel="Meereizende personen" intro="Vul voor iedereen die met u meereist de naam en geboortedatum in.">
+              <Sectie titel="Meereizende personen" intro="Vul voor iedereen die met je meereist de naam en geboortedatum in.">
                 <div className="flex flex-col gap-4">
                   {f.extra_personen.map((p, i) => (
                     <div key={i} className="border-l-2 border-goud/50 pl-4">
@@ -255,7 +255,7 @@ export function Aanmelden() {
               </Sectie>
             )}
 
-            <Sectie titel="In geval van nood waarschuwen" intro="Wie kunnen we bereiken als er tijdens uw verblijf iets met u gebeurt?">
+            <Sectie titel="In geval van nood waarschuwen" intro="Wie kunnen we bereiken als er tijdens je verblijf iets met je gebeurt?">
               <div className="grid gap-4 sm:grid-cols-2">
                 <Veld label="Naam" verplicht fout={fouten.noodcontact_naam}>
                   <input value={f.noodcontact_naam} onChange={(e) => zet("noodcontact_naam", e.target.value)} />
@@ -285,7 +285,7 @@ export function Aanmelden() {
 
             <div className="flex flex-col gap-4 border-t border-lijn pt-6 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-zacht sm:max-w-md">
-                We gebruiken uw gegevens alleen voor uw verblijf en de wettelijk verplichte registratie van gasten.
+                We gebruiken je gegevens alleen voor je verblijf en de registratie bij Parc le Duc.
                 Lees meer in onze <a href={`${config.apiUrl}/privacy`} target="_blank" rel="noreferrer">privacyverklaring</a>.
               </p>
               <button type="submit" className="knop px-8 py-3.5" disabled={bezig}>
