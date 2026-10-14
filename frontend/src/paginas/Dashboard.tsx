@@ -2,10 +2,9 @@ import { Link } from "react-router-dom"
 import { useMemo } from "react"
 import { useBoekingen, useInstellingen, useMaillog, useStappen } from "../lib/data"
 import { boekingNaam } from "../lib/types"
-import { aantalNachten, isActief, totaalBoeking } from "../lib/boeking"
+import { isActief } from "../lib/boeking"
 import { bouwActielijst, type Urgentie } from "../domein/actielijst"
-import { formatMiddel, jaarVan, vandaag } from "../domein/datum"
-import { formatEuro } from "../domein/geld"
+import { formatMiddel, vandaag } from "../domein/datum"
 import { Fout, Kaart, Laden, Paginakop } from "../components/ui"
 import { StatusLabel } from "../components/Status"
 
@@ -21,7 +20,6 @@ export function Dashboard() {
   const inst = useInstellingen()
   const maillog = useMaillog()
   const nu = vandaag()
-  const jaar = jaarVan(nu)
 
   const acties = useMemo(() => {
     if (!boekingen.data || !stappen.data || !inst.data) return []
@@ -39,10 +37,7 @@ export function Dashboard() {
   if (fout) return <Fout fout={fout} />
 
   const alle = boekingen.data ?? []
-  const ditJaar = alle.filter((b) => jaarVan(b.aankomst) === jaar && b.status !== "geannuleerd")
   const komend = alle.filter((b) => isActief(b) && b.vertrek >= nu).slice(0, 6)
-  const nachten = ditJaar.filter((b) => !b.optie).reduce((t, b) => t + aantalNachten(b), 0)
-  const omzet = ditJaar.filter((b) => !b.optie).reduce((t, b) => t + totaalBoeking(b), 0)
 
   return (
     <>
@@ -81,22 +76,6 @@ export function Dashboard() {
             alt="Vakantiehuis Duc’dalf"
             className="aspect-[4/3] w-full border border-lijn object-cover object-[50%_48%]"
           />
-          <Kaart titel={`Seizoen ${jaar}`}>
-            <dl className="grid grid-cols-2 gap-4">
-              <div>
-                <dt className="text-xs text-zacht">Boekingen</dt>
-                <dd className="font-serif text-3xl text-inkt">{ditJaar.filter((b) => !b.optie).length}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-zacht">Nachten verhuurd</dt>
-                <dd className="font-serif text-3xl text-inkt">{nachten}</dd>
-              </div>
-              <div className="col-span-2">
-                <dt className="text-xs text-zacht">Totaal geboekt (incl. kosten en belasting)</dt>
-                <dd className="font-serif text-2xl text-goud-tekst">{formatEuro(omzet)}</dd>
-              </div>
-            </dl>
-          </Kaart>
 
           <Kaart titel="Komende verblijven" actie={<Link to="/kalender" className="text-sm">Kalender</Link>}>
             {komend.length === 0 ? (
