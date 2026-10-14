@@ -11,11 +11,13 @@ interface Props {
   aankomst: string
   vertrek: string
   kies: (aankomst: string, vertrek: string) => void
+  /** 1: één maand (smalle kolom), 2: twee maanden naast elkaar (vanaf tabletbreedte) */
+  maanden?: 1 | 2
 }
 
 const DAGEN = ["ma", "di", "wo", "do", "vr", "za", "zo"]
 
-export function Beschikbaarheid({ bezet, regels, aankomst, vertrek, kies }: Props) {
+export function Beschikbaarheid({ bezet, regels, aankomst, vertrek, kies, maanden: aantal = 2 }: Props) {
   const nu = vandaag()
   const [start, setStart] = useState(() => datumVan(jaarVan(aankomst || nu), maandVan(aankomst || nu), 1))
   const eersteMaand = datumVan(jaarVan(nu), maandVan(nu), 1)
@@ -40,7 +42,7 @@ export function Beschikbaarheid({ bezet, regels, aankomst, vertrek, kies }: Prop
     return { verleden, bezetteNacht, gekozen, kiesbaar, teKort }
   }
 
-  const maanden = [start, plusMaanden(start, 1)]
+  const maanden = aantal === 2 ? [start, plusMaanden(start, 1)] : [start]
 
   return (
     <div className="flex flex-col gap-4">
@@ -52,7 +54,7 @@ export function Beschikbaarheid({ bezet, regels, aankomst, vertrek, kies }: Prop
         <button type="button" className="knop-klein" disabled={start >= laatsteMaand} onClick={() => setStart(plusMaanden(start, 1))} aria-label="Volgende maand">→</button>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2">
+      <div className={`grid gap-6 ${aantal === 2 ? "sm:grid-cols-2" : ""}`}>
         {maanden.map((m, i) => (
           <div key={m} className={i === 1 ? "hidden sm:block" : ""}>
             <div className="mb-2 text-center font-serif text-lg text-inkt">{maandNaam(maandVan(m))} {jaarVan(m)}</div>
