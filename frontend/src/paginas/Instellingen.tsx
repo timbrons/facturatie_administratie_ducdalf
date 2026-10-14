@@ -1,3 +1,4 @@
+import { formulierUrl } from "../lib/aanmeldingen"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { pb } from "../lib/pb"
@@ -137,8 +138,8 @@ function Algemeen({ inst }: { inst: Instellingen }) {
       <Kaart titel="Links">
         <div className="grid gap-4 sm:grid-cols-2">
           {tekst("tb_portaal_url", "Portaal toeristenbelasting", { type: "url" })}
-          {tekst("aanmeldformulier_url", "Aanmeldformulier", { type: "url" })}
-          {tekst("aanmelding_zoekopdracht", "Gmail-zoekopdracht voor aanmeldingen", { hint: "Standaard: from:formsubmit.co aanmelding" })}
+          {tekst("aanmeldformulier_url", "Aanmeldformulier", { type: "url", hint: `Leeg = het formulier van deze app (${formulierUrl()})` })}
+          {tekst("aanmelding_zoekopdracht", "Gmail-zoekopdracht voor het oude formulier", { hint: "Standaard: from:formsubmit.co aanmelding" })}
         </div>
       </Kaart>
 

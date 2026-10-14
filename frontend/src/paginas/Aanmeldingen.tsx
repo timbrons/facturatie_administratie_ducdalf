@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { useQueryClient } from "@tanstack/react-query"
-import { sleutels, useBoekingen, useInstellingen, useStappen } from "../lib/data"
+import { sleutels, useAanmeldingen, useBoekingen, useInstellingen, useStappen } from "../lib/data"
 import { gmailBeschikbaar, SCOPES, zorgVoorGoogle } from "../lib/gmail"
-import { haalInzendingen, neemOver, verwerktBij, type Inzending } from "../lib/aanmeldingen"
+import { formulierUrl, haalInzendingen, neemOver, uitFormulier, verwerktBij, verwijderInzending, type Inzending } from "../lib/aanmeldingen"
 import { boekingNaam, type Boeking } from "../lib/types"
 import { telPersonen, zoekBoeking } from "../domein/aanmelding"
 import { formatLang, formatTijdstip } from "../domein/datum"
@@ -14,12 +14,18 @@ export function Aanmeldingen() {
   const inst = useInstellingen()
   const boekingen = useBoekingen()
   const stappen = useStappen()
+  const aanmeldingen = useAanmeldingen()
   const [inzendingen, setInzendingen] = useState<Inzending[] | null>(null)
   const [bezig, setBezig] = useState(false)
   const [fout, setFout] = useState<unknown>(null)
+  const [oudOpen, setOudOpen] = useState(false)
 
-  if (inst.isLoading || boekingen.isLoading || stappen.isLoading) return <Laden />
+  if (inst.isLoading || boekingen.isLoading || stappen.isLoading || aanmeldingen.isLoading) return <Laden />
+  if (aanmeldingen.error) return <Fout fout={aanmeldingen.error} />
   const lijst = boekingen.data ?? []
+  const nieuw = (aanmeldingen.data ?? []).filter((a) => a.status === "nieuw")
+  const verwerkt = (aanmeldingen.data ?? []).filter((a) => a.status !== "nieuw").slice(0, 15)
+  const formulierAdres = formulierUrl()
 
   async function ophalen() {
     setBezig(true)
@@ -37,27 +43,64 @@ export function Aanmeldingen() {
   return (
     <>
       <Paginakop wenkbrauw="Aanmeldformulier" titel="Aanmeldingen">
-        <GmailKnop inst={inst.data} />
-        <button type="button" className="knop" disabled={bezig || !gmailBeschikbaar()} onClick={ophalen}>
-          {bezig ? "Ophalen…" : "Ophalen uit Gmail"}
-        </button>
+        <a href={formulierAdres} target="_blank" rel="noreferrer" className="knop-rand">Formulier bekijken</a>
       </Paginakop>
 
-      <div className="mb-6 flex flex-col gap-3">
-        <p className="text-sm text-zacht">
-          Ingevulde aanmeldformulieren komen via FormSubmit binnen in de Gmail-inbox. Hier haal je ze op (alleen lezen) en neem je de gegevens
-          na controle over in de huurder en de boeking. Er wordt niets automatisch gewijzigd.
-        </p>
-        {!gmailBeschikbaar() && <Melding soort="waarschuwing">De Google-koppeling is niet ingesteld (VITE_GOOGLE_CLIENT_ID).</Melding>}
-        {fout ? <Fout fout={fout} /> : null}
-      </div>
+      <p className="mb-6 text-sm text-zacht">
+        Huurders vullen het formulier in op <a href={formulierAdres} target="_blank" rel="noreferrer">{formulierAdres.replace(/^https?:\/\//, "")}</a>.
+        Komen ze via de persoonlijke link uit de mail (met boekingscode) en klopt alles, dan wordt de aanmelding automatisch bij de boeking
+        verwerkt. Anders staat hij hieronder klaar om te controleren en over te nemen.
+      </p>
 
-      {inzendingen && inzendingen.length === 0 && <div className="infoblok">Geen inzendingen gevonden met zoekopdracht “{inst.data?.aanmelding_zoekopdracht}”.</div>}
+      <h2 className="mb-3">Te controleren</h2>
+      {nieuw.length === 0 ? (
+        <div className="infoblok mb-8">Er staan geen aanmeldingen klaar.</div>
+      ) : (
+        <div className="mb-8 flex flex-col gap-4">
+          {nieuw.map((a) => <InzendingKaart key={a.id} inzending={uitFormulier(a)} boekingen={lijst} />)}
+        </div>
+      )}
 
-      <div className="flex flex-col gap-4">
-        {(inzendingen ?? []).map((i) => (
-          <InzendingKaart key={i.gmailId} inzending={i} boekingen={lijst} />
-        ))}
+      {verwerkt.length > 0 && (
+        <Kaart titel="Recent verwerkt" className="mb-8">
+          <ul className="divide-y divide-lijn text-sm">
+            {verwerkt.map((a) => {
+              const b = lijst.find((x) => x.id === a.boeking)
+              return (
+                <li key={a.id} className="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between">
+                  <span>
+                    <span className="text-inkt">{a.naam}</span>
+                    <span className="text-zacht"> · {formatLang(a.aankomst)} – {formatLang(a.vertrek)}</span>
+                  </span>
+                  <span className="text-xs text-zacht">
+                    {a.status === "gekoppeld" ? "automatisch" : "handmatig"} verwerkt op {formatTijdstip(a.created)}
+                    {b && <> · <Link to={`/boekingen/${b.id}`}>{boekingNaam(b)}</Link></>}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        </Kaart>
+      )}
+
+      <div className="border-t border-lijn pt-6">
+        <button type="button" className="text-sm text-goud-tekst underline" onClick={() => setOudOpen(!oudOpen)}>
+          {oudOpen ? "Verberg" : "Toon"} inzendingen van het oude formulier (FormSubmit, via Gmail)
+        </button>
+        {oudOpen && (
+          <div className="mt-4 flex flex-col gap-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <GmailKnop inst={inst.data} />
+              <button type="button" className="knop" disabled={bezig || !gmailBeschikbaar()} onClick={ophalen}>
+                {bezig ? "Ophalen…" : "Ophalen uit Gmail"}
+              </button>
+            </div>
+            {!gmailBeschikbaar() && <Melding soort="waarschuwing">De Google-koppeling is niet ingesteld (VITE_GOOGLE_CLIENT_ID).</Melding>}
+            {fout ? <Fout fout={fout} /> : null}
+            {inzendingen && inzendingen.length === 0 && <div className="infoblok">Geen inzendingen gevonden met zoekopdracht “{inst.data?.aanmelding_zoekopdracht}”.</div>}
+            {(inzendingen ?? []).map((i) => <InzendingKaart key={i.id} inzending={i} boekingen={lijst} />)}
+          </div>
+        )}
       </div>
     </>
   )
@@ -67,12 +110,12 @@ function InzendingKaart({ inzending: i, boekingen }: { inzending: Inzending; boe
   const qc = useQueryClient()
   const stappen = useStappen().data ?? []
   const a = i.aanmelding
-  const verwerkt = verwerktBij(i.gmailId, boekingen)
+  const verwerkt = verwerktBij(i, boekingen)
   const kandidaten = useMemo(
     () => zoekBoeking(a, boekingen.map((b) => ({ id: b.id, code: b.code, aankomst: b.aankomst, vertrek: b.vertrek, email: b.expand?.huurder?.email ?? "", status: b.status }))),
     [a, boekingen],
   )
-  const [boekingId, setBoekingId] = useState(kandidaten[0]?.boekingId ?? "")
+  const [boekingId, setBoekingId] = useState(i.boekingId ?? kandidaten[0]?.boekingId ?? "")
   const [keuze, setKeuze] = useState({ huurder: true, personen: true, kenteken: true })
   const [bezig, setBezig] = useState(false)
   const [fout, setFout] = useState<unknown>(null)
@@ -121,7 +164,8 @@ function InzendingKaart({ inzending: i, boekingen }: { inzending: Inzending; boe
                   ))}
                 </select>
               </label>
-              {kandidaten.length === 0 && <Melding soort="waarschuwing">Geen passende boeking gevonden. Kies er zelf een of maak eerst de boeking aan.</Melding>}
+              {i.toelichting && <Melding soort="waarschuwing">Niet automatisch verwerkt: {i.toelichting}</Melding>}
+              {kandidaten.length === 0 && !i.boekingId && <Melding soort="waarschuwing">Geen passende boeking gevonden. Kies er zelf een of maak eerst de boeking aan.</Melding>}
               {datumsAnders && <Melding soort="waarschuwing">Let op: de datums in het formulier wijken af van de boeking ({formatLang(boeking!.aankomst)} – {formatLang(boeking!.vertrek)}).</Melding>}
               {telling && (
                 <div className="text-sm">
@@ -146,7 +190,11 @@ function InzendingKaart({ inzending: i, boekingen }: { inzending: Inzending; boe
                     setFout(null)
                     try {
                       await neemOver(i, boeking!, stappen, keuze)
-                      await Promise.all([qc.invalidateQueries({ queryKey: sleutels.boekingen }), qc.invalidateQueries({ queryKey: sleutels.huurders })])
+                      await Promise.all([
+                        qc.invalidateQueries({ queryKey: sleutels.boekingen }),
+                        qc.invalidateQueries({ queryKey: sleutels.huurders }),
+                        qc.invalidateQueries({ queryKey: sleutels.aanmeldingen }),
+                      ])
                       setKlaar(true)
                     } catch (err) {
                       setFout(err)
@@ -157,6 +205,26 @@ function InzendingKaart({ inzending: i, boekingen }: { inzending: Inzending; boe
                 >
                   {bezig ? "Bezig…" : "Overnemen"}
                 </button>
+                {i.bron === "formulier" && (
+                  <button
+                    type="button"
+                    className="ml-3 text-sm text-rood underline"
+                    disabled={bezig}
+                    onClick={async () => {
+                      if (!window.confirm("Deze aanmelding verwijderen? Doe dit alleen bij spam of een dubbele inzending.")) return
+                      setBezig(true)
+                      try {
+                        await verwijderInzending(i.id)
+                        await qc.invalidateQueries({ queryKey: sleutels.aanmeldingen })
+                      } catch (err) {
+                        setFout(err)
+                        setBezig(false)
+                      }
+                    }}
+                  >
+                    Verwijderen
+                  </button>
+                )}
               </div>
             </>
           )}

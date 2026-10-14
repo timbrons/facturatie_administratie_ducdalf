@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom"
 import { useMemo } from "react"
-import { useBoekingen, useInstellingen, useMaillog, useStappen } from "../lib/data"
+import { useAanmeldingen, useBoekingen, useInstellingen, useMaillog, useStappen } from "../lib/data"
 import { boekingNaam } from "../lib/types"
 import { isActief } from "../lib/boeking"
 import { bouwActielijst, type Urgentie } from "../domein/actielijst"
@@ -19,6 +19,7 @@ export function Dashboard() {
   const stappen = useStappen()
   const inst = useInstellingen()
   const maillog = useMaillog()
+  const aanmeldingen = useAanmeldingen()
   const nu = vandaag()
 
   const acties = useMemo(() => {
@@ -37,6 +38,7 @@ export function Dashboard() {
   if (fout) return <Fout fout={fout} />
 
   const alle = boekingen.data ?? []
+  const nieuweAanmeldingen = (aanmeldingen.data ?? []).filter((a) => a.status === "nieuw")
   const komend = alle.filter((b) => isActief(b) && b.vertrek >= nu).slice(0, 6)
 
   return (
@@ -47,9 +49,21 @@ export function Dashboard() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          {acties.length === 0 ? (
+          {nieuweAanmeldingen.length > 0 && (
+            <ul className="mb-2 flex flex-col gap-2">
+              {nieuweAanmeldingen.map((a) => (
+                <li key={a.id}>
+                  <Link to="/aanmeldingen" className={`flex flex-col border border-lijn border-l-4 px-4 py-3 no-underline ${KLEUR.oranje}`}>
+                    <span className="font-medium text-inkt">Nieuwe aanmelding – {a.naam}</span>
+                    <span className="text-sm text-tekst">{formatMiddel(a.aankomst)} – {formatMiddel(a.vertrek)} · controleren en overnemen</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+          {acties.length === 0 && nieuweAanmeldingen.length === 0 ? (
             <div className="infoblok">Er staat niets open. Alles is bijgewerkt.</div>
-          ) : (
+          ) : acties.length === 0 ? null : (
             <ul className="flex flex-col gap-2">
               {acties.map((a, i) => (
                 <li key={`${a.boekingId}-${a.soort}-${i}`}>
