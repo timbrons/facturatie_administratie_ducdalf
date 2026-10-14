@@ -125,8 +125,8 @@ export function Aanmelden() {
             <div className="wenkbrauw mb-3">Ontvangen</div>
             <h2 className="mb-3 text-3xl">Bedankt{f.voornaam ? `, ${f.voornaam}` : ""}!</h2>
             <p className="mb-6">
-              We hebben je aanmelding goed ontvangen. We nemen contact met je op als er nog iets nodig is.
-              We wensen je alvast een fijn verblijf in de Languedoc.
+              Fijn dat je je hebt aangemeld! We hebben je aanmelding goed ontvangen en gaan aan de slag met de verwerking van
+              je registratie. Zodra alles is geregeld, hoor je van ons. Heb je nog vragen? Neem dan gerust contact met ons op.
             </p>
             <a href={WEBSITE} className="knop">Naar de website</a>
           </div>
