@@ -17,6 +17,7 @@ import { TbAangifteDialoog, TbBerekenDialoog } from "../components/Toeristenbela
 import { BetalingenKaart, FacturenKaart } from "../components/FacturenBetalingen"
 import { MailKaart } from "../components/Mail"
 import { AanmeldingKaart } from "../components/AanmeldingKaart"
+import { StapDetail } from "../components/StapDetail"
 import { HuurOpbouw } from "../components/HuurOpbouw"
 import { berekenHuur, huurOpbouw } from "../domein/prijs"
 
@@ -50,6 +51,7 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
   const [bezig, setBezig] = useState(false)
   const [dialoog, setDialoog] = useState<"" | "annuleren" | "status" | "tb_berekend" | "tb_aangegeven" | "betaling" | "mail">("")
   const [mailSleutels, setMailSleutels] = useState<string[]>([])
+  const [gekozenStap, setGekozenStap] = useState("")
   const facturen = useFacturen().data ?? []
   const betalingen = useBetalingen().data ?? []
   const [params, setParams] = useSearchParams()
@@ -147,7 +149,21 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
       )}
 
       {/* Stappenbalk */}
-      <Stappenbalk boeking={b} stappen={stappen} />
+      <Stappenbalk boeking={b} stappen={stappen} gekozen={gekozenStap} kies={(s) => setGekozenStap((oud) => (oud === s ? "" : s))} />
+      {(() => {
+        const i = gesorteerd(stappen).findIndex((s) => s.sleutel === gekozenStap)
+        if (i === -1) return null
+        return (
+          <StapDetail
+            boeking={b}
+            stap={gesorteerd(stappen)[i]}
+            nummer={i + 1}
+            historie={historie.data ?? []}
+            bronnen={BRONNEN}
+            onSluiten={() => setGekozenStap("")}
+          />
+        )
+      })()}
 
       {/* Volgende actie */}
       <section className="mb-6 flex flex-col gap-4 border border-lijn bg-zand p-5 sm:flex-row sm:items-center sm:justify-between">
@@ -347,33 +363,59 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
   )
 }
 
-function Stappenbalk({ boeking, stappen }: { boeking: Boeking; stappen: WorkflowStap[] }) {
+function Stappenbalk({ boeking, stappen, gekozen, kies }: {
+  boeking: Boeking
+  stappen: WorkflowStap[]
+  gekozen: string
+  kies: (sleutel: string) => void
+}) {
   const balk = stappenbalk(stappen, boeking)
   const geannuleerd = boeking.status === GEANNULEERD
   return (
-    <ol className="mb-6 flex gap-1 overflow-x-auto pb-2" aria-label="Voortgang">
-      {balk.map(({ stap, toestand }, i) => {
-        const stijl = geannuleerd
-          ? "bg-lijn/50 text-zacht"
-          : {
-              gedaan: "bg-olijf text-white",
-              huidig: "bg-goud text-white",
-              open: "bg-white text-zacht border border-lijn",
-              overgeslagen: "bg-transparent text-zacht/60 line-through border border-dashed border-lijn",
-            }[toestand]
-        return (
-          <li
-            key={stap.sleutel}
-            className={`flex min-w-[7.5rem] flex-1 flex-col px-2 py-2 text-[11px] leading-tight ${stijl}`}
-            title={stap.omschrijving}
-            aria-current={toestand === "huidig" ? "step" : undefined}
-          >
-            <span className="opacity-70">{i + 1}</span>
-            <span className="font-medium">{stap.label}</span>
-          </li>
-        )
-      })}
-    </ol>
+    <>
+      <ol className="mb-1 flex gap-1 overflow-x-auto pb-2" aria-label="Voortgang">
+        {balk.map(({ stap, toestand }, i) => {
+          const stijl = geannuleerd
+            ? "bg-lijn/50 text-zacht"
+            : {
+                gedaan: "bg-olijf text-white",
+                huidig: "bg-goud text-white",
+                open: "bg-white text-zacht border border-lijn",
+                overgeslagen: "bg-transparent text-zacht/60 line-through border border-dashed border-lijn",
+              }[toestand]
+          // Afgeronde stappen (en de huidige) zijn aan te klikken: dan zie je wat er gebeurd is.
+          const klikbaar = toestand === "gedaan" || toestand === "huidig"
+          const inhoud = (
+            <>
+              <span className="opacity-70">{i + 1}</span>
+              <span className="font-medium">{stap.label}</span>
+            </>
+          )
+          return (
+            <li
+              key={stap.sleutel}
+              className={`flex min-w-[7.5rem] flex-1 ${stijl} ${gekozen === stap.sleutel ? "ring-2 ring-inkt ring-offset-1" : ""}`}
+              title={stap.omschrijving}
+              aria-current={toestand === "huidig" ? "step" : undefined}
+            >
+              {klikbaar ? (
+                <button
+                  type="button"
+                  className="flex w-full flex-col px-2 py-2 text-left text-[11px] leading-tight hover:opacity-85"
+                  aria-pressed={gekozen === stap.sleutel}
+                  onClick={() => kies(stap.sleutel)}
+                >
+                  {inhoud}
+                </button>
+              ) : (
+                <div className="flex w-full flex-col px-2 py-2 text-[11px] leading-tight">{inhoud}</div>
+              )}
+            </li>
+          )
+        })}
+      </ol>
+      <p className="mb-6 text-xs text-zacht">Klik op een afgeronde stap om te zien wat er gebeurd is.</p>
+    </>
   )
 }
 
