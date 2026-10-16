@@ -97,3 +97,31 @@ export function tbOverzicht(jaar: number, boekingen: FinBoeking[], facturen: Fin
     })
     .sort((a, b) => a.boeking.aankomst.localeCompare(b.boeking.aankomst))
 }
+
+export interface ParkBoeking extends FinBoeking {
+  parkkosten_cent: Cent
+  parkkosten_betaald_cent: Cent
+  parkkosten_betaald_op: string
+}
+
+export interface ParkRij<T extends ParkBoeking = ParkBoeking> {
+  boeking: T
+  gefactureerd: Cent
+  /** null: nog niet betaald aan PLD */
+  betaald: Cent | null
+  /** gefactureerd − betaald (positief: we hielden over) */
+  verschil: Cent | null
+}
+
+/** Parkkosten per verblijf in een jaar (op aankomst): wat de huurder betaalde en wat wij aan PLD betaalden. */
+export function parkkostenOverzicht<T extends ParkBoeking>(jaar: number, boekingen: T[]): ParkRij<T>[] {
+  return boekingen
+    .filter((b) => b.status !== "geannuleerd" && b.aankomst.startsWith(`${jaar}-`))
+    .filter((b) => (b.parkkosten_cent ?? 0) > 0 || !!b.parkkosten_betaald_op)
+    .sort((a, b) => a.aankomst.localeCompare(b.aankomst))
+    .map((b) => {
+      const betaald = b.parkkosten_betaald_op ? b.parkkosten_betaald_cent : null
+      const gefactureerd = b.parkkosten_cent ?? 0
+      return { boeking: b, gefactureerd, betaald, verschil: betaald === null ? null : gefactureerd - betaald }
+    })
+}

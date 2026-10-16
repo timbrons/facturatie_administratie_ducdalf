@@ -3,7 +3,7 @@ import { betaalstatus, betaaltekst, bouwFactuurregels, openstaand, totaalVan, ty
 import { berekenTermijnen } from "./betaling"
 import { csvBedrag, leesCsv, schrijfCsv } from "./csv"
 import { importPlan, importRegels, leesAdministratie, leesDatum } from "./importeren"
-import { financieelOverzicht, tbOverzicht } from "./financieel"
+import { financieelOverzicht, parkkostenOverzicht, tbOverzicht } from "./financieel"
 
 const TESTCASE = {
   aankomst: "2026-10-17", vertrek: "2026-10-26", volwassenen: 2, nachten: 9,
@@ -134,5 +134,19 @@ describe("financieel overzicht", () => {
     const t = tbOverzicht(2026, boekingen, facturen)
     expect(t).toHaveLength(1)
     expect(t[0]).toMatchObject({ geind: 2700, aangegeven: 2800, verschil: 100 })
+  })
+})
+
+describe("parkkostenOverzicht", () => {
+  const basis = { naam: "Fam. Test", status: "verblijf", tb_aangegeven_cent: 0, tb_aangegeven_op: "", tb_aangifte: "", parkkosten_betaald_cent: 0, parkkosten_betaald_op: "" }
+  it("toont gefactureerd, betaald en het verschil per verblijf in het jaar", () => {
+    const rijen = parkkostenOverzicht(2026, [
+      { ...basis, id: "a", aankomst: "2026-09-13", vertrek: "2026-09-23", parkkosten_cent: 10000, parkkosten_betaald_cent: 9500, parkkosten_betaald_op: "2026-10-16" },
+      { ...basis, id: "b", aankomst: "2026-07-01", vertrek: "2026-07-08", parkkosten_cent: 7000 },
+      { ...basis, id: "c", aankomst: "2026-08-01", vertrek: "2026-08-08", parkkosten_cent: 0 },
+      { ...basis, id: "d", aankomst: "2025-08-01", vertrek: "2025-08-08", parkkosten_cent: 7000 },
+      { ...basis, id: "e", aankomst: "2026-05-01", vertrek: "2026-05-08", parkkosten_cent: 7000, status: "geannuleerd" },
+    ])
+    expect(rijen.map((r) => [r.boeking.id, r.betaald, r.verschil])).toEqual([["b", null, null], ["a", 9500, 500]])
   })
 })

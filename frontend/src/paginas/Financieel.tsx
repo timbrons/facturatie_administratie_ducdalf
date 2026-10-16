@@ -3,17 +3,18 @@ import { useMemo, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom"
 import { pb } from "../lib/pb"
 import { sleutels, useBetalingen, useBoekingen, useFacturen, useOpslaan, useTbAangiften } from "../lib/data"
-import { boekingNaam, type TbAangifte } from "../lib/types"
+import { boekingNaam, type Boeking, type TbAangifte } from "../lib/types"
 import { pdfUrl } from "../lib/facturen"
 import { formatLang, jaarVan, maandNaam, vandaag } from "../domein/datum"
 import { formatEuro, type Cent } from "../domein/geld"
 import { betaalstatus } from "../domein/factuur"
-import { financieelOverzicht, tbOverzicht, type FinBoeking } from "../domein/financieel"
+import { financieelOverzicht, parkkostenOverzicht, tbOverzicht, type FinBoeking } from "../domein/financieel"
+import { openParkkostenFactuur } from "../lib/parkkosten"
 import { csvBedrag, schrijfCsv } from "../domein/csv"
 import { BedragVeld, Fout, Kaart, Laden, Paginakop, Veld } from "../components/ui"
 import { StatusFactuur } from "../components/FacturenBetalingen"
 
-type Tab = "overzicht" | "facturen" | "toeristenbelasting"
+type Tab = "overzicht" | "facturen" | "toeristenbelasting" | "parkkosten"
 
 function downloadCsv(naam: string, rijen: (string | number | null | undefined)[][]) {
   const blob = new Blob([schrijfCsv(rijen)], { type: "text/csv;charset=utf-8" })
@@ -53,7 +54,7 @@ export function Financieel() {
         </select>
       </Paginakop>
       <div className="mb-6 flex gap-1 border-b border-lijn">
-        {([["overzicht", "Overzicht"], ["facturen", "Facturen"], ["toeristenbelasting", "Toeristenbelasting"]] as const).map(([k, l]) => (
+        {([["overzicht", "Overzicht"], ["facturen", "Facturen"], ["toeristenbelasting", "Toeristenbelasting"], ["parkkosten", "Parkkosten PLD"]] as const).map(([k, l]) => (
           <button
             key={k}
             type="button"
@@ -67,6 +68,7 @@ export function Financieel() {
       {tab === "overzicht" && <Overzicht jaar={jaar} boekingen={fin} />}
       {tab === "facturen" && <FacturenLijst jaar={jaar} />}
       {tab === "toeristenbelasting" && <Toeristenbelasting jaar={jaar} boekingen={fin} aangiften={aangiften.data ?? []} />}
+      {tab === "parkkosten" && <Parkkosten jaar={jaar} boekingen={boekingen.data ?? []} />}
     </>
   )
 }
@@ -326,5 +328,85 @@ function MaandRij({ aangifte: m, boekingen }: { aangifte: TbAangifte; boekingen:
       {opslaan.error ? <div className="mt-2"><Fout fout={opslaan.error} /></div> : null}
       {opslaan.isSuccess && <p className="mt-2 text-xs text-olijf-donker">Opgeslagen.</p>}
     </div>
+  )
+}
+
+function Parkkosten({ jaar, boekingen }: { jaar: number; boekingen: Boeking[] }) {
+  const lijst = boekingen.map((b) => ({ ...b, naam: boekingNaam(b) }))
+  const rijen = parkkostenOverzicht(jaar, lijst)
+  const tot = rijen.reduce(
+    (t, r) => ({ gefactureerd: t.gefactureerd + r.gefactureerd, betaald: t.betaald + (r.betaald ?? 0) }),
+    { gefactureerd: 0, betaald: 0 },
+  )
+  const open = rijen.filter((r) => r.betaald === null).length
+
+  function exporteer() {
+    downloadCsv(`parkkosten-pld-${jaar}.csv`, [
+      ["Huurder", "Aankomst", "Vertrek", "Gefactureerd aan huurder", "Betaald aan PLD", "Betaald op", "Verschil", "Factuur PLD in Drive"],
+      ...rijen.map((r) => [
+        r.boeking.naam, r.boeking.aankomst, r.boeking.vertrek, csvBedrag(r.gefactureerd), r.betaald === null ? "" : csvBedrag(r.betaald),
+        r.boeking.parkkosten_betaald_op, r.verschil === null ? "" : csvBedrag(r.verschil), r.boeking.parkkosten_drive_link,
+      ]),
+    ])
+  }
+
+  return (
+    <Kaart titel={`Parkkosten PLD ${jaar}`} actie={<button type="button" className="knop-klein" onClick={exporteer}>Exporteer CSV</button>}>
+      {open > 0 && <p className="mb-3 text-sm text-zacht">{open} verblijf{open === 1 ? "" : "en"} nog niet afgerekend met PLD.</p>}
+      {rijen.length === 0 ? (
+        <p className="text-sm text-zacht">Geen parkkosten in {jaar}.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[44rem] text-left text-sm">
+            <thead className="border-b border-lijn text-xs uppercase tracking-wider text-zacht">
+              <tr>
+                <th className="py-2 pr-3 font-semibold">Huurder</th>
+                <th className="py-2 pr-3 font-semibold">Verblijf</th>
+                <th className="py-2 pr-3 text-right font-semibold">Gefactureerd</th>
+                <th className="py-2 pr-3 text-right font-semibold">Betaald aan PLD</th>
+                <th className="py-2 pr-3 text-right font-semibold">Verschil</th>
+                <th className="py-2 font-semibold">Factuur PLD</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-lijn tabular-nums">
+              {rijen.map((r) => (
+                <tr key={r.boeking.id}>
+                  <td className="py-2 pr-3"><Link to={`/boekingen/${r.boeking.id}`}>{r.boeking.naam}</Link></td>
+                  <td className="py-2 pr-3 whitespace-nowrap">{formatLang(r.boeking.aankomst)} – {formatLang(r.boeking.vertrek)}</td>
+                  <td className="py-2 pr-3 text-right">{formatEuro(r.gefactureerd)}</td>
+                  <td className="py-2 pr-3 text-right">
+                    {r.betaald === null ? <span className="text-zacht">nog niet</span> : (
+                      <>
+                        {formatEuro(r.betaald)}
+                        <div className="text-xs text-zacht">{formatLang(r.boeking.parkkosten_betaald_op)}</div>
+                      </>
+                    )}
+                  </td>
+                  <td className={`py-2 pr-3 text-right ${r.verschil ? "text-oranje" : ""}`}>{r.verschil === null ? "" : formatEuro(r.verschil)}</td>
+                  <td className="py-2">
+                    <span className="flex flex-wrap gap-2">
+                      {r.boeking.parkkosten_factuur && (
+                        <button type="button" className="knop-klein" onClick={() => openParkkostenFactuur(r.boeking)}>Bekijken</button>
+                      )}
+                      {r.boeking.parkkosten_drive_link && (
+                        <a href={r.boeking.parkkosten_drive_link} target="_blank" rel="noopener noreferrer" className="knop-klein">In Drive ↗</a>
+                      )}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot className="border-t-2 border-inkt/50 font-semibold tabular-nums text-inkt">
+              <tr>
+                <td className="py-2 pr-3" colSpan={2}>Totaal</td>
+                <td className="py-2 pr-3 text-right">{formatEuro(tot.gefactureerd)}</td>
+                <td className="py-2 pr-3 text-right">{formatEuro(tot.betaald)}</td>
+                <td className="py-2 pr-3" colSpan={2} />
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
+    </Kaart>
   )
 }

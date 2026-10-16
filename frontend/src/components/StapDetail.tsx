@@ -6,7 +6,7 @@ import { formatLang, formatTijdstip } from "../domein/datum"
 import { formatEuro } from "../domein/geld"
 import type { WorkflowStap } from "../domein/workflow"
 import { AanmeldingGegevens } from "./AanmeldingKaart"
-import { parkkostenFactuurUrl } from "./Parkkosten"
+import { openParkkostenFactuur } from "../lib/parkkosten"
 import { Gegeven, Kaart } from "./ui"
 
 const SOORT_BETALING: Record<string, string> = {
@@ -122,18 +122,10 @@ export function StapDetail({ boeking: b, stap, nummer, historie, bronnen, onSlui
           <Gegeven label="Betaald aan PLD">{b.parkkosten_betaald_op ? `${formatEuro(b.parkkosten_betaald_cent)} op ${formatLang(b.parkkosten_betaald_op)}` : ""}</Gegeven>
           <Gegeven label="Factuur van PLD">
             {b.parkkosten_factuur ? (
-              <button
-                type="button"
-                className="underline"
-                onClick={async () => {
-                  const venster = window.open("", "_blank")
-                  const url = await parkkostenFactuurUrl(b).catch(() => null)
-                  if (venster && url) venster.location.href = url
-                  else venster?.close()
-                }}
-              >
-                Bekijken
-              </button>
+<span className="flex flex-wrap gap-3">
+                <button type="button" className="underline" onClick={() => openParkkostenFactuur(b)}>Bekijken</button>
+                {b.parkkosten_drive_link && <a href={b.parkkosten_drive_link} target="_blank" rel="noopener noreferrer">In Drive ↗</a>}
+              </span>
             ) : ""}
           </Gegeven>
         </dl>

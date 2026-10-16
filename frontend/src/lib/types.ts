@@ -138,6 +138,9 @@ export interface Boeking extends RecordModel {
   parkkosten_betaald_op: string
   /** Factuur van PLD (bestandsnaam) */
   parkkosten_factuur: string
+  /** Kopie van de factuur van PLD in Google Drive */
+  parkkosten_drive_id: string
+  parkkosten_drive_link: string
   tb_definitief_volwassenen: number
   tb_definitief_kinderen: number
   tb_aangegeven_cent: Cent
