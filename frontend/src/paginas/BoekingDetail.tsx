@@ -175,7 +175,7 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
           {volgende ? (
             <>
               <div className="font-serif text-2xl text-inkt">{volgende.actie_label || volgende.label}</div>
-              {volgende.omschrijving && <div className="text-sm text-tekst">Daarna: {volgende.omschrijving}</div>}
+              {volgende.omschrijving && <div className="text-sm text-tekst">{volgende.omschrijving}</div>}
             </>
           ) : (
             <div className="font-serif text-2xl text-inkt">{b.status === GEANNULEERD ? "Geen – geannuleerd" : "Alles is afgerond"}</div>
