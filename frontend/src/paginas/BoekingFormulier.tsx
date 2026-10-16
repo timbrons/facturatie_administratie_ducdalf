@@ -12,6 +12,7 @@ import { HuurOpbouw } from "../components/HuurOpbouw"
 import { aanbetalingZinvol, restVervaldatum } from "../domein/betaling"
 import { overlappendeBoekingen } from "../domein/overlap"
 import { useEigenVerblijven } from "../lib/agenda"
+import { verblijfNaam } from "../domein/agenda"
 import { BedragVeld, Fout, Kaart, Laden, Melding, Paginakop, Veld } from "../components/ui"
 
 type HuurderInvoer = Pick<Huurder, "aanhef" | "voornaam" | "achternaam" | "email" | "telefoon_mobiel" | "adres" | "postcode" | "plaats" | "land">
@@ -268,7 +269,7 @@ function Formulier({ boeking, vooringevuldeHuurder }: { boeking?: Boeking; voori
               )}
               {eigenOverlap.length > 0 && (
                 <Melding soort="fout">
-                  Let op: valt samen met een eigen verblijf in Google Agenda: {eigenOverlap.map((v) => `"${v.titel}" (${formatLang(v.aankomst)} – ${formatLang(v.vertrek)})`).join(", ")}.
+                  Let op: valt samen met een eigen verblijf in Google Agenda: {eigenOverlap.map((v) => `"${verblijfNaam(v)}" (${formatLang(v.aankomst)} – ${formatLang(v.vertrek)})`).join(", ")}.
                 </Melding>
               )}
               {ontbrekendeNachten.length > 0 && (

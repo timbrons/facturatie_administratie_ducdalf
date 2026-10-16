@@ -6,7 +6,7 @@ import { boekingNaam, type Boeking } from "../lib/types"
 import { datumVan, formatLang, jaarVan, maandNaam, maandVan, plusDagen, vandaag } from "../domein/datum"
 import { alleOverlappen, overlappendeBoekingen } from "../domein/overlap"
 import { useEigenVerblijven } from "../lib/agenda"
-import type { EigenVerblijf } from "../domein/agenda"
+import { verblijfNaam, type EigenVerblijf } from "../domein/agenda"
 import { Fout, Laden, Melding, Paginakop } from "../components/ui"
 
 const WEEKDAGEN = ["ma", "di", "wo", "do", "vr", "za", "zo"]
@@ -42,7 +42,7 @@ function MaandRaster({ jaar, maand, boekingen, eigen, groot, onKlik, onEigen }: 
         const dubbel = bezet.length + zelf.length > 1
         const b = bezet[0]
         const kleur = dubbel ? "bg-rood text-white" : b ? (b.optie ? "bg-zand-donker text-inkt" : "bg-goud text-white") : zelf.length ? "bg-olijf text-white" : "bg-white"
-        const namen = [...bezet.map((x) => `${boekingNaam(x)}${x.optie ? " (optie)" : ""}`), ...zelf.map((v) => `Eigen verblijf: ${v.titel}`)]
+        const namen = [...bezet.map((x) => `${boekingNaam(x)}${x.optie ? " (optie)" : ""}`), ...zelf.map((v) => `Eigen verblijf: ${verblijfNaam(v)}`)]
         return (
           <button
             key={d}
@@ -56,7 +56,7 @@ function MaandRaster({ jaar, maand, boekingen, eigen, groot, onKlik, onEigen }: 
               <span className="mt-0.5 block truncate text-[11px] leading-tight">{boekingNaam(aankomst)}</span>
             )}
             {groot && !aankomst && eigenStart && (
-              <span className="mt-0.5 block truncate text-[11px] leading-tight">{eigenStart.titel}</span>
+              <span className="mt-0.5 block truncate text-[11px] leading-tight">{verblijfNaam(eigenStart)}</span>
             )}
           </button>
         )
@@ -144,7 +144,7 @@ export function Kalender() {
             {botsingen.map(([v, b], i) => (
               <span key={i}>
                 {i > 0 && "; "}
-                <Link to={`/boekingen/${b.id}`}>{boekingNaam(b)}</Link> en "{v.titel}" ({formatLang(v.aankomst)} – {formatLang(v.vertrek)})
+                <Link to={`/boekingen/${b.id}`}>{boekingNaam(b)}</Link> en "{verblijfNaam(v)}" ({formatLang(v.aankomst)} – {formatLang(v.vertrek)})
               </span>
             ))}
           </Melding>

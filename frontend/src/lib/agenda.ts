@@ -3,7 +3,7 @@ import { googleFetch, haalServerToken, heeftRecht, SCOPES, zorgVoorGoogle } from
 import { useBoekingen, useInstellingen } from "./data"
 import type { Instellingen } from "./types"
 import { plusDagen, vandaag } from "../domein/datum"
-import { agendaAfspraak, eigenVerblijven, type AgendaItem, type EigenVerblijf } from "../domein/agenda"
+import { agendaAfspraak, eigenVerblijven, verblijfGroepen, type AgendaItem, type EigenVerblijf } from "../domein/agenda"
 
 // Eigen verblijven in Google Agenda (het afzenderaccount, via de vaste
 // koppeling). Lezen kan ook met een oudere koppeling met alleen leesrechten;
@@ -65,7 +65,7 @@ export function useEigenVerblijven() {
   })
 }
 
-export interface EigenVerblijfInvoer { titel: string; notitie: string; aankomst: string; vertrek: string }
+export interface EigenVerblijfInvoer { titel: string; notitie: string; aankomst: string; vertrek: string; groep: string }
 
 async function schrijf(url: string, init: RequestInit, inst: Instellingen): Promise<Response> {
   await zorgVoorGoogle(inst.afzender_email, SCOPES.agenda)
@@ -78,7 +78,7 @@ async function schrijf(url: string, init: RequestInit, inst: Instellingen): Prom
 }
 
 export async function bewaarEigenVerblijf(inst: Instellingen, v: EigenVerblijfInvoer, id?: string): Promise<void> {
-  const body = JSON.stringify(agendaAfspraak(v))
+  const body = JSON.stringify(agendaAfspraak(v, verblijfGroepen(inst.eigen_verblijf_groepen)))
   const headers = { "Content-Type": "application/json" }
   if (id) await schrijf(`${basis(inst.agenda_id)}/${encodeURIComponent(id)}`, { method: "PATCH", headers, body }, inst)
   else await schrijf(basis(inst.agenda_id), { method: "POST", headers, body }, inst)

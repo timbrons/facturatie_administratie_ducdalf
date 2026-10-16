@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { leeftijdOp, maakAanmelding, telPersonen, zoekBoeking } from "./aanmelding"
 import { factuurBestandsnaam, factuurMap, veiligeNaam } from "./bestandsnamen"
-import { agendaAfspraak, eigenVerblijven } from "./agenda"
+import { agendaAfspraak, eigenVerblijven, verblijfGroepen } from "./agenda"
 
 // Fictieve inzending zoals het aanmeldformulier hem opslaat (aanmeldingen.velden).
 const VELDEN: Record<string, string> = {
@@ -114,5 +114,17 @@ describe("eigen verblijven uit Google Agenda", () => {
     expect(a.start.date).toBe("2026-08-01")
     expect(a.end.date).toBe("2026-08-09")
     expect(eigenVerblijven([{ id: "x", ...a }], "", [])[0]).toMatchObject({ aankomst: "2026-08-01", vertrek: "2026-08-08", vanApp: true })
+  })
+  it("zet het gezin in de titel en de kleur, en leest titel en gezin apart terug", () => {
+    const groepen = verblijfGroepen("Gezin A\n\n  Gezin B  \n")
+    expect(groepen).toEqual(["Gezin A", "Gezin B"])
+    const a = agendaAfspraak({ titel: "Eigen verblijf", aankomst: "2026-08-01", vertrek: "2026-08-08", groep: "Gezin B" }, groepen)
+    expect(a.summary).toBe("Eigen verblijf – Gezin B")
+    expect(a.colorId).toBe("6")
+    expect(eigenVerblijven([{ id: "x", ...a }], "", [])[0]).toMatchObject({ titel: "Eigen verblijf", groep: "Gezin B" })
+    const zonder = agendaAfspraak({ titel: "Klusweek", aankomst: "2026-08-01", vertrek: "2026-08-08" }, groepen)
+    expect(zonder.summary).toBe("Klusweek")
+    expect(zonder.colorId).toBeNull()
+    expect(eigenVerblijven([{ id: "y", ...zonder }], "", [])[0]).toMatchObject({ titel: "Klusweek", groep: "" })
   })
 })

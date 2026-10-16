@@ -29,6 +29,8 @@ export interface Instellingen extends RecordModel {
   tb_aangifte_dag: number
   tb_portaal_url: string
   pld_portaal_url: string
+  /** Gezinnen voor een eigen verblijf, één per regel */
+  eigen_verblijf_groepen: string
   aanmeldformulier_url: string
   bewaartermijn_jaren: number
   brochure: string
