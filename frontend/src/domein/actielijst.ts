@@ -76,6 +76,10 @@ const TE_DOEN: Record<string, { titel: string; toelichting: string; wachten?: bo
     titel: "Factuur versturen",
     toelichting: "Maak de factuur en stuur hem naar de huurder.",
   },
+  parkkosten_betaald: {
+    titel: "Parkkosten betalen",
+    toelichting: "Betaal de parkkosten aan Parc le Duc en leg het bedrag en de factuur van PLD vast.",
+  },
   le_duc_aangemeld: {
     titel: "Aanmelden in het PLD-portaal",
     toelichting: "Meld de huurder en de meereizenden aan in het portaal van Parc le Duc.",

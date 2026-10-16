@@ -393,6 +393,10 @@ describe("actielijst", () => {
     expect(achter[0]).toMatchObject({ soort: "tb_aangifte", titel: "Status bijwerken naar Toeristenbelasting aangegeven – Fam. Testman" })
     const afronden = bouwActielijst([{ ...na, status: "tb_aangegeven", tb_aangegeven_op: "2026-10-10" }], STAPPEN, inst, "2026-10-16")
     expect(afronden[0]).toMatchObject({ titel: "Boeking afronden – Fam. Testman", stap: "afgerond" })
+    // Met de stap "Parkkosten betalen" komt die eerst.
+    const metPark: WorkflowStap[] = [...STAPPEN, { sleutel: "parkkosten_betaald", label: "Parkkosten betaald", actie_label: "", volgorde: 125, overslaan_als: "", actief: true }]
+    const park = bouwActielijst([{ ...na, status: "tb_aangegeven", tb_aangegeven_op: "2026-10-10" }], metPark, inst, "2026-10-16")
+    expect(park[0]).toMatchObject({ titel: "Parkkosten betalen – Fam. Testman", stap: "parkkosten_betaald" })
   })
   it("formuleert de volgende stap als taak, of als wachten op de huurder", () => {
     const wacht = bouwActielijst([{ ...basis, id: "1", status: "in_afstemming", aankomst: "2027-05-16", vertrek: "2027-06-05" }], STAPPEN, inst, "2026-10-14")

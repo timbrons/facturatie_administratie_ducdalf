@@ -18,6 +18,7 @@ import { MailKaart } from "../components/Mail"
 import { AanmeldingKaart, AanmeldingVoorPortaal } from "../components/AanmeldingKaart"
 import type { Aanmelding } from "../domein/aanmelding"
 import { StapDetail } from "../components/StapDetail"
+import { ParkkostenDialoog } from "../components/Parkkosten"
 import { HuurOpbouw } from "../components/HuurOpbouw"
 import { berekenHuur, huurOpbouw } from "../domein/prijs"
 
@@ -49,7 +50,7 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
   const seizoenen = useSeizoenen().data ?? []
   const [fout, setFout] = useState<unknown>(null)
   const [bezig, setBezig] = useState(false)
-  const [dialoog, setDialoog] = useState<"" | "annuleren" | "status" | "tb_berekend" | "tb_aangegeven" | "betaling" | "mail" | "factuur" | "pld">("")
+  const [dialoog, setDialoog] = useState<"" | "annuleren" | "status" | "tb_berekend" | "tb_aangegeven" | "betaling" | "mail" | "factuur" | "pld" | "parkkosten">("")
   const [mailSleutels, setMailSleutels] = useState<string[]>([])
   const [gekozenStap, setGekozenStap] = useState("")
   const facturen = useFacturen().data ?? []
@@ -115,6 +116,7 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
     if (volgende.sleutel === "tb_aangegeven") return setDialoog("tb_aangegeven")
     if (volgende.sleutel === "aanbetaling_ontvangen" || volgende.sleutel === "volledig_betaald") return setDialoog("betaling")
     if (volgende.sleutel === "le_duc_aangemeld") return setDialoog("pld")
+    if (volgende.sleutel === "parkkosten_betaald") return setDialoog("parkkosten")
     const viaMail = gmailBeschikbaar()
     if (viaMail && volgende.sleutel === "aanmeldformulier_verstuurd") return openMail(["aanmeldformulier"])
     if (viaMail && volgende.sleutel === "brochure_verstuurd") return openMail(["brochure"])
@@ -246,6 +248,12 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
               <PrijsRegel label={`Huur (${nachten} nachten)`} bedrag={b.huur_cent} markering={b.huur_handmatig ? "aangepast" : undefined} />
               {opbouwKlopt && <HuurOpbouw regels={opbouw} />}
               {b.parkkosten_cent > 0 && <PrijsRegel label="Parkkosten" bedrag={b.parkkosten_cent} />}
+              {b.parkkosten_betaald_op && (
+                <div className="-mt-1 flex justify-between pl-4 text-xs text-zacht">
+                  <span>betaald aan PLD op {formatLang(b.parkkosten_betaald_op)}</span>
+                  <span className="tabular-nums">{formatEuro(b.parkkosten_betaald_cent)}</span>
+                </div>
+              )}
               <PrijsRegel label="Eindschoonmaak" bedrag={b.schoonmaak_cent} />
               {(b.extras ?? []).map((x) => (
                 <PrijsRegel key={x.naam} label={`${x.naam} × ${x.aantal}`} bedrag={x.prijs_cent * x.aantal * (x.eenheid === "per_nacht" ? nachten : 1)} />
@@ -366,6 +374,21 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
           </div>
         </div>
       </Dialoog>
+      {dialoog === "parkkosten" && (
+        <ParkkostenDialoog
+          open
+          boeking={b}
+          onSluiten={() => setDialoog("")}
+          onOpgeslagen={async () => {
+            if (b.status !== GEANNULEERD && !isBijOfVoorbij(stappen, b, "parkkosten_betaald")) {
+              if (await rondStapAf("parkkosten_betaald")) setDialoog("")
+            } else {
+              await ververs()
+              setDialoog("")
+            }
+          }}
+        />
+      )}
       <FactuurVersturenDialoog
         open={dialoog === "factuur"}
         boeking={b}

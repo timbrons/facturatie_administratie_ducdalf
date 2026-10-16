@@ -133,6 +133,11 @@ export interface Boeking extends RecordModel {
   aanbetaling_vervaldatum: string
   rest_vervaldatum: string
   tb_aangifte: string
+  /** Werkelijk aan Parc le Duc betaalde parkkosten */
+  parkkosten_betaald_cent: Cent
+  parkkosten_betaald_op: string
+  /** Factuur van PLD (bestandsnaam) */
+  parkkosten_factuur: string
   tb_definitief_volwassenen: number
   tb_definitief_kinderen: number
   tb_aangegeven_cent: Cent
