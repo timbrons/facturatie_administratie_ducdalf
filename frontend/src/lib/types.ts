@@ -6,6 +6,7 @@ export type Taal = "nl" | "en" | "fr" | "de"
 
 export interface Instellingen extends RecordModel {
   agenda_tonen: boolean
+  agenda_boekingen: boolean
   agenda_id: string
   agenda_filter: string
   afzender_naam: string

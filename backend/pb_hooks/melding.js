@@ -84,4 +84,4 @@ function stuur(app, onderwerp, regels, pad, origin) {
   return res.statusCode >= 200 && res.statusCode < 300 ? "" : "Gmail gaf status " + res.statusCode
 }
 
-module.exports = { stuur, kort, base64 }
+module.exports = { stuur, kort, base64, appAdres }

@@ -101,6 +101,10 @@ describe("eigen verblijven uit Google Agenda", () => {
     expect(v[0]).toMatchObject({ aankomst: "2026-05-01", vertrek: "2026-05-07" })
     expect(v[2]).toMatchObject({ aankomst: "2026-10-10", vertrek: "2026-10-12" })
   })
+  it("ziet huurboekingen die de app zelf in de agenda zet niet als eigen verblijf", () => {
+    const metBoeking = [...items, { id: "b", summary: "Verhuur – Fam. Test", start: { date: "2026-11-01" }, end: { date: "2026-11-09" }, extendedProperties: { private: { ducdalf: "boeking" } } }]
+    expect(eigenVerblijven(metBoeking, "", []).map((x) => x.id)).not.toContain("b")
+  })
   it("filtert op woorden in de titel; afspraken uit de app tellen altijd", () => {
     expect(eigenVerblijven(items, "familie, zelf", boekingen).map((x) => x.id)).toEqual(["a", "g", "e"])
     expect(eigenVerblijven(items, "Familie", boekingen).map((x) => x.id)).toEqual(["a", "g"])

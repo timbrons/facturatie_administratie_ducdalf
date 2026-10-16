@@ -87,7 +87,10 @@ function eigenVerblijven(app, boekingen) {
     const p = periode(it)
     if (!p || p.vertrek <= p.aankomst) continue
     const titel = String(it.summary || "").toLowerCase()
-    const vanApp = !!(it.extendedProperties && it.extendedProperties.private && it.extendedProperties.private.ducdalf === "eigen-verblijf")
+    const kenmerk = it.extendedProperties && it.extendedProperties.private ? it.extendedProperties.private.ducdalf : ""
+    // Huurboekingen die de app zelf in de agenda zet, staan al in de boekingen.
+    if (kenmerk === "boeking") continue
+    const vanApp = kenmerk === "eigen-verblijf"
     if (!vanApp && woorden.length && !woorden.some((w) => titel.indexOf(w) !== -1)) continue
     if (!vanApp && boekingen.some((b) => b.aankomst === p.aankomst && b.vertrek === p.vertrek)) continue
     uit.push(p)

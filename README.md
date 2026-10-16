@@ -144,6 +144,9 @@ Sjablonen beheer je onder **Instellingen → E-mailsjablonen**.
 
 ## Aanmeldingen, Google Drive, export en privacy
 
+- **Google Agenda**: huurboekingen (niet geannuleerd) staan automatisch als afspraak "Verhuur – naam" in de
+  agenda van Instellingen → Google Agenda, van aankomst- tot en met vertrekdag. Wijzigingen gaan direct mee;
+  elke 10 minuten loopt de NAS alles na (ook oudere boekingen). Aan/uit en "Nu bijwerken" bij Instellingen.
 - **Boekingsformulier**: een eigen, openbaar formulier op `<app>/boeken/` met een beschikbaarheidskalender.
   Een aanvraag wordt direct een boeking met status Aanvraag. Zie [docs/boekingsformulier.md](docs/boekingsformulier.md).
 - **Aanmeldformulier**: een eigen, openbaar formulier op `<app>/aanmelden/`. Inzendingen komen direct in
