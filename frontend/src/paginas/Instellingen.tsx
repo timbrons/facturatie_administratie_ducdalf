@@ -124,12 +124,23 @@ function Algemeen({ inst }: { inst: Instellingen }) {
         </div>
       </Kaart>
 
-      <Kaart titel="Google Agenda (eigen verblijven)">
+      <Kaart titel="Google Agenda">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="flex items-center gap-2 pt-6 text-inkt sm:col-span-2">
             <input type="checkbox" checked={d.agenda_tonen ?? false} onChange={(e) => setD({ ...d, agenda_tonen: e.target.checked })} />
             Eigen verblijven uit Google Agenda tonen in de kalender
           </label>
+          <div className="flex flex-col gap-2 sm:col-span-2">
+            <label className="flex items-center gap-2 text-inkt">
+              <input type="checkbox" checked={d.agenda_boekingen ?? false} onChange={(e) => setD({ ...d, agenda_boekingen: e.target.checked })} />
+              Huurboekingen automatisch in Google Agenda zetten
+            </label>
+            <p className="text-xs text-zacht">
+              Elke boeking die niet geannuleerd is, staat als afspraak van de aankomst- tot en met de vertrekdag in de agenda hieronder
+              ("Verhuur – naam"). Wijzigingen en annuleringen worden direct overgenomen; elke 10 minuten wordt alles nagelopen.
+            </p>
+            <AgendaNuBijwerken />
+          </div>
           {tekst("agenda_id", "Agenda", { hint: '"primary" is de hoofdagenda van het gekoppelde account; een andere agenda vind je in Google Agenda bij Instellingen → Agenda-ID' })}
           {tekst("agenda_filter", "Alleen afspraken met in de titel", { hint: 'Bijv. "eigen, familie" (gescheiden door komma\'s). Leeg = alle afspraken van minstens één nacht' })}
         </div>
@@ -263,5 +274,41 @@ function StapRij({ stap }: { stap: WorkflowStapRecord }) {
         </div>
       </div>
     </details>
+  )
+}
+
+function AgendaNuBijwerken() {
+  const [bezig, setBezig] = useState(false)
+  const [uitkomst, setUitkomst] = useState<string>("")
+  const [fout, setFout] = useState<unknown>(null)
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <button
+        type="button"
+        className="knop-klein"
+        disabled={bezig}
+        onClick={async () => {
+          setBezig(true)
+          setFout(null)
+          setUitkomst("")
+          try {
+            const t = await pb.send<{ actief: boolean; gezet: number; verwijderd: number; ongewijzigd: number; fouten: number }>("/api/ducdalf/agenda/boekingen", { method: "POST" })
+            setUitkomst(
+              t.actief
+                ? `Klaar: ${t.gezet} toegevoegd of bijgewerkt, ${t.verwijderd} verwijderd, ${t.ongewijzigd} al goed${t.fouten ? `, ${t.fouten} mislukt` : ""}.`
+                : "Niet gedaan: zet de optie hierboven aan (en sla op) en controleer de Google-koppeling met agendarechten.",
+            )
+          } catch (err) {
+            setFout(err)
+          } finally {
+            setBezig(false)
+          }
+        }}
+      >
+        {bezig ? "Bezig…" : "Nu bijwerken"}
+      </button>
+      {uitkomst && <span className="text-sm text-zacht">{uitkomst}</span>}
+      {fout ? <Fout fout={fout} /> : null}
+    </div>
   )
 }

@@ -58,7 +58,10 @@ export function eigenVerblijven(
     const p = periode(it)
     if (!p || p.vertrek <= p.aankomst) continue
     const titel = (it.summary ?? "").trim()
-    const vanApp = it.extendedProperties?.private?.[APP_KENMERK] === "eigen-verblijf"
+    const kenmerk = it.extendedProperties?.private?.[APP_KENMERK]
+    // Huurboekingen die de app zelf in de agenda zet, zijn geen eigen verblijven.
+    if (kenmerk === "boeking") continue
+    const vanApp = kenmerk === "eigen-verblijf"
     if (!vanApp && woorden.length && !woorden.some((w) => titel.toLowerCase().includes(w))) continue
     if (!vanApp && boekingen.some((b) => b.aankomst === p.aankomst && b.vertrek === p.vertrek)) continue
     uit.push({ id: it.id ?? `${p.aankomst}-${p.vertrek}-${titel}`, titel: titel || "Eigen verblijf", notitie: it.description ?? "", ...p, vanApp })
