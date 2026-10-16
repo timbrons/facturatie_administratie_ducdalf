@@ -17,12 +17,15 @@ import { pb } from "./pb"
 //
 // Rechten:
 //  - gmail.send      mails versturen (fase 3)
+//  - gmail.readonly  reacties van huurders op mails uit de app lezen (het
+//                    Gmail-gesprek van een verstuurde mail), om ze bij de boeking te tonen
 //  - drive.file      kopieën van facturen in Drive zetten; de app ziet alleen
 //                    de bestanden en mappen die hij zelf heeft gemaakt
 //  - calendar.events eigen verblijven in Google Agenda tonen, toevoegen en wijzigen
 
 export const SCOPES = {
   verzenden: "https://www.googleapis.com/auth/gmail.send",
+  lezen: "https://www.googleapis.com/auth/gmail.readonly",
   drive: "https://www.googleapis.com/auth/drive.file",
   agenda: "https://www.googleapis.com/auth/calendar.events",
 }

@@ -32,6 +32,8 @@ Het client secret en (bij de vaste koppeling) de blijvende sleutel staan alleen 
 4. **Bereiken (scopes / gegevenstoegang)**: voeg toe:
    - `openid`, `.../auth/userinfo.email`, `.../auth/userinfo.profile` (inloggen)
    - `https://www.googleapis.com/auth/gmail.send` (mail versturen, fase 3)
+   - `https://www.googleapis.com/auth/gmail.readonly` (reacties van huurders op mails uit de app
+     lezen en bij de boeking tonen)
    - `https://www.googleapis.com/auth/drive.file` (kopieën in Google Drive; de app ziet alleen de
      bestanden die hij zelf maakt, fase 4)
    - `https://www.googleapis.com/auth/calendar.events` (eigen verblijven in Google Agenda tonen,
@@ -109,6 +111,12 @@ account wordt geweigerd.
 
 > Vervolgmails aan dezelfde huurder komen in dezelfde Gmail-thread. Bij de huurder groepeert Gmail
 > mails op onderwerp; met een ander onderwerp kan de mail daar als nieuw gesprek verschijnen.
+
+> **Reacties van huurders** verschijnen bij de boeking onder **E-mails**. De app leest daarvoor het
+> Gmail-gesprek van elke mail die vanuit die boeking is verstuurd en toont de berichten die er niet
+> via de app in zijn gekomen: het antwoord van de huurder, of een antwoord dat je zelf rechtstreeks
+> in Gmail schreef. Er wordt niets opgeslagen; Gmail blijft de bron. Een mail die de huurder als
+> nieuw bericht stuurt (niet als antwoord), zit niet in het gesprek en verschijnt dus niet.
 
 ## Testen
 

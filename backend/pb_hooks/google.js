@@ -18,6 +18,8 @@ const SCOPES = [
   "openid",
   "https://www.googleapis.com/auth/userinfo.email",
   "https://www.googleapis.com/auth/gmail.send",
+  // Reacties van huurders op mails uit de app lezen (het Gmail-gesprek van die mail)
+  "https://www.googleapis.com/auth/gmail.readonly",
   "https://www.googleapis.com/auth/drive.file",
   // Eigen verblijven in Google Agenda tonen, toevoegen en wijzigen (alleen afspraken)
   "https://www.googleapis.com/auth/calendar.events",

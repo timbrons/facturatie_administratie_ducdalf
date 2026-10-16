@@ -24,6 +24,7 @@ export function GoogleKoppelingKaart({ afzender }: { afzender: string }) {
   const [bezig, setBezig] = useState(false)
   const qc = useQueryClient()
   const zonderAgenda = !!status?.gekoppeld && !(status.scopes ?? "").includes(SCOPES.agenda)
+  const zonderLezen = !!status?.gekoppeld && !(status.scopes ?? "").includes(SCOPES.lezen)
 
   async function laad() {
     try {
@@ -102,8 +103,14 @@ export function GoogleKoppelingKaart({ afzender }: { afzender: string }) {
                 Opnieuw koppelen en vink ook Google Agenda aan.
               </Melding>
             )}
+            {zonderLezen && (
+              <Melding soort="info">
+                Deze koppeling mag Gmail nog niet lezen. Dat is nodig om reacties van huurders op mails uit de app bij de
+                boeking te tonen. Klik op Opnieuw koppelen en vink ook "E-mails lezen" aan.
+              </Melding>
+            )}
             <div className="flex flex-wrap gap-2">
-              <button type="button" className={zonderAgenda ? "knop" : "knop-rand"} disabled={bezig} onClick={koppelen}>
+              <button type="button" className={zonderAgenda || zonderLezen ? "knop" : "knop-rand"} disabled={bezig} onClick={koppelen}>
                 {bezig ? "Wachten op Google…" : "Opnieuw koppelen"}
               </button>
               <button type="button" className="knop-rand" disabled={bezig} onClick={verbreken}>Koppeling verbreken</button>
