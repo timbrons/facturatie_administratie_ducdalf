@@ -83,7 +83,7 @@ export function MailKaart({ boeking: b, inst, stappen, open, sleutels: startSleu
                   <div className="mt-2 border-l-2 border-lijn pl-3">
                     {(it.m.bijlagen ?? []).length > 0 && <div className="mb-1 text-xs text-zacht">Bijlagen: {(it.m.bijlagen ?? []).join(", ")}</div>}
                     <pre className="whitespace-pre-wrap font-sans text-sm text-tekst">{it.m.tekst}</pre>
-                    <div className="mt-1 text-xs text-zacht">Gmail-thread: {it.m.gmail_thread_id || "—"}</div>
+                    <div className="mt-1 text-xs text-zacht">Gmail-gesprek: {it.m.gmail_thread_id || "—"}</div>
                   </div>
                 </details>
               </li>

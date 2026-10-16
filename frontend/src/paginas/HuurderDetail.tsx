@@ -188,7 +188,7 @@ function VerwijderDialoog({ open, huurder, verblijven, facturen, mails, onSluite
       {klaar ? (
         <div className="flex flex-col gap-3 text-sm">
           <Melding soort="succes">
-            {naam} is verwijderd, met {klaar.boekingen} boeking(en), {klaar.facturen} factu(u)r(en), {klaar.betalingen} betaling(en) en {klaar.mails} mail(s) uit het maillog{klaar.aangiften > 0 ? <>, en {klaar.aangiften} maandaangifte(n) toeristenbelasting waar verder geen verblijf bij hoorde</> : null}.
+            {naam} is verwijderd, met {klaar.boekingen} boeking(en), {klaar.facturen} {klaar.facturen === 1 ? "factuur" : "facturen"}, {klaar.betalingen} betaling(en) en {klaar.mails} mail(s) uit het maillog{klaar.aangiften > 0 ? <>, en {klaar.aangiften} maandaangifte(n) toeristenbelasting waar verder geen verblijf bij hoorde</> : null}.
           </Melding>
           {klaar.teruggezet.length > 0 && (
             <p>De factuurnummering is teruggezet; deze nummers worden opnieuw gebruikt: {klaar.teruggezet.slice().reverse().join(", ")}.</p>
@@ -205,7 +205,7 @@ function VerwijderDialoog({ open, huurder, verblijven, facturen, mails, onSluite
       ) : (
         <div className="flex flex-col gap-3 text-sm">
           <p>
-            Hiermee verwijder je <strong>{naam}</strong> definitief, met {verblijven.length} boeking(en), {facturen.length} factu(u)r(en)
+            Hiermee verwijder je <strong>{naam}</strong> definitief, met {verblijven.length} boeking(en), {facturen.length} {facturen.length === 1 ? "factuur" : "facturen"}
             (ook de PDF's en de kopieën in Google Drive), alle betalingen, de statushistorie, het aanmeldformulier, {mails} mail(s) uit het
             maillog en maandaangiften toeristenbelasting waar daarna geen verblijf meer bij hoort. Dit kan niet ongedaan worden gemaakt.
           </p>

@@ -46,7 +46,7 @@ export function Sjablonen() {
           ))}
         </div>
         <Kaart titel="Variabelen" className="self-start lg:sticky lg:top-24">
-          <p className="mb-3 text-sm text-zacht">Gebruik deze tussen accolades in onderwerp of tekst. Ze worden bij het opstellen ingevuld; je ziet altijd eerst een preview.</p>
+          <p className="mb-3 text-sm text-zacht">Gebruik deze tussen accolades in onderwerp of tekst. Ze worden bij het opstellen ingevuld; je ziet altijd eerst een voorbeeld.</p>
           <ul className="flex flex-col gap-1.5 text-sm">
             {VARIABELEN.map((v) => (
               <li key={v.naam} className="flex items-center justify-between gap-2">

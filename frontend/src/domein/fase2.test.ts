@@ -24,7 +24,7 @@ describe("factuurregels (testcase 2026-004)", () => {
   it("heeft de juiste betaaltekst", () => {
     const t = berekenTermijnen({ totaalCent: 108100, betaalwijze: "aanbetaling", aanbetalingPct: 50, factuurdatum: "2026-05-27", aankomst: "2026-10-17", aanbetalingTermijnMaanden: 1, restWekenVoorAankomst: 4 })
     expect(betaaltekst(t, 50, 4)).toBe(
-      "Graag 50% van het factuurbedrag (€ 540,50) voor 27-6-2026 voldoen en het resterende bedrag (€ 540,50) uiterlijk 19-9-2026 (4 weken voor aankomst).",
+      "Graag 50% van het factuurbedrag (€ 540,50) vóór 27-6-2026 voldoen en het resterende bedrag (€ 540,50) uiterlijk 19-9-2026 (4 weken voor aankomst).",
     )
   })
   it("neemt extra's mee", () => {

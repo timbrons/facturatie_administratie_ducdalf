@@ -48,7 +48,7 @@ export function Huurders() {
                     <div className="text-sm text-zacht">{[h.email, h.plaats].filter(Boolean).join(" · ")}</div>
                   </div>
                   <div className="text-sm text-zacht">
-                    {s ? `${s.aantal} verblijf${s.aantal === 1 ? "" : "en"}, laatst ${formatLang(s.laatste)}` : "Nog geen verblijven"}
+                    {s ? `${s.aantal} ${s.aantal === 1 ? "verblijf" : "verblijven"}, laatst ${formatLang(s.laatste)}` : "Nog geen verblijven"}
                   </div>
                 </Link>
               </li>
