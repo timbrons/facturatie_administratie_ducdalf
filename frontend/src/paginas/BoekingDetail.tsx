@@ -174,15 +174,18 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {volgende && (
+            <>
+              <span className="text-sm text-tekst">Ga naar de volgende stap:</span>
+              <button type="button" className="knop" disabled={bezig} onClick={voerVolgendeStapUit}>
+                {volgende.actie_label || volgende.label}
+              </button>
+            </>
+          )}
           {volgende?.sleutel === "le_duc_aangemeld" && inst.pld_portaal_url && (
             <a href={inst.pld_portaal_url} target="_blank" rel="noopener noreferrer" className="knop-rand">
               Open PLD-portaal ↗
             </a>
-          )}
-          {volgende && (
-            <button type="button" className="knop" disabled={bezig} onClick={voerVolgendeStapUit}>
-              {volgende.actie_label || volgende.label}
-            </button>
           )}
           <button type="button" className="knop-klein" onClick={() => setDialoog("status")}>Status corrigeren</button>
         </div>
