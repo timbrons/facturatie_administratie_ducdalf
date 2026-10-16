@@ -1,7 +1,8 @@
 import { pb } from "./pb"
 import { heeftRecht, SCOPES } from "./gmail"
 import { kopieNaarDrive } from "./facturen"
-import type { Factuur, Instellingen } from "./types"
+import { kopieParkkostenNaarDrive } from "./parkkosten"
+import type { Boeking, Factuur, Instellingen } from "./types"
 
 // Automatische kopie van facturen in Google Drive: elke definitieve factuur
 // met een PDF die nog niet in Drive staat, gaat er vanzelf heen. Draait op de
@@ -31,6 +32,16 @@ async function uitvoeren(): Promise<number> {
       gekopieerd++
     } catch (err) {
       console.warn(`Kopie van factuur ${f.nummer} naar Google Drive mislukt`, err)
+    }
+  }
+  // Facturen van Parc le Duc (parkkosten) bij de boekingen.
+  const park = await pb.collection("boekingen").getFullList<Boeking>({ filter: 'parkkosten_factuur != "" && parkkosten_drive_id = ""', expand: "huurder" })
+  for (const b of park) {
+    try {
+      await kopieParkkostenNaarDrive(b, inst)
+      gekopieerd++
+    } catch (err) {
+      console.warn(`Kopie van de PLD-factuur (${b.aankomst}) naar Google Drive mislukt`, err)
     }
   }
   return gekopieerd

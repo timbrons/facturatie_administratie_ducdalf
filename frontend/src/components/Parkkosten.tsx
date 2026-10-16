@@ -1,23 +1,21 @@
 import { useState } from "react"
 import { pb } from "../lib/pb"
-import type { Boeking } from "../lib/types"
+import type { Boeking, Instellingen } from "../lib/types"
+import { openParkkostenFactuur } from "../lib/parkkosten"
+import { synchroniseerDrive } from "../lib/driveSync"
+import { SCOPES, zorgVoorGoogle } from "../lib/gmail"
 import { formatEuro, type Cent } from "../domein/geld"
 import { vandaag } from "../domein/datum"
 import { BedragVeld, Dialoog, Fout, Melding, Veld } from "./ui"
-
-/** Adres om de factuur van PLD te bekijken (beschermd bestand: met token). */
-export async function parkkostenFactuurUrl(b: Boeking): Promise<string> {
-  const token = await pb.files.getToken()
-  return pb.files.getURL(b, b.parkkosten_factuur, { token })
-}
 
 /**
  * Stap "Parkkosten betalen": vastleggen wat er werkelijk aan Parc le Duc is
  * betaald, wanneer, en de factuur van PLD toevoegen.
  */
-export function ParkkostenDialoog({ open, boeking: b, onSluiten, onOpgeslagen }: {
+export function ParkkostenDialoog({ open, boeking: b, inst, onSluiten, onOpgeslagen }: {
   open: boolean
   boeking: Boeking
+  inst: Instellingen
   onSluiten: () => void
   /** Na opslaan (de aanroeper zet zo nodig de status door) */
   onOpgeslagen: () => Promise<void>
@@ -30,14 +28,24 @@ export function ParkkostenDialoog({ open, boeking: b, onSluiten, onOpgeslagen }:
 
   async function opslaan() {
     if (bedrag === null) return
+    // Voor de kopie in Drive (binnen de klik; mag mislukken, er volgt later een nieuwe poging).
+    const google = inst.drive_kopie && bestand ? zorgVoorGoogle(inst.afzender_email, SCOPES.drive).catch(() => {}) : Promise.resolve()
     setBezig(true)
     setFout(null)
     try {
       const fd = new FormData()
       fd.append("parkkosten_betaald_cent", String(bedrag))
       fd.append("parkkosten_betaald_op", datum)
-      if (bestand) fd.append("parkkosten_factuur", bestand)
+      if (bestand) {
+        fd.append("parkkosten_factuur", bestand)
+        // Nieuwe factuur: opnieuw naar Drive (zelfde bestandsnaam, dus de kopie wordt vervangen).
+        fd.append("parkkosten_drive_id", "")
+      }
       await pb.collection("boekingen").update(b.id, fd)
+      if (bestand && inst.drive_kopie) {
+        await google
+        await synchroniseerDrive().catch(() => 0)
+      }
       await onOpgeslagen()
     } catch (err) {
       setFout(err)
@@ -65,16 +73,7 @@ export function ParkkostenDialoog({ open, boeking: b, onSluiten, onOpgeslagen }:
           </Veld>
         </div>
         {b.parkkosten_factuur && (
-          <button
-            type="button"
-            className="self-start text-xs underline"
-            onClick={async () => {
-              const venster = window.open("", "_blank")
-              const url = await parkkostenFactuurUrl(b).catch(() => null)
-              if (venster && url) venster.location.href = url
-              else venster?.close()
-            }}
-          >
+          <button type="button" className="self-start text-xs underline" onClick={() => openParkkostenFactuur(b)}>
             Huidige factuur van PLD bekijken
           </button>
         )}

@@ -19,6 +19,7 @@ import { AanmeldingKaart, AanmeldingVoorPortaal } from "../components/Aanmelding
 import type { Aanmelding } from "../domein/aanmelding"
 import { StapDetail } from "../components/StapDetail"
 import { ParkkostenDialoog } from "../components/Parkkosten"
+import { openParkkostenFactuur } from "../lib/parkkosten"
 import { HuurOpbouw } from "../components/HuurOpbouw"
 import { berekenHuur, huurOpbouw } from "../domein/prijs"
 
@@ -249,9 +250,17 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
               {opbouwKlopt && <HuurOpbouw regels={opbouw} />}
               {b.parkkosten_cent > 0 && <PrijsRegel label="Parkkosten" bedrag={b.parkkosten_cent} />}
               {b.parkkosten_betaald_op && (
-                <div className="-mt-1 flex justify-between pl-4 text-xs text-zacht">
-                  <span>betaald aan PLD op {formatLang(b.parkkosten_betaald_op)}</span>
-                  <span className="tabular-nums">{formatEuro(b.parkkosten_betaald_cent)}</span>
+                <div className="-mt-1 pl-4 text-xs text-zacht">
+                  <div className="flex justify-between gap-2">
+                    <span>betaald aan PLD op {formatLang(b.parkkosten_betaald_op)}</span>
+                    <span className="whitespace-nowrap tabular-nums">{formatEuro(b.parkkosten_betaald_cent)}</span>
+                  </div>
+                  {(b.parkkosten_factuur || b.parkkosten_drive_link) && (
+                    <div className="flex gap-3">
+                      {b.parkkosten_factuur && <button type="button" className="underline" onClick={() => openParkkostenFactuur(b)}>Factuur PLD bekijken</button>}
+                      {b.parkkosten_drive_link && <a href={b.parkkosten_drive_link} target="_blank" rel="noopener noreferrer">In Drive ↗</a>}
+                    </div>
+                  )}
                 </div>
               )}
               <PrijsRegel label="Eindschoonmaak" bedrag={b.schoonmaak_cent} />
@@ -378,6 +387,7 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
         <ParkkostenDialoog
           open
           boeking={b}
+          inst={inst}
           onSluiten={() => setDialoog("")}
           onOpgeslagen={async () => {
             if (b.status !== GEANNULEERD && !isBijOfVoorbij(stappen, b, "parkkosten_betaald")) {
