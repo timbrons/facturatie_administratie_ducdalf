@@ -120,3 +120,31 @@ export function stappenbalk(stappen: WorkflowStap[], boeking: WorkflowBoeking): 
           : "open",
   }))
 }
+
+/** Stappen die de app zelf zet zodra een betaling binnen is. */
+export const BETAALSTAPPEN = new Set(["aanbetaling_ontvangen", "volledig_betaald"])
+
+/**
+ * Tot welke stap een binnengekomen betaling de boeking mag doorschuiven
+ * (doel: "aanbetaling_ontvangen" of "volledig_betaald"). Handmatige stappen
+ * vóór de factuur worden overgeslagen, zoals altijd; een handmatige stap ná
+ * de factuur (bijv. aanmelden in het Le Duc-portaal) houdt het doorschuiven
+ * tegen, zodat die stap niet ongemerkt wordt overgeslagen. Geeft null als de
+ * boeking niet verder kan.
+ */
+export function doorschuivenTot(stappen: WorkflowStap[], boeking: WorkflowBoeking, doel: string): string | null {
+  const geldig = stappenVoor(stappen, boeking)
+  const huidig = geldig.findIndex((s) => s.sleutel === boeking.status)
+  const factuur = geldig.findIndex((s) => s.sleutel === "factuur_verstuurd")
+  let uit: string | null = null
+  for (let i = huidig + 1; i < geldig.length; i++) {
+    const s = geldig[i]
+    if (BETAALSTAPPEN.has(s.sleutel)) {
+      uit = s.sleutel
+      if (s.sleutel === doel) break
+      continue
+    }
+    if (factuur >= 0 && i > factuur) break
+  }
+  return uit
+}

@@ -4,7 +4,7 @@ import { huurderNaam, type Betaling, type Boeking, type Factuur, type Instelling
 import { vandaag } from "../domein/datum"
 import { berekenTermijnen } from "../domein/betaling"
 import { betaaltekst, bouwFactuurregels, totaalVan, type Factuurregel } from "../domein/factuur"
-import { isBijOfVoorbij, type WorkflowStap } from "../domein/workflow"
+import { doorschuivenTot, isBijOfVoorbij, type WorkflowStap } from "../domein/workflow"
 import type { FactuurGegevens } from "../pdf/FactuurPdf"
 import { laadAfbeelding, maakFactuurPdf } from "../pdf/genereer"
 import { driveBeschikbaar, zetInDrive } from "./drive"
@@ -211,13 +211,10 @@ export function statusNaBetaling(
   const totaal = definitief.reduce((t, f) => t + f.totaal_cent, 0)
   const betaald = betalingen.filter((p) => p.boeking === b.id).reduce((t, p) => t + p.bedrag_cent, 0)
   const actueel = definitief.filter((f) => f.soort === "factuur").at(-1)
-  if (betaald >= totaal && totaal > 0 && !isBijOfVoorbij(stappen, b, "volledig_betaald")) return "volledig_betaald"
-  if (
-    b.betaalwijze === "aanbetaling" &&
-    actueel &&
-    betaald >= actueel.aanbetaling_cent &&
-    betaald > 0 &&
-    !isBijOfVoorbij(stappen, b, "aanbetaling_ontvangen")
-  ) return "aanbetaling_ontvangen"
-  return null
+  let doel: string | null = null
+  if (betaald >= totaal && totaal > 0) doel = "volledig_betaald"
+  else if (b.betaalwijze === "aanbetaling" && actueel && betaald >= actueel.aanbetaling_cent && betaald > 0) doel = "aanbetaling_ontvangen"
+  if (!doel || isBijOfVoorbij(stappen, b, doel)) return null
+  // Niet voorbij een handmatige stap na de factuur (zoals aanmelden in het Le Duc-portaal).
+  return doorschuivenTot(stappen, b, doel)
 }
