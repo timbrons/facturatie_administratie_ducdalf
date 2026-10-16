@@ -77,6 +77,13 @@ export function beschikbareBijlagen(inst: Instellingen, factuur: Factuur | null)
   return uit
 }
 
+/** Adres om een bijlage vóór het versturen te bekijken. */
+export async function bijlageUrl(k: BijlageKeuze, inst: Instellingen, factuur: Factuur | null): Promise<string | null> {
+  if (k.soort === "brochure" && inst.brochure) return pb.files.getURL(inst, inst.brochure, { token: await pb.files.getToken() })
+  if (k.soort === "factuur" && factuur?.pdf) return pdfUrl(factuur)
+  return null
+}
+
 async function laadBijlagen(keuzes: BijlageKeuze[], inst: Instellingen, factuur: Factuur | null): Promise<MailBijlage[]> {
   const uit: MailBijlage[] = []
   for (const k of keuzes) {
