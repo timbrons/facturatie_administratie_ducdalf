@@ -276,7 +276,7 @@ function MaandRij({ aangifte: m, boekingen }: { aangifte: TbAangifte; boekingen:
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
         <div className="font-medium text-inkt">{maandNaam(mnd)} {j}</div>
         <div className="text-sm text-zacht">
-          Ingediend {m.ingediend_op ? formatLang(m.ingediend_op) : "—"} · aangegeven {formatEuro(aangegeven)} · {gekoppeld.length} verblijf/verblijven
+          Ingediend {m.ingediend_op ? formatLang(m.ingediend_op) : "—"} · aangegeven {formatEuro(aangegeven)} · {gekoppeld.length} {gekoppeld.length === 1 ? "verblijf" : "verblijven"}
           {m.bewijs?.length ? (
             <>
               {" · "}
@@ -353,7 +353,7 @@ function Parkkosten({ jaar, boekingen }: { jaar: number; boekingen: Boeking[] })
   return (
     <Kaart titel={`Park- en schoonmaakkosten PLD ${jaar}`} actie={<button type="button" className="knop-klein" onClick={exporteer}>Exporteer CSV</button>}>
       <p className="mb-3 text-sm text-zacht">Gefactureerd = parkkosten + eindschoonmaak; beide rekenen we af via de factuur van PLD.</p>
-      {open > 0 && <p className="mb-3 text-sm text-zacht">{open} verblijf{open === 1 ? "" : "en"} nog niet afgerekend met PLD.</p>}
+      {open > 0 && <p className="mb-3 text-sm text-zacht">{open} {open === 1 ? "verblijf" : "verblijven"} nog niet afgerekend met PLD.</p>}
       {rijen.length === 0 ? (
         <p className="text-sm text-zacht">Geen parkkosten in {jaar}.</p>
       ) : (
