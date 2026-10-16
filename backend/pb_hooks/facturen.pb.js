@@ -55,7 +55,7 @@ onRecordUpdateRequest((e) => {
     // zonder PDF mag eenmalig de originele PDF worden toegevoegd.
     const origineelToevoegen = oud.getBool("geimporteerd") && oud.getString("pdf") === ""
     const alles = ["boeking", "nummer", "soort", "factuurdatum", "regels", "gegevens", "totaal_cent", "aanbetaling_cent",
-      "aanbetaling_vervaldatum", "rest_vervaldatum", "verwijst_naar", "geimporteerd", "verstuurd_op", "vergrendeld"]
+      "aanbetaling_vervaldatum", "rest_vervaldatum", "verwijst_naar", "geimporteerd", "verstuurd_op", "vergrendeld", "aangepast"]
     if (!origineelToevoegen) alles.push("pdf")
     // Annuleren mag (eenmalig: van leeg naar een datum).
     if (!(oud.getString("geannuleerd_op") === "" && e.record.getString("geannuleerd_op") !== "")) alles.push("geannuleerd_op")
@@ -68,7 +68,7 @@ onRecordUpdateRequest((e) => {
     return
   }
   const vast = ["boeking", "soort", "factuurdatum", "regels", "gegevens", "totaal_cent", "aanbetaling_cent",
-    "aanbetaling_vervaldatum", "rest_vervaldatum", "verwijst_naar", "geimporteerd"]
+    "aanbetaling_vervaldatum", "rest_vervaldatum", "verwijst_naar", "geimporteerd", "aangepast"]
   // Het nummer wordt alleen door de nummer-route gezet.
   e.record.set("nummer", oud.getString("nummer"))
   if (oud.getString("nummer")) {

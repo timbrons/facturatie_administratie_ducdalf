@@ -2,8 +2,9 @@ import { useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { pb } from "../lib/pb"
 import { sleutels, useBetalingen, useFacturen } from "../lib/data"
-import type { Betaling, Boeking, Instellingen } from "../lib/types"
-import { factuurBezwaar, annuleerFactuur, maakConcept, maakDefinitief, markeerVerstuurd, nagemaaktePdf, pdfUrl, pdfVoor, statusNaBetaling, voegOrigineelToe } from "../lib/facturen"
+import type { Betaling, Boeking, Factuur, Instellingen } from "../lib/types"
+import type { Factuurregel } from "../domein/factuur"
+import { factuurBezwaar, annuleerFactuur, herstelConcept, pasConceptAan, standaardInhoud, maakConcept, maakDefinitief, markeerVerstuurd, nagemaaktePdf, pdfUrl, pdfVoor, statusNaBetaling, voegOrigineelToe } from "../lib/facturen"
 import { synchroniseerDrive } from "../lib/driveSync"
 import { SCOPES, zorgVoorGoogle } from "../lib/gmail"
 import { totaalBoeking } from "../lib/boeking"
@@ -49,6 +50,7 @@ export function FacturenKaart({ boeking: b, inst, stappen }: { boeking: Boeking;
   const [bezig, setBezig] = useState("")
   const [fout, setFout] = useState<unknown>(null)
   const [melding, setMelding] = useState("")
+  const [aanpassen, setAanpassen] = useState<Factuur | null>(null)
 
   const lijst = (facturen.data ?? []).filter((f) => f.boeking === b.id)
   const betaald = (betalingen.data ?? []).filter((p) => p.boeking === b.id).reduce((t, p) => t + p.bedrag_cent, 0)
@@ -102,6 +104,9 @@ export function FacturenKaart({ boeking: b, inst, stappen }: { boeking: Boeking;
               <div className="mt-3 flex flex-wrap gap-2">
                 {!f.nummer && (
                   <>
+                    {f.soort === "factuur" && (
+                      <button type="button" className="knop-klein" disabled={!!bezig} onClick={() => setAanpassen(f)}>Aanpassen</button>
+                    )}
                     <button type="button" className="knop-klein" disabled={!!bezig} onClick={() => actie("voorbeeld", async () => openPdf(await pdfVoor(f, inst)))}>
                       {bezig === "voorbeeld" ? "Bezig…" : "Voorbeeld (PDF)"}
                     </button>
@@ -193,7 +198,14 @@ export function FacturenKaart({ boeking: b, inst, stappen }: { boeking: Boeking;
           </button>
         )
       )}
-      {heeftConcept && <p className="text-xs text-zacht">Een concept volgt automatisch de boeking: bij "Definitief maken" worden prijzen en datums opnieuw overgenomen.</p>}
+      {heeftConcept && (
+        <p className="text-xs text-zacht">
+          {lijst.some((f) => !f.nummer && f.aangepast)
+            ? "Dit concept is met de hand aangepast: de regels, het adres en een zelf ingevulde betaaltekst blijven zoals ze zijn. Bij \"Definitief maken\" worden alleen de factuurdatum en de betaaltermijnen bijgewerkt."
+            : "Een concept volgt automatisch de boeking: bij \"Definitief maken\" worden prijzen en datums opnieuw overgenomen. Met \"Aanpassen\" wijzig je regels, adres of betaaltekst."}
+        </p>
+      )}
+      {aanpassen && <FactuurAanpassenDialoog factuur={aanpassen} boeking={b} inst={inst} onSluiten={() => setAanpassen(null)} />}
     </Kaart>
   )
 }
@@ -369,6 +381,8 @@ export function FactuurVersturenDialoog({ open, boeking: b, inst, viaMail, onSlu
   const lijst = (facturen.data ?? []).filter((f) => f.boeking === b.id)
   const concept = lijst.find((f) => f.soort === "factuur" && !f.nummer) ?? null
   const bezwaar = factuurBezwaar(b, inst)
+  const [aanpassen, setAanpassen] = useState<Factuur | null>(null)
+  const totaal = concept?.aangepast ? concept.totaal_cent : totaalBoeking(b)
 
   async function conceptOfNieuw() {
     return concept ?? (await maakConcept(b, inst))
@@ -394,12 +408,12 @@ export function FactuurVersturenDialoog({ open, boeking: b, inst, viaMail, onSlu
         ) : (
           <>
             <p>
-              De app maakt de factuur op basis van de boeking (totaal {formatEuro(totaalBoeking(b))})
+              {concept?.aangepast ? "De app maakt de factuur zoals je hem hebt aangepast" : "De app maakt de factuur op basis van de boeking"} (totaal {formatEuro(totaal)})
               {viaMail ? " en opent daarna de mail met de factuur als bijlage. Je ziet de mail eerst, versturen gaat pas na jouw klik." : "."}
             </p>
             <p className="text-xs text-zacht">
               Bij "Factuur maken" krijgt de factuur een factuurnummer en kan hij niet meer worden gewijzigd. Wil je eerst kijken, open
-              dan het voorbeeld.
+              dan het voorbeeld. Met "Aanpassen" wijzig je regels, bedragen, het adres of de betaaltekst.
             </p>
           </>
         )}
@@ -409,6 +423,18 @@ export function FactuurVersturenDialoog({ open, boeking: b, inst, viaMail, onSlu
           <button type="button" className="knop-rand" onClick={onSluiten}>Annuleren</button>
           {!bezwaar && (
             <>
+              <button
+                type="button"
+                className="knop-rand"
+                disabled={!!bezig}
+                onClick={() => stap("aanpassen", async () => {
+                  const f = await conceptOfNieuw()
+                  await ververs()
+                  setAanpassen(f)
+                })}
+              >
+                {bezig === "aanpassen" ? "Bezig…" : "Aanpassen"}
+              </button>
               <button
                 type="button"
                 className="knop-rand"
@@ -441,6 +467,147 @@ export function FactuurVersturenDialoog({ open, boeking: b, inst, viaMail, onSlu
               </button>
             </>
           )}
+        </div>
+      </div>
+      {aanpassen && <FactuurAanpassenDialoog factuur={aanpassen} boeking={b} inst={inst} onSluiten={() => setAanpassen(null)} />}
+    </Dialoog>
+  )
+}
+
+/**
+ * Concept-factuur met de hand aanpassen: regels (omschrijving, nachten,
+ * personen, bedrag), regels toevoegen of weghalen, het adres op de factuur en
+ * de betaaltekst. Daarna volgt het concept de boeking niet meer automatisch.
+ */
+export function FactuurAanpassenDialoog({ factuur: f, boeking: b, inst, onSluiten }: {
+  factuur: Factuur
+  boeking: Boeking
+  inst: Instellingen
+  onSluiten: () => void
+}) {
+  const ververs = useVerversen(b.id)
+  const start = f.regels && f.gegevens ? { regels: f.regels, gegevens: f.gegevens } : standaardInhoud(b, inst)
+  const [regels, setRegels] = useState<Factuurregel[]>(start.regels ?? [])
+  const [huurder, setHuurder] = useState(start.gegevens!.huurder)
+  const [eigenTekst, setEigenTekst] = useState<string | null>(start.gegevens!.betaaltekstHandmatig ? start.gegevens!.betaaltekst : null)
+  const [bezig, setBezig] = useState(false)
+  const [fout, setFout] = useState<unknown>(null)
+
+  const automatisch = standaardInhoud(b, inst, regels).gegevens.betaaltekst
+  const totaal = regels.reduce((t, r) => t + r.bedrag_cent, 0)
+  const zet = (i: number, w: Partial<Factuurregel>) => setRegels((oud) => oud.map((r, j) => (j === i ? { ...r, ...w } : r)))
+  const getal = (s: string) => (s.trim() === "" ? null : Math.max(0, Math.round(Number(s)) || 0))
+  const geldig = regels.length > 0 && regels.every((r) => r.omschrijving.trim()) && totaal > 0
+
+  async function bewaar(fn: () => Promise<unknown>) {
+    setBezig(true)
+    setFout(null)
+    try {
+      await fn()
+      await ververs()
+      onSluiten()
+    } catch (err) {
+      setFout(err)
+    } finally {
+      setBezig(false)
+    }
+  }
+
+  return (
+    <Dialoog open titel="Factuur aanpassen" onSluiten={onSluiten}>
+      <div className="flex flex-col gap-4 text-sm">
+        <section>
+          <div className="wenkbrauw mb-2">Regels</div>
+          <div className="flex flex-col gap-2">
+            {regels.map((r, i) => (
+              <div key={i} className="grid grid-cols-[minmax(0,1fr)_3.5rem_3.5rem_7rem_auto] items-end gap-2">
+                <Veld label={i === 0 ? "Omschrijving" : ""}>
+                  <input value={r.omschrijving} onChange={(e) => zet(i, { omschrijving: e.target.value })} />
+                </Veld>
+                <Veld label={i === 0 ? "Nachten" : ""}>
+                  <input inputMode="numeric" value={r.nachten ?? ""} onChange={(e) => zet(i, { nachten: getal(e.target.value) })} />
+                </Veld>
+                <Veld label={i === 0 ? "Pers." : ""}>
+                  <input inputMode="numeric" value={r.personen ?? ""} onChange={(e) => zet(i, { personen: getal(e.target.value) })} />
+                </Veld>
+                <Veld label={i === 0 ? "Bedrag" : ""}>
+                  <BedragVeld waarde={r.bedrag_cent} onChange={(c) => zet(i, { bedrag_cent: c ?? 0 })} />
+                </Veld>
+                <button type="button" className="knop-klein mb-1" title="Regel weghalen" onClick={() => setRegels((oud) => oud.filter((_, j) => j !== i))}>×</button>
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 flex items-center justify-between">
+            <button
+              type="button"
+              className="knop-klein"
+              onClick={() => setRegels((oud) => [...oud, { soort: "overig", omschrijving: "", nachten: null, personen: null, bedrag_cent: 0 }])}
+            >
+              + Regel toevoegen
+            </button>
+            <span className="font-semibold text-inkt">Totaal {formatEuro(totaal)}</span>
+          </div>
+          <p className="mt-1 text-xs text-zacht">Een korting voer je in als regel met een negatief bedrag, bijv. -50,00.</p>
+        </section>
+
+        <section>
+          <div className="wenkbrauw mb-2">Factuur aan</div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Veld label="Naam"><input value={huurder.naam} onChange={(e) => setHuurder({ ...huurder, naam: e.target.value })} /></Veld>
+            <Veld label="Adres"><input value={huurder.adres} onChange={(e) => setHuurder({ ...huurder, adres: e.target.value })} /></Veld>
+            <Veld label="Postcode en plaats"><input value={huurder.postcodePlaats} onChange={(e) => setHuurder({ ...huurder, postcodePlaats: e.target.value })} /></Veld>
+            <Veld label="Land"><input value={huurder.land ?? ""} onChange={(e) => setHuurder({ ...huurder, land: e.target.value })} /></Veld>
+          </div>
+        </section>
+
+        <section>
+          <div className="mb-2 flex items-center justify-between">
+            <span className="wenkbrauw">Betaaltekst</span>
+            {eigenTekst !== null && (
+              <button type="button" className="text-xs underline" onClick={() => setEigenTekst(null)}>Automatisch laten berekenen</button>
+            )}
+          </div>
+          <textarea rows={3} value={eigenTekst ?? automatisch} onChange={(e) => setEigenTekst(e.target.value)} />
+          <p className="mt-1 text-xs text-zacht">
+            {eigenTekst === null
+              ? "Wordt automatisch berekend uit het totaal en de betaaltermijnen. Typ hier om hem zelf in te vullen."
+              : "Zelf ingevuld: de tekst verandert niet meer mee met het totaal. Controleer de bedragen."}
+          </p>
+        </section>
+
+        {fout ? <Fout fout={fout} /> : null}
+        <div className="flex flex-wrap justify-between gap-2">
+          <div>
+            {f.aangepast && (
+              <button
+                type="button"
+                className="knop-rand"
+                disabled={bezig}
+                onClick={() => {
+                  if (window.confirm("Aanpassingen weggooien? De factuur volgt dan weer de gegevens van de boeking.")) {
+                    bewaar(() => herstelConcept(f, b, inst))
+                  }
+                }}
+              >
+                Terug naar automatisch
+              </button>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <button type="button" className="knop-rand" onClick={onSluiten}>Annuleren</button>
+            <button
+              type="button"
+              className="knop"
+              disabled={bezig || !geldig}
+              onClick={() => bewaar(() => pasConceptAan(f, b, inst, {
+                regels: regels.map((r) => ({ ...r, omschrijving: r.omschrijving.trim() })),
+                huurder,
+                betaaltekst: eigenTekst,
+              }))}
+            >
+              {bezig ? "Bezig…" : "Opslaan"}
+            </button>
+          </div>
         </div>
       </div>
     </Dialoog>

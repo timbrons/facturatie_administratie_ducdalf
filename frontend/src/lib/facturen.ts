@@ -44,8 +44,8 @@ export function factuurBezwaar(b: Boeking, inst: Instellingen): string | null {
   return null
 }
 
-function inhoud(b: Boeking, inst: Instellingen, factuurdatum: string) {
-  const regels = bouwFactuurregels({ ...b, extras: b.extras ?? null, nachten: aantalNachten(b) })
+function inhoud(b: Boeking, inst: Instellingen, factuurdatum: string, eigenRegels?: Factuurregel[]) {
+  const regels = eigenRegels ?? bouwFactuurregels({ ...b, extras: b.extras ?? null, nachten: aantalNachten(b) })
   const totaal = totaalVan(regels)
   const termijnen = berekenTermijnen({
     totaalCent: totaal,
@@ -72,10 +72,51 @@ export async function maakConcept(b: Boeking, inst: Instellingen): Promise<Factu
   return pb.collection("facturen").create<Factuur>({ boeking: b.id, soort: "factuur", ...inhoud(b, inst, vandaag()) })
 }
 
-/** Concept bijwerken naar de actuele boekingsgegevens. */
+/**
+ * Concept bijwerken naar de actuele boekingsgegevens. Een met de hand
+ * aangepast concept houdt zijn regels, adres en (zelf ingevulde) betaaltekst;
+ * alleen de factuurdatum en de betaaltermijnen worden opnieuw berekend.
+ */
 export async function vernieuwConcept(f: Factuur, b: Boeking, inst: Instellingen): Promise<Factuur> {
   if (f.soort === "credit") return f
+  if (f.aangepast && f.regels && f.gegevens) return pb.collection("facturen").update<Factuur>(f.id, aangepasteInhoud(f.regels, f.gegevens, b, inst))
   return pb.collection("facturen").update<Factuur>(f.id, inhoud(b, inst, vandaag()))
+}
+
+export interface FactuurAanpassing {
+  regels: Factuurregel[]
+  huurder: FactuurGegevens["huurder"]
+  /** Zelf ingevulde betaaltekst, of null om hem automatisch te laten berekenen */
+  betaaltekst: string | null
+}
+
+function aangepasteInhoud(regels: Factuurregel[], vorige: FactuurGegevens, b: Boeking, inst: Instellingen) {
+  const basis = inhoud(b, inst, vandaag(), regels)
+  return {
+    ...basis,
+    gegevens: {
+      ...basis.gegevens,
+      huurder: vorige.huurder,
+      betaaltekst: vorige.betaaltekstHandmatig ? vorige.betaaltekst : basis.gegevens.betaaltekst,
+      betaaltekstHandmatig: !!vorige.betaaltekstHandmatig,
+    },
+  }
+}
+
+/** Wat de factuur automatisch zou bevatten (voor het aanpasvenster). */
+export function standaardInhoud(b: Boeking, inst: Instellingen, regels?: Factuurregel[]) {
+  return inhoud(b, inst, vandaag(), regels)
+}
+
+/** Concept met de hand aanpassen: regels, adres en eventueel de betaaltekst. */
+export async function pasConceptAan(f: Factuur, b: Boeking, inst: Instellingen, a: FactuurAanpassing): Promise<Factuur> {
+  const gegevens = { ...gegevensVoor(b, inst, ""), huurder: a.huurder, betaaltekst: a.betaaltekst ?? "", betaaltekstHandmatig: a.betaaltekst !== null }
+  return pb.collection("facturen").update<Factuur>(f.id, { ...aangepasteInhoud(a.regels, gegevens, b, inst), aangepast: true })
+}
+
+/** Aanpassingen weggooien: het concept volgt de boeking weer. */
+export async function herstelConcept(f: Factuur, b: Boeking, inst: Instellingen): Promise<Factuur> {
+  return pb.collection("facturen").update<Factuur>(f.id, { ...inhoud(b, inst, vandaag()), aangepast: false })
 }
 
 /**

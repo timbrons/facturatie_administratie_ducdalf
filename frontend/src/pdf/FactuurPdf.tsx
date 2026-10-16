@@ -15,6 +15,8 @@ export interface FactuurGegevens {
   aankomst: string
   vertrek: string
   betaaltekst: string
+  /** De betaaltekst is met de hand ingevuld (wordt niet opnieuw berekend) */
+  betaaltekstHandmatig?: boolean
   creditVoor?: string
 }
 
