@@ -15,7 +15,8 @@ import { Dialoog, Fout, Gegeven, Kaart, Label, Laden, Melding, Paginakop } from 
 import { TbAangifteDialoog, TbBerekenDialoog } from "../components/Toeristenbelasting"
 import { BetalingenKaart, FactuurVersturenDialoog, FacturenKaart } from "../components/FacturenBetalingen"
 import { MailKaart } from "../components/Mail"
-import { AanmeldingKaart } from "../components/AanmeldingKaart"
+import { AanmeldingKaart, AanmeldingVoorPortaal } from "../components/AanmeldingKaart"
+import type { Aanmelding } from "../domein/aanmelding"
 import { StapDetail } from "../components/StapDetail"
 import { HuurOpbouw } from "../components/HuurOpbouw"
 import { berekenHuur, huurOpbouw } from "../domein/prijs"
@@ -48,7 +49,7 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
   const seizoenen = useSeizoenen().data ?? []
   const [fout, setFout] = useState<unknown>(null)
   const [bezig, setBezig] = useState(false)
-  const [dialoog, setDialoog] = useState<"" | "annuleren" | "status" | "tb_berekend" | "tb_aangegeven" | "betaling" | "mail" | "factuur">("")
+  const [dialoog, setDialoog] = useState<"" | "annuleren" | "status" | "tb_berekend" | "tb_aangegeven" | "betaling" | "mail" | "factuur" | "pld">("")
   const [mailSleutels, setMailSleutels] = useState<string[]>([])
   const [gekozenStap, setGekozenStap] = useState("")
   const facturen = useFacturen().data ?? []
@@ -113,6 +114,7 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
     if (volgende.sleutel === "tb_berekend") return setDialoog("tb_berekend")
     if (volgende.sleutel === "tb_aangegeven") return setDialoog("tb_aangegeven")
     if (volgende.sleutel === "aanbetaling_ontvangen" || volgende.sleutel === "volledig_betaald") return setDialoog("betaling")
+    if (volgende.sleutel === "le_duc_aangemeld") return setDialoog("pld")
     const viaMail = gmailBeschikbaar()
     if (viaMail && volgende.sleutel === "aanmeldformulier_verstuurd") return openMail(["aanmeldformulier"])
     if (viaMail && volgende.sleutel === "brochure_verstuurd") return openMail(["brochure"])
@@ -124,9 +126,13 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
       document.getElementById("facturen")?.scrollIntoView({ behavior: "smooth", block: "start" })
       return
     }
+    rondStapAf(volgende.sleutel)
+  }
+
+  function rondStapAf(sleutel: string) {
     // Is er al (volledig) betaald, dan meteen door naar de betaalstap die daarbij hoort.
-    const verder = statusNaBetaling({ ...b, status: volgende.sleutel }, stappen, facturen, betalingen)
-    zetStatus(verder ?? volgende.sleutel)
+    const verder = statusNaBetaling({ ...b, status: sleutel }, stappen, facturen, betalingen)
+    return zetStatus(verder ?? sleutel)
   }
 
   return (
@@ -183,11 +189,6 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
                 {volgende.actie_label || volgende.label}
               </button>
             </>
-          )}
-          {volgende?.sleutel === "le_duc_aangemeld" && inst.pld_portaal_url && (
-            <a href={inst.pld_portaal_url} target="_blank" rel="noopener noreferrer" className="knop-rand">
-              Open PLD-portaal ↗
-            </a>
           )}
           <button type="button" className="knop-klein" onClick={() => setDialoog("status")}>Status corrigeren</button>
         </div>
@@ -304,6 +305,41 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
         </div>
       </div>
 
+      <Dialoog open={dialoog === "pld"} titel="Aanmelden in het PLD-portaal" onSluiten={() => setDialoog("")}>
+        <div className="flex flex-col gap-4 text-sm">
+          {b.aanmelding ? (
+            <>
+              <p>
+                Neem de gegevens uit het aanmeldformulier over in het portaal van Parc le Duc. Met <em>Kopieer</em> zet je een
+                waarde op het klembord.
+              </p>
+              <AanmeldingVoorPortaal aanmelding={b.aanmelding as unknown as Aanmelding} />
+            </>
+          ) : (
+            <Melding soort="waarschuwing">Er is nog geen ingevuld aanmeldformulier aan deze boeking gekoppeld.</Melding>
+          )}
+          <div className="flex flex-wrap justify-between gap-2 border-t border-lijn pt-4">
+            {inst.pld_portaal_url ? (
+              <a href={inst.pld_portaal_url} target="_blank" rel="noopener noreferrer" className="knop-rand">Open PLD-portaal ↗</a>
+            ) : (
+              <span className="self-center text-xs text-zacht">Stel het adres van het portaal in bij Instellingen → Links.</span>
+            )}
+            <div className="flex gap-2">
+              <button type="button" className="knop-rand" onClick={() => setDialoog("")}>Sluiten</button>
+              <button
+                type="button"
+                className="knop"
+                disabled={bezig}
+                onClick={async () => {
+                  if (await rondStapAf("le_duc_aangemeld")) setDialoog("")
+                }}
+              >
+                Aangemeld in het portaal
+              </button>
+            </div>
+          </div>
+        </div>
+      </Dialoog>
       <FactuurVersturenDialoog
         open={dialoog === "factuur"}
         boeking={b}

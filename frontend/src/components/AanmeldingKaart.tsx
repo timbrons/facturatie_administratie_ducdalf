@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom"
 import type { Boeking } from "../lib/types"
 import type { Aanmelding } from "../domein/aanmelding"
-import { formatLang, formatTijdstip } from "../domein/datum"
-import { Gegeven, Kaart } from "./ui"
+import { formatKort, formatLang, formatTijdstip } from "../domein/datum"
+import { Gegeven, Kaart, KopieerKnop } from "./ui"
 
 /** Gegevens uit het ingevulde aanmeldformulier, bij de boeking. */
 export function AanmeldingKaart({ boeking }: { boeking: Boeking }) {
@@ -43,6 +43,58 @@ export function AanmeldingGegevens({ aanmelding: a }: { aanmelding: Aanmelding }
       </Gegeven>
       <Gegeven label="Noodcontact">{[a.noodcontact?.naam, a.noodcontact?.telefoonMobiel || a.noodcontact?.telefoonVast, a.noodcontact?.email].filter(Boolean).join(" · ")}</Gegeven>
       <Gegeven label="Opmerkingen">{a.opmerkingen}</Gegeven>
+    </dl>
+  )
+}
+
+function Kopieerbaar({ label, waarde }: { label: string; waarde: string }) {
+  if (!waarde) return <Gegeven label={label}>{""}</Gegeven>
+  return (
+    <Gegeven label={label}>
+      <span className="flex flex-wrap items-center gap-2">
+        <span>{waarde}</span>
+        <KopieerKnop waarde={waarde} />
+      </span>
+    </Gegeven>
+  )
+}
+
+/**
+ * Alle gegevens uit het aanmeldformulier om over te nemen in een ander
+ * systeem (het PLD-portaal), elk met een kopieerknop. Het paspoortnummer staat
+ * hier voluit; daarom alleen in dit venster, op verzoek.
+ */
+export function AanmeldingVoorPortaal({ aanmelding: a }: { aanmelding: Aanmelding }) {
+  const datum = (d: string | null) => (d ? formatKort(d) : "")
+  return (
+    <dl className="text-sm">
+      <Kopieerbaar label="Aanhef" waarde={a.aanhef} />
+      <Kopieerbaar label="Voornaam" waarde={a.voornaam} />
+      <Kopieerbaar label="Achternaam" waarde={a.achternaam} />
+      <Kopieerbaar label="Geboortedatum" waarde={datum(a.geboortedatum)} />
+      <Kopieerbaar label="Geboorteplaats" waarde={a.geboorteplaats} />
+      <Kopieerbaar label="Paspoort" waarde={a.paspoort} />
+      <Kopieerbaar label="Adres" waarde={a.adres} />
+      <Kopieerbaar label="Postcode" waarde={a.postcode} />
+      <Kopieerbaar label="Plaats" waarde={a.plaats} />
+      <Kopieerbaar label="E-mail" waarde={a.email} />
+      <Kopieerbaar label="Telefoon" waarde={a.telefoonMobiel || a.telefoonVast} />
+      <Kopieerbaar label="Kenteken" waarde={a.kenteken} />
+      {a.extraPersonen.map((p, i) => (
+        <div key={i} className="mt-2 border-t border-lijn pt-2">
+          <div className="wenkbrauw mb-1">Meereizende {i + 1}</div>
+          <Kopieerbaar label="Naam" waarde={p.naam} />
+          <Kopieerbaar label="Geboortedatum" waarde={datum(p.geboortedatum)} />
+          <Kopieerbaar label="Geboorteplaats" waarde={p.geboorteplaats ?? ""} />
+        </div>
+      ))}
+      {(a.noodcontact?.naam || a.noodcontact?.telefoonMobiel || a.noodcontact?.telefoonVast) && (
+        <div className="mt-2 border-t border-lijn pt-2">
+          <div className="wenkbrauw mb-1">Noodcontact</div>
+          <Kopieerbaar label="Naam" waarde={a.noodcontact.naam} />
+          <Kopieerbaar label="Telefoon" waarde={a.noodcontact.telefoonMobiel || a.noodcontact.telefoonVast} />
+        </div>
+      )}
     </dl>
   )
 }
