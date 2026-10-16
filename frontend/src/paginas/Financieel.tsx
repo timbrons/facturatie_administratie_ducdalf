@@ -248,7 +248,7 @@ function Toeristenbelasting({ jaar, boekingen, aangiften }: { jaar: number; boek
       <Kaart titel="Maandaangiften en afdracht">
         <p className="mb-3 text-sm text-zacht">Per maand: wanneer de aangifte is ingediend en, als jullie apart worden aangeslagen, wanneer en hoeveel is afgedragen.</p>
         {maanden.length === 0 ? (
-          <p className="text-sm text-zacht">Nog geen aangiften voor {jaar}. Een aangifte registreer je bij de boeking (stap "Aangifte registreren").</p>
+          <p className="text-sm text-zacht">Nog geen aangiften voor {jaar}. Een aangifte registreer je bij de boeking (stap "Toeristenbelasting aangeven").</p>
         ) : (
           <div className="flex flex-col gap-3">
             {maanden.map((m) => <MaandRij key={m.id} aangifte={m} boekingen={boekingen} />)}
