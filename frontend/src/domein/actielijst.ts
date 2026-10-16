@@ -1,6 +1,6 @@
 import { dagenTussen, datumVan, formatLang, jaarVan, maandVan, plusDagen, plusMaanden, type IsoDatum } from "./datum"
 import { alleOverlappen } from "./overlap"
-import { AFGEROND, GEANNULEERD, isBijOfVoorbij, volgendeStap, type WorkflowBoeking, type WorkflowStap } from "./workflow"
+import { AFGEROND, GEANNULEERD, isBijOfVoorbij, labelVoor, volgendeStap, type WorkflowBoeking, type WorkflowStap } from "./workflow"
 
 export interface ActieBoeking extends WorkflowBoeking {
   id: string
@@ -35,6 +35,8 @@ export interface Actie {
   wachten?: boolean
   /** Sleutel van de workflowstap bij een actie van soort volgende_stap */
   stap?: string
+  /** De stap die als laatste is afgerond (de huidige status), bij een actie van soort volgende_stap */
+  afgerond?: string
 }
 
 /**
@@ -217,6 +219,7 @@ export function bouwActielijst(
         toelichting: taak?.toelichting ?? volgende.omschrijving ?? "",
         wachten: taak?.wachten,
         stap: volgende.sleutel,
+        afgerond: b.status === "aanvraag" ? undefined : labelVoor(stappen, b.status),
       })
     }
     if (volgende?.sleutel === "verblijf" && b.aankomst <= vandaag) {

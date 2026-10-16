@@ -390,6 +390,8 @@ describe("actielijst", () => {
     const doen = bouwActielijst([{ ...basis, id: "1", status: "bevestigd", aankomst: "2027-05-16", vertrek: "2027-06-05" }], STAPPEN, inst, "2026-10-14")
     expect(doen[0]).toMatchObject({ titel: "Aanmeldformulier versturen – Fam. Testman" })
     expect(doen[0].wachten).toBeFalsy()
+    // De laatst afgeronde stap staat erbij (het label van de huidige status).
+    expect(doen[0].afgerond).toBe(STAPPEN.find((s) => s.sleutel === "bevestigd")!.label)
   })
   it("negeert geannuleerde en afgeronde boekingen", () => {
     const acties = bouwActielijst(
