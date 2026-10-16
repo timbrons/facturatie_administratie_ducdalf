@@ -69,7 +69,13 @@ export function Dashboard() {
                 <li key={`${a.boekingId}-${a.soort}-${i}`}>
                   <div className={`flex flex-col gap-2 border border-lijn border-l-4 px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${a.wachten ? "border-l-lijn bg-transparent" : KLEUR[a.urgentie]}`}>
                     <Link to={`/boekingen/${a.boekingId}`} className="no-underline">
-                      <div className={a.wachten ? "text-zacht" : "font-medium text-inkt"}>{a.titel}</div>
+                      {a.afgerond && (
+                        <div className="mb-0.5 text-xs text-olijf-donker">✓ Afgerond: {a.afgerond}</div>
+                      )}
+                      <div className={a.wachten ? "text-zacht" : "font-medium text-inkt"}>
+                        {a.afgerond && !a.wachten && <span className="font-normal text-zacht">Volgende stap: </span>}
+                        {a.titel}
+                      </div>
                       {a.toelichting && <div className="text-sm text-tekst">{a.toelichting}</div>}
                     </Link>
                     {a.stap === "le_duc_aangemeld" && inst.data?.pld_portaal_url && (
