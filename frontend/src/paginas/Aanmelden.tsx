@@ -126,7 +126,7 @@ export function Aanmelden() {
             {vooraf && !vooraf.al_ontvangen && (
               <Melding soort="info">
                 Dit formulier hoort bij je verblijf van <strong>{formatLang(vooraf.aankomst)}</strong> tot <strong>{formatLang(vooraf.vertrek)}</strong>.
-                De datums zijn alvast ingevuld.
+                De data zijn alvast ingevuld.
               </Melding>
             )}
             {vooraf?.al_ontvangen && (
