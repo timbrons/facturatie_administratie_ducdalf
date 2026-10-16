@@ -3,8 +3,10 @@ import { Link } from "react-router-dom"
 import { useQueryClient } from "@tanstack/react-query"
 import { sleutels, useBetalingen, useFacturen, useMaillog, useSjablonen } from "../lib/data"
 import { gmailBeschikbaar, SCOPES, useGmailGekoppeld, zorgVoorGoogle } from "../lib/gmail"
+import { useMailgesprek } from "../lib/mailgesprek"
 import { actueleFactuur, beschikbareBijlagen, kiesSjabloon, variabelenVoor, verstuurMail, type BijlageKeuze } from "../lib/mail"
-import type { Boeking, Instellingen } from "../lib/types"
+import type { Boeking, Instellingen, MailLog } from "../lib/types"
+import type { Reactie } from "../domein/mailgesprek"
 import { combineer, vulIn } from "../domein/sjablonen"
 import { formatTijdstip } from "../domein/datum"
 import type { WorkflowStap } from "../domein/workflow"
@@ -20,6 +22,12 @@ export function GmailKnop({ klein = false }: { inst?: Instellingen; klein?: bool
   return <span className={`${klein ? "text-xs" : "text-sm"} text-olijf-donker`}>✓ Google gekoppeld</span>
 }
 
+/** PocketBase-tijdstip ("2026-10-16 10:12:00.000Z") → ISO, voor het sorteren. */
+function alsIso(s: string): string {
+  const d = new Date(s.replace(" ", "T"))
+  return Number.isNaN(d.getTime()) ? s : d.toISOString()
+}
+
 export function MailKaart({ boeking: b, inst, stappen, open, sleutels: startSleutels, onOpen, onSluiten }: {
   boeking: Boeking
   inst: Instellingen
@@ -32,6 +40,12 @@ export function MailKaart({ boeking: b, inst, stappen, open, sleutels: startSleu
   const log = useMaillog()
   const sjablonen = useSjablonen()
   const mails = (log.data ?? []).filter((m) => m.boeking === b.id)
+  const gesprek = useMailgesprek(b.id, mails)
+  // Verstuurde mails en reacties uit Gmail in één tijdlijn, nieuwste bovenaan.
+  const items: ({ soort: "app"; tijd: string; m: MailLog } | { soort: "gmail"; tijd: string; r: Reactie })[] = [
+    ...mails.map((m) => ({ soort: "app" as const, tijd: alsIso(m.created), m })),
+    ...(gesprek.data?.reacties ?? []).map((r) => ({ soort: "gmail" as const, tijd: r.ontvangen, r })),
+  ].sort((x, y) => y.tijd.localeCompare(x.tijd))
   const snel = (sjablonen.data ?? []).filter((s) => s.taal === "nl")
   return (
     <Kaart titel="E-mails" actie={<GmailKnop inst={inst} klein />}>
@@ -44,25 +58,60 @@ export function MailKaart({ boeking: b, inst, stappen, open, sleutels: startSleu
           <button key={s.id} type="button" className="knop-klein" onClick={() => onOpen([s.sleutel])}>{s.naam}</button>
         ))}
       </div>
-      {mails.length === 0 ? (
+      {gesprek.data && !gesprek.data.beschikbaar && (
+        <div className="mb-3">
+          <Melding soort="info">
+            Reacties van de huurder kunnen nog niet worden getoond: de Google-koppeling mag Gmail nog niet lezen. Klik bij
+            Instellingen → Google-account op Opnieuw koppelen.
+          </Melding>
+        </div>
+      )}
+      {gesprek.error ? <div className="mb-3"><Fout fout={gesprek.error} /></div> : null}
+      {items.length === 0 ? (
         <p className="text-sm text-zacht">Nog geen e-mails verstuurd vanuit het systeem.</p>
       ) : (
         <ul className="divide-y divide-lijn border-t border-lijn">
-          {mails.map((m) => (
-            <li key={m.id} className="py-2 text-sm">
-              <details>
-                <summary className="cursor-pointer">
-                  <span className="text-inkt">{m.onderwerp}</span>
-                  <span className="ml-2 text-xs text-zacht">{formatTijdstip(m.created)} · aan {m.aan}</span>
-                </summary>
-                <div className="mt-2 border-l-2 border-lijn pl-3">
-                  {(m.bijlagen ?? []).length > 0 && <div className="mb-1 text-xs text-zacht">Bijlagen: {(m.bijlagen ?? []).join(", ")}</div>}
-                  <pre className="whitespace-pre-wrap font-sans text-sm text-tekst">{m.tekst}</pre>
-                  <div className="mt-1 text-xs text-zacht">Gmail-thread: {m.gmail_thread_id || "—"}</div>
-                </div>
-              </details>
-            </li>
-          ))}
+          {items.map((it) =>
+            it.soort === "app" ? (
+              <li key={it.m.id} className="py-2 text-sm">
+                <details>
+                  <summary className="cursor-pointer">
+                    <span className="mr-2 text-xs text-zacht">Verstuurd</span>
+                    <span className="text-inkt">{it.m.onderwerp}</span>
+                    <span className="ml-2 text-xs text-zacht">{formatTijdstip(it.m.created)} · aan {it.m.aan}</span>
+                  </summary>
+                  <div className="mt-2 border-l-2 border-lijn pl-3">
+                    {(it.m.bijlagen ?? []).length > 0 && <div className="mb-1 text-xs text-zacht">Bijlagen: {(it.m.bijlagen ?? []).join(", ")}</div>}
+                    <pre className="whitespace-pre-wrap font-sans text-sm text-tekst">{it.m.tekst}</pre>
+                    <div className="mt-1 text-xs text-zacht">Gmail-thread: {it.m.gmail_thread_id || "—"}</div>
+                  </div>
+                </details>
+              </li>
+            ) : (
+              <li key={it.r.id} className={`py-2 text-sm ${it.r.richting === "ontvangen" ? "bg-zand/60 -mx-2 px-2" : ""}`}>
+                <details open={it.r.richting === "ontvangen"}>
+                  <summary className="cursor-pointer">
+                    <span className={`mr-2 text-xs ${it.r.richting === "ontvangen" ? "font-semibold text-goud-donker" : "text-zacht"}`}>
+                      {it.r.richting === "ontvangen" ? "Reactie ontvangen" : "Beantwoord in Gmail"}
+                    </span>
+                    <span className="text-inkt">{it.r.onderwerp || "(geen onderwerp)"}</span>
+                    <span className="ml-2 text-xs text-zacht">
+                      {formatTijdstip(it.r.ontvangen)} · {it.r.richting === "ontvangen" ? `van ${it.r.van}` : `aan ${it.r.aan}`}
+                    </span>
+                  </summary>
+                  <div className="mt-2 border-l-2 border-goud pl-3">
+                    <pre className="whitespace-pre-wrap font-sans text-sm text-tekst">{it.r.tekst}</pre>
+                    {it.r.volledig !== it.r.tekst && (
+                      <details className="mt-1">
+                        <summary className="cursor-pointer text-xs text-zacht">Met eerder bericht</summary>
+                        <pre className="mt-1 whitespace-pre-wrap font-sans text-xs text-zacht">{it.r.volledig}</pre>
+                      </details>
+                    )}
+                  </div>
+                </details>
+              </li>
+            ),
+          )}
         </ul>
       )}
       {open && <MailDialoog boeking={b} inst={inst} stappen={stappen} startSleutels={startSleutels} onSluiten={onSluiten} />}
