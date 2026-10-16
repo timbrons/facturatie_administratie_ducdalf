@@ -342,7 +342,7 @@ function Parkkosten({ jaar, boekingen }: { jaar: number; boekingen: Boeking[] })
 
   function exporteer() {
     downloadCsv(`parkkosten-pld-${jaar}.csv`, [
-      ["Huurder", "Aankomst", "Vertrek", "Gefactureerd aan huurder", "Betaald aan PLD", "Betaald op", "Verschil", "Factuur PLD in Drive"],
+      ["Huurder", "Aankomst", "Vertrek", "Gefactureerd aan huurder (parkkosten + schoonmaak)", "Betaald aan PLD", "Betaald op", "Verschil", "Factuur PLD in Drive"],
       ...rijen.map((r) => [
         r.boeking.naam, r.boeking.aankomst, r.boeking.vertrek, csvBedrag(r.gefactureerd), r.betaald === null ? "" : csvBedrag(r.betaald),
         r.boeking.parkkosten_betaald_op, r.verschil === null ? "" : csvBedrag(r.verschil), r.boeking.parkkosten_drive_link,
@@ -352,6 +352,7 @@ function Parkkosten({ jaar, boekingen }: { jaar: number; boekingen: Boeking[] })
 
   return (
     <Kaart titel={`Parkkosten PLD ${jaar}`} actie={<button type="button" className="knop-klein" onClick={exporteer}>Exporteer CSV</button>}>
+      <p className="mb-3 text-sm text-zacht">Gefactureerd = parkkosten + eindschoonmaak; beide rekenen we af via de factuur van PLD.</p>
       {open > 0 && <p className="mb-3 text-sm text-zacht">{open} verblijf{open === 1 ? "" : "en"} nog niet afgerekend met PLD.</p>}
       {rijen.length === 0 ? (
         <p className="text-sm text-zacht">Geen parkkosten in {jaar}.</p>

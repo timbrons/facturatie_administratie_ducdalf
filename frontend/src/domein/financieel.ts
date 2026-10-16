@@ -100,6 +100,7 @@ export function tbOverzicht(jaar: number, boekingen: FinBoeking[], facturen: Fin
 
 export interface ParkBoeking extends FinBoeking {
   parkkosten_cent: Cent
+  schoonmaak_cent: Cent
   parkkosten_betaald_cent: Cent
   parkkosten_betaald_op: string
 }
@@ -113,15 +114,23 @@ export interface ParkRij<T extends ParkBoeking = ParkBoeking> {
   verschil: Cent | null
 }
 
+/**
+ * Wat we bij PLD afrekenen en de huurder in rekening brachten: parkkosten
+ * plus eindschoonmaak (die betalen we via dezelfde factuur van PLD).
+ */
+export function pldGefactureerd(b: { parkkosten_cent?: Cent | null; schoonmaak_cent?: Cent | null }): Cent {
+  return (b.parkkosten_cent ?? 0) + (b.schoonmaak_cent ?? 0)
+}
+
 /** Parkkosten per verblijf in een jaar (op aankomst): wat de huurder betaalde en wat wij aan PLD betaalden. */
 export function parkkostenOverzicht<T extends ParkBoeking>(jaar: number, boekingen: T[]): ParkRij<T>[] {
   return boekingen
     .filter((b) => b.status !== "geannuleerd" && b.aankomst.startsWith(`${jaar}-`))
-    .filter((b) => (b.parkkosten_cent ?? 0) > 0 || !!b.parkkosten_betaald_op)
+    .filter((b) => pldGefactureerd(b) > 0 || !!b.parkkosten_betaald_op)
     .sort((a, b) => a.aankomst.localeCompare(b.aankomst))
     .map((b) => {
       const betaald = b.parkkosten_betaald_op ? b.parkkosten_betaald_cent : null
-      const gefactureerd = b.parkkosten_cent ?? 0
+      const gefactureerd = pldGefactureerd(b)
       return { boeking: b, gefactureerd, betaald, verschil: betaald === null ? null : gefactureerd - betaald }
     })
 }

@@ -138,15 +138,15 @@ describe("financieel overzicht", () => {
 })
 
 describe("parkkostenOverzicht", () => {
-  const basis = { naam: "Fam. Test", status: "verblijf", tb_aangegeven_cent: 0, tb_aangegeven_op: "", tb_aangifte: "", parkkosten_betaald_cent: 0, parkkosten_betaald_op: "" }
+  const basis = { naam: "Fam. Test", status: "verblijf", tb_aangegeven_cent: 0, tb_aangegeven_op: "", tb_aangifte: "", parkkosten_betaald_cent: 0, parkkosten_betaald_op: "", schoonmaak_cent: 0 }
   it("toont gefactureerd, betaald en het verschil per verblijf in het jaar", () => {
     const rijen = parkkostenOverzicht(2026, [
-      { ...basis, id: "a", aankomst: "2026-09-13", vertrek: "2026-09-23", parkkosten_cent: 10000, parkkosten_betaald_cent: 9500, parkkosten_betaald_op: "2026-10-16" },
+      { ...basis, id: "a", aankomst: "2026-09-13", vertrek: "2026-09-23", parkkosten_cent: 10000, schoonmaak_cent: 6400, parkkosten_betaald_cent: 16000, parkkosten_betaald_op: "2026-10-16" },
       { ...basis, id: "b", aankomst: "2026-07-01", vertrek: "2026-07-08", parkkosten_cent: 7000 },
       { ...basis, id: "c", aankomst: "2026-08-01", vertrek: "2026-08-08", parkkosten_cent: 0 },
       { ...basis, id: "d", aankomst: "2025-08-01", vertrek: "2025-08-08", parkkosten_cent: 7000 },
       { ...basis, id: "e", aankomst: "2026-05-01", vertrek: "2026-05-08", parkkosten_cent: 7000, status: "geannuleerd" },
     ])
-    expect(rijen.map((r) => [r.boeking.id, r.betaald, r.verschil])).toEqual([["b", null, null], ["a", 9500, 500]])
+    expect(rijen.map((r) => [r.boeking.id, r.betaald, r.verschil])).toEqual([["b", null, null], ["a", 16000, 400]])
   })
 })
