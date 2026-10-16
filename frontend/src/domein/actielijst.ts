@@ -33,6 +33,8 @@ export interface Actie {
   mail?: string
   /** Wij wachten op de huurder (geen actie van ons nodig) */
   wachten?: boolean
+  /** Sleutel van de workflowstap bij een actie van soort volgende_stap */
+  stap?: string
 }
 
 /**
@@ -73,7 +75,7 @@ const TE_DOEN: Record<string, { titel: string; toelichting: string; wachten?: bo
     toelichting: "Maak de factuur en stuur hem naar de huurder.",
   },
   le_duc_aangemeld: {
-    titel: "Aanmelden in het Le Duc Portaal",
+    titel: "Aanmelden in het PLD-portaal",
     toelichting: "Meld de huurder en de meereizenden aan in het portaal van Parc le Duc.",
   },
 }
@@ -214,6 +216,7 @@ export function bouwActielijst(
         titel: `${taak?.titel || volgende.actie_label || volgende.label} – ${b.naam}`,
         toelichting: taak?.toelichting ?? volgende.omschrijving ?? "",
         wachten: taak?.wachten,
+        stap: volgende.sleutel,
       })
     }
     if (volgende?.sleutel === "verblijf" && b.aankomst <= vandaag) {
