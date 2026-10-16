@@ -6,6 +6,7 @@ import type { Betaling, Boeking, Factuur, Instellingen } from "../lib/types"
 import type { Factuurregel } from "../domein/factuur"
 import { factuurBezwaar, annuleerFactuur, herstelConcept, pasConceptAan, standaardInhoud, maakConcept, maakDefinitief, markeerVerstuurd, nagemaaktePdf, pdfUrl, pdfVoor, statusNaBetaling, voegOrigineelToe } from "../lib/facturen"
 import { synchroniseerDrive } from "../lib/driveSync"
+import { verwijderFactuur } from "../lib/verwijderen"
 import { SCOPES, zorgVoorGoogle } from "../lib/gmail"
 import { totaalBoeking } from "../lib/boeking"
 import { formatLang, formatTijdstip, vandaag } from "../domein/datum"
@@ -51,8 +52,13 @@ export function FacturenKaart({ boeking: b, inst, stappen }: { boeking: Boeking;
   const [fout, setFout] = useState<unknown>(null)
   const [melding, setMelding] = useState("")
   const [aanpassen, setAanpassen] = useState<Factuur | null>(null)
+  const [toonGeannuleerd, setToonGeannuleerd] = useState(false)
 
   const lijst = (facturen.data ?? []).filter((f) => f.boeking === b.id)
+  const geannuleerd = lijst.filter((f) => f.geannuleerd_op)
+  const zichtbaar = toonGeannuleerd ? lijst : lijst.filter((f) => !f.geannuleerd_op)
+  // Verwijderen kan alleen bij een nooit verstuurde factuur; de server controleert de rest (betalingen, laatste nummer).
+  const magWeg = (f: Factuur) => !f.vergrendeld && !f.verstuurd_op && !f.geimporteerd
   const betaald = (betalingen.data ?? []).filter((p) => p.boeking === b.id).reduce((t, p) => t + p.bedrag_cent, 0)
   const nu = vandaag()
   const geldig = lijst.filter((f) => f.soort === "factuur" && f.nummer && betaalstatus(f, lijst, betaald, nu) !== "geannuleerd")
@@ -80,7 +86,7 @@ export function FacturenKaart({ boeking: b, inst, stappen }: { boeking: Boeking;
       {melding && <div className="mb-3"><Melding soort="waarschuwing">{melding}</Melding></div>}
       {lijst.length === 0 && <p className="mb-3 text-sm text-zacht">Nog geen factuur.</p>}
       <ul className="mb-3 flex flex-col gap-3">
-        {lijst.map((f) => {
+        {zichtbaar.map((f) => {
           const status = betaalstatus(f, lijst, betaald, nu)
           return (
             <li key={f.id} className="border border-lijn bg-white p-3">
@@ -98,7 +104,7 @@ export function FacturenKaart({ boeking: b, inst, stappen }: { boeking: Boeking;
               </div>
               {f.geimporteerd && <div className="mt-1 text-xs text-zacht">Overgenomen uit de oude administratie.</div>}
               {f.verstuurd_op && <div className="mt-1 text-xs text-zacht">Verstuurd op {formatTijdstip(f.verstuurd_op)}</div>}
-              {f.nummer && !f.vergrendeld && (
+              {f.nummer && !f.vergrendeld && !f.geannuleerd_op && (
                 <div className="mt-2"><Melding soort="info">Definitief, nog niet verstuurd. Download de PDF, stuur hem naar de huurder en markeer hem daarna als verstuurd.</Melding></div>
               )}
               <div className="mt-3 flex flex-wrap gap-2">
@@ -165,7 +171,7 @@ export function FacturenKaart({ boeking: b, inst, stappen }: { boeking: Boeking;
                 {inst.drive_kopie && f.nummer && f.pdf && !f.drive_link && (
                   <span className="self-center text-xs text-zacht">Kopie in Drive volgt automatisch</span>
                 )}
-                {f.nummer && !f.vergrendeld && (
+                {f.nummer && !f.vergrendeld && !f.geannuleerd_op && (
                   <button type="button" className="knop-klein" disabled={!!bezig} onClick={() => actie("verstuurd", () => markeerVerstuurd(f, b, stappen))}>
                     Markeer als verstuurd
                   </button>
@@ -184,11 +190,36 @@ export function FacturenKaart({ boeking: b, inst, stappen }: { boeking: Boeking;
                     Factuur annuleren
                   </button>
                 )}
+                {magWeg(f) && (
+                  <button
+                    type="button"
+                    className="knop-klein text-rood"
+                    disabled={!!bezig}
+                    onClick={() => {
+                      const vraag = f.nummer
+                        ? `Factuur ${f.nummer} verwijderen? Dit kan alleen als het de laatst genummerde factuur is; het nummer komt dan weer vrij. Een kopie in Google Drive wordt ook verwijderd.`
+                        : "Dit concept verwijderen?"
+                      if (window.confirm(vraag)) {
+                        actie("verwijderen", async () => {
+                          const r = await verwijderFactuur(f, inst.afzender_email)
+                          if (r.driveOver) setMelding(`De factuur is verwijderd, maar de kopie in Google Drive niet. Verwijder die zelf: ${r.driveOver}`)
+                        })
+                      }
+                    }}
+                  >
+                    {bezig === "verwijderen" ? "Bezig…" : "Verwijderen"}
+                  </button>
+                )}
               </div>
             </li>
           )
         })}
       </ul>
+      {geannuleerd.length > 0 && (
+        <button type="button" className="mb-3 block text-xs text-zacht underline" onClick={() => setToonGeannuleerd(!toonGeannuleerd)}>
+          {toonGeannuleerd ? "Geannuleerde facturen verbergen" : `${geannuleerd.length} geannuleerde factu${geannuleerd.length === 1 ? "ur" : "ren"} tonen`}
+        </button>
+      )}
       {magNieuw && (
         bezwaar ? (
           <Melding soort="waarschuwing">{bezwaar}</Melding>

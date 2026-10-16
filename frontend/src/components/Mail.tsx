@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { sleutels, useBetalingen, useFacturen, useMaillog, useSjablonen } from "../lib/data"
 import { gmailBeschikbaar, SCOPES, useGmailGekoppeld, zorgVoorGoogle } from "../lib/gmail"
 import { useMailgesprek } from "../lib/mailgesprek"
-import { actueleFactuur, beschikbareBijlagen, kiesSjabloon, variabelenVoor, verstuurMail, type BijlageKeuze } from "../lib/mail"
+import { actueleFactuur, beschikbareBijlagen, bijlageUrl, kiesSjabloon, variabelenVoor, verstuurMail, type BijlageKeuze } from "../lib/mail"
 import type { Boeking, Instellingen, MailLog } from "../lib/types"
 import type { Reactie } from "../domein/mailgesprek"
 import { combineer, vulIn } from "../domein/sjablonen"
@@ -220,14 +220,29 @@ function MailDialoog({ boeking: b, inst, stappen, startSleutels, onSluiten }: {
             <div className="mb-1 text-sm text-zacht">Bijlagen</div>
             {beschikbaar.length === 0 && <div className="text-xs text-zacht">Geen bijlagen beschikbaar.</div>}
             {beschikbaar.map((bk) => (
-              <label key={bk.soort} className="flex items-center gap-2 text-sm text-inkt">
-                <input
-                  type="checkbox"
-                  checked={bijlagen.some((x) => x.soort === bk.soort)}
-                  onChange={(e) => setBijlagen(e.target.checked ? [...bijlagen, bk] : bijlagen.filter((x) => x.soort !== bk.soort))}
-                />
-                {bk.bestandsnaam}
-              </label>
+              <div key={bk.soort} className="flex items-center gap-3">
+                <label className="flex items-center gap-2 text-sm text-inkt">
+                  <input
+                    type="checkbox"
+                    checked={bijlagen.some((x) => x.soort === bk.soort)}
+                    onChange={(e) => setBijlagen(e.target.checked ? [...bijlagen, bk] : bijlagen.filter((x) => x.soort !== bk.soort))}
+                  />
+                  {bk.bestandsnaam}
+                </label>
+                <button
+                  type="button"
+                  className="text-xs underline"
+                  onClick={async () => {
+                    // Venster meteen openen (binnen de klik), anders houdt de pop-upblokkering het tegen.
+                    const venster = window.open("", "_blank")
+                    const url = await bijlageUrl(bk, inst, factuur).catch(() => null)
+                    if (venster && url) venster.location.href = url
+                    else if (venster) venster.close()
+                  }}
+                >
+                  Bekijken
+                </button>
+              </div>
             ))}
           </div>
           {ontbrekend.length > 0 && (

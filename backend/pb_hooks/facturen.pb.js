@@ -109,3 +109,46 @@ routerAdd("POST", "/api/ducdalf/facturen/{id}/nummeren", (e) => {
   })
   return e.json(200, factuur)
 }, $apis.requireAuth("users"))
+
+// Een factuur verwijderen (vergissing). Alleen als hij nooit is verstuurd en
+// er geen betalingen aan hangen. Een genummerde factuur mag alleen weg als het
+// het laatste nummer van zijn jaar is: dan schuift de reeks terug en ontstaat
+// er geen gat in de doorlopende nummering. Een kopie in Google Drive
+// verwijdert de app zelf vóór deze aanroep.
+routerAdd("POST", "/api/ducdalf/facturen/{id}/verwijderen", (e) => {
+  const id = e.request.pathValue("id")
+  e.app.runInTransaction((tx) => {
+    const f = tx.findRecordById("facturen", id)
+    if (f.getBool("vergrendeld") || f.getString("verstuurd_op")) {
+      throw new BadRequestError("Deze factuur is verstuurd en kan niet worden verwijderd. Annuleer hem en maak zo nodig een nieuwe factuur.")
+    }
+    if (f.getBool("geimporteerd")) throw new BadRequestError("Een overgenomen factuur uit de oude administratie kan niet worden verwijderd.")
+    const betalingen = tx.findRecordsByFilter("betalingen", "factuur = {:f}", "", 1, 0, { f: id })
+    if (betalingen.length > 0) throw new BadRequestError("Aan deze factuur hangen betalingen. Koppel of verwijder die eerst.")
+    const verwijzers = tx.findRecordsByFilter("facturen", "verwijst_naar = {:f}", "", 1, 0, { f: id })
+    if (verwijzers.length > 0) throw new BadRequestError("Er verwijst een andere factuur naar deze factuur; verwijder die eerst.")
+
+    const m = /^(\d{4})-(\d{3,})$/.exec(f.getString("nummer"))
+    if (m) {
+      const jaar = parseInt(m[1], 10)
+      const volgnummer = parseInt(m[2], 10)
+      let reeks = null
+      try {
+        reeks = tx.findFirstRecordByFilter("nummerreeksen", "jaar = {:j}", { j: jaar })
+      } catch (_) {}
+      if (!reeks || reeks.getInt("laatste") !== volgnummer) {
+        throw new BadRequestError(
+          "Alleen de laatst genummerde factuur van " + jaar + " kan worden verwijderd; anders ontstaat er een gat in de doorlopende factuurnummering. " +
+          "Laat deze factuur geannuleerd staan, of verwijder eerst de facturen met een hoger nummer.",
+        )
+      }
+      tx.delete(f)
+      const laatste = volgnummer - 1
+      reeks.set("laatste", laatste)
+      tx.save(reeks)
+    } else {
+      tx.delete(f)
+    }
+  })
+  return e.json(200, { ok: true })
+}, $apis.requireAuth("users"))
