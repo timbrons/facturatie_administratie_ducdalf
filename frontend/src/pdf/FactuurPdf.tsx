@@ -136,7 +136,7 @@ export function FactuurPdf({ nummer, soort, factuurdatum, regels, totaalCent, ge
 
         <View style={{ marginTop: 40 }} wrap={false}>
           {credit ? (
-            <Text>Het bedrag van deze creditfactuur wordt naar u overgemaakt of verrekend.</Text>
+            <Text>Het bedrag van deze creditfactuur wordt naar je overgemaakt of verrekend.</Text>
           ) : (
             <>
               <Text>Betaling t.n.v. {g.bank.tnv}</Text>

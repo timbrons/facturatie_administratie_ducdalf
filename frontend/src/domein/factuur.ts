@@ -60,7 +60,7 @@ export function totaalVan(regels: Factuurregel[]): Cent {
 export function betaaltekst(t: Betaaltermijnen, aanbetalingPct: number, restWeken: number): string {
   if (t.betaalwijze === "aanbetaling") {
     return (
-      `Graag ${aanbetalingPct}% van het factuurbedrag (${formatEuro(t.aanbetalingCent)}) voor ${formatKort(t.aanbetalingVervaldatum)} voldoen ` +
+      `Graag ${aanbetalingPct}% van het factuurbedrag (${formatEuro(t.aanbetalingCent)}) vóór ${formatKort(t.aanbetalingVervaldatum)} voldoen ` +
       `en het resterende bedrag (${formatEuro(t.restCent)}) uiterlijk ${formatKort(t.restVervaldatum)} (${restWeken} weken voor aankomst).`
     )
   }

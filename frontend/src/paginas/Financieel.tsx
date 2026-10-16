@@ -200,7 +200,7 @@ function Toeristenbelasting({ jaar, boekingen, aangiften }: { jaar: number; boek
 
   function exporteer() {
     downloadCsv(`toeristenbelasting-${jaar}.csv`, [
-      ["Huurder", "Aankomst", "Vertrek", "Geind via factuur", "Aangegeven", "Aangegeven op", "Verschil", "Maand aangifte", "Referentie", "Afgedragen op"],
+      ["Huurder", "Aankomst", "Vertrek", "Geïnd via factuur", "Aangegeven", "Aangegeven op", "Verschil", "Maand aangifte", "Referentie", "Afgedragen op"],
       ...rijen.map((r) => {
         const m = aangiften.find((a) => a.id === r.boeking.tb_aangifte)
         return [r.boeking.naam, r.boeking.aankomst, r.boeking.vertrek, csvBedrag(r.geind), csvBedrag(r.aangegeven), r.boeking.tb_aangegeven_op, csvBedrag(r.verschil), m?.periode ?? "", m?.referentie ?? "", m?.afgedragen_op ?? ""]

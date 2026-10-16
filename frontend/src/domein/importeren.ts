@@ -134,7 +134,7 @@ export function leesAdministratie(rijen: string[][], vandaag: IsoDatum): ImportR
     }
     const som = huurCent + parkkostenCent + schoonmaakCent + linnenCent + tbCent
     if (!fouten.length && totaalCent && som !== totaalCent) {
-      waarschuwingen.push(`Totaal in de sheet (${(totaalCent / 100).toFixed(2)}) wijkt af van de som van de posten (${(som / 100).toFixed(2)})`)
+      waarschuwingen.push(`Totaal in het bestand (${(totaalCent / 100).toFixed(2)}) wijkt af van de som van de posten (${(som / 100).toFixed(2)})`)
     }
 
     const statusRuw = v(rij, "betaalstatus").toLowerCase()

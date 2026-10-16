@@ -142,7 +142,7 @@ function Algemeen({ inst }: { inst: Instellingen }) {
             <AgendaNuBijwerken />
           </div>
           {tekst("agenda_id", "Agenda", { hint: '"primary" is de hoofdagenda van het gekoppelde account; een andere agenda vind je in Google Agenda bij Instellingen → Agenda-ID' })}
-          {tekst("agenda_filter", "Alleen afspraken met in de titel", { hint: 'Bijv. "eigen, familie" (gescheiden door komma\'s). Leeg = alle afspraken van minstens één nacht' })}
+          {tekst("agenda_filter", "Alleen afspraken met deze woorden in de titel", { hint: 'Bijv. "eigen, familie" (gescheiden door komma\'s). Leeg = alle afspraken van minstens één nacht' })}
           <div className="sm:col-span-2">
             {tekst("eigen_verblijf_groepen", "Gezinnen voor een eigen verblijf", {
               meerregelig: true,
