@@ -51,7 +51,7 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
   const seizoenen = useSeizoenen().data ?? []
   const [fout, setFout] = useState<unknown>(null)
   const [bezig, setBezig] = useState(false)
-  const [dialoog, setDialoog] = useState<"" | "annuleren" | "status" | "tb_berekend" | "tb_aangegeven" | "betaling" | "mail" | "factuur" | "pld" | "parkkosten">("")
+  const [dialoog, setDialoog] = useState<"" | "annuleren" | "status" | "tb_berekend" | "tb_aangegeven" | "betaling" | "mail" | "factuur" | "pld" | "parkkosten" | "parkkosten_wijzigen">("")
   const [mailSleutels, setMailSleutels] = useState<string[]>([])
   const [gekozenStap, setGekozenStap] = useState("")
   const facturen = useFacturen().data ?? []
@@ -251,17 +251,16 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
               {b.parkkosten_cent > 0 && <PrijsRegel label="Parkkosten" bedrag={b.parkkosten_cent} />}
               <PrijsRegel label="Eindschoonmaak" bedrag={b.schoonmaak_cent} />
               {b.parkkosten_betaald_op && (
-                <div className="-mt-1 pl-4 text-xs text-zacht">
+                <div className="flex flex-col gap-0.5 pl-4 text-xs leading-snug text-zacht">
                   <div className="flex justify-between gap-2">
                     <span>parkkosten + schoonmaak betaald aan PLD op {formatLang(b.parkkosten_betaald_op)}</span>
                     <span className="whitespace-nowrap tabular-nums">{formatEuro(b.parkkosten_betaald_cent)}</span>
                   </div>
-                  {(b.parkkosten_factuur || b.parkkosten_drive_link) && (
-                    <div className="flex gap-3">
-                      {b.parkkosten_factuur && <button type="button" className="underline" onClick={() => openParkkostenFactuur(b)}>Factuur PLD bekijken</button>}
-                      {b.parkkosten_drive_link && <a href={b.parkkosten_drive_link} target="_blank" rel="noopener noreferrer">In Drive ↗</a>}
-                    </div>
-                  )}
+                  <div className="flex flex-wrap gap-x-3">
+                    {b.parkkosten_factuur && <button type="button" className="underline" onClick={() => openParkkostenFactuur(b)}>Factuur PLD bekijken</button>}
+                    {b.parkkosten_drive_link && <a href={b.parkkosten_drive_link} target="_blank" rel="noopener noreferrer">In Drive ↗</a>}
+                    <button type="button" className="underline" onClick={() => setDialoog("parkkosten_wijzigen")}>Wijzigen</button>
+                  </div>
                 </div>
               )}
               {(b.extras ?? []).map((x) => (
@@ -383,14 +382,15 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
           </div>
         </div>
       </Dialoog>
-      {dialoog === "parkkosten" && (
+      {(dialoog === "parkkosten" || dialoog === "parkkosten_wijzigen") && (
         <ParkkostenDialoog
           open
           boeking={b}
           inst={inst}
           onSluiten={() => setDialoog("")}
           onOpgeslagen={async () => {
-            if (b.status !== GEANNULEERD && !isBijOfVoorbij(stappen, b, "parkkosten_betaald")) {
+            // Alleen via de stapknop gaat de status door; "Wijzigen" past alleen de gegevens aan.
+            if (dialoog === "parkkosten" && b.status !== GEANNULEERD && !isBijOfVoorbij(stappen, b, "parkkosten_betaald")) {
               if (await rondStapAf("parkkosten_betaald")) setDialoog("")
             } else {
               await ververs()
