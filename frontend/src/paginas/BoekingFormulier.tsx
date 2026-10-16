@@ -370,7 +370,7 @@ function Formulier({ boeking, vooringevuldeHuurder }: { boeking?: Boeking; voori
             <Kaart titel="Startstatus">
               <select value={status} onChange={(e) => setStatus(e.target.value)}>
                 <option value="aanvraag">Aanvraag</option>
-                <option value="in_afstemming">In afstemming</option>
+                <option value="in_afstemming">Afstemming met huurder</option>
                 <option value="bevestigd">Bevestigd</option>
               </select>
             </Kaart>

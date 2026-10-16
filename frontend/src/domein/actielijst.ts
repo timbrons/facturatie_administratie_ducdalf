@@ -44,7 +44,7 @@ export interface Actie {
 const TE_DOEN: Record<string, { titel: string; toelichting: string; wachten?: boolean }> = {
   in_afstemming: {
     titel: "Contact opnemen",
-    toelichting: "Stem beschikbaarheid en prijs af met de huurder en zet de status op In afstemming.",
+    toelichting: "Stem beschikbaarheid en prijs af met de huurder en zet de status op Afstemming met huurder.",
   },
   bevestigd: {
     titel: "Wachten op bevestiging",
@@ -71,6 +71,10 @@ const TE_DOEN: Record<string, { titel: string; toelichting: string; wachten?: bo
   factuur_verstuurd: {
     titel: "Factuur versturen",
     toelichting: "Maak de factuur en stuur hem naar de huurder.",
+  },
+  le_duc_aangemeld: {
+    titel: "Aanmelden in het Le Duc Portaal",
+    toelichting: "Meld de huurder en de meereizenden aan in het portaal van Parc le Duc.",
   },
 }
 
@@ -201,7 +205,7 @@ export function bouwActielijst(
       acties.push({
         boekingId: b.id, soort: "volgende_stap", urgentie: "oranje", datum: b.aankomst,
         titel: `Nieuwe boekingsaanvraag – ${b.naam}`,
-        toelichting: `${formatLang(b.aankomst)} – ${formatLang(b.vertrek)}, via de website. Neem contact op en zet de status op In afstemming.`,
+        toelichting: `${formatLang(b.aankomst)} – ${formatLang(b.vertrek)}, via de website. Neem contact op en zet de status op Afstemming met huurder.`,
       })
     } else if (volgende && !["aanbetaling_ontvangen", "volledig_betaald", "verblijf", "tb_aangegeven", AFGEROND].includes(volgende.sleutel)) {
       const taak = TE_DOEN[volgende.sleutel]

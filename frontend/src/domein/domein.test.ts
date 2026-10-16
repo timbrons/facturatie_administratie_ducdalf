@@ -5,7 +5,7 @@ import { berekenHuur, berekenPrijsopbouw, huurOpbouw, seizoenVoorNacht, type Sei
 import { berekenToeristenbelasting, tariefOpDatum, type TbTarief } from "./toeristenbelasting"
 import { aanbetalingZinvol, berekenTermijnen } from "./betaling"
 import { formatFactuurnummer, normaliseerFactuurnummer, parseFactuurnummer, volgendFactuurnummer } from "./factuurnummer"
-import { overgangFout, stappenbalk, stappenVoor, volgendeStap, type WorkflowStap } from "./workflow"
+import { doorschuivenTot, overgangFout, stappenbalk, stappenVoor, volgendeStap, type WorkflowStap } from "./workflow"
 import { alleOverlappen, overlapt } from "./overlap"
 import { bouwActielijst, tbAangifteDeadline, tbPeriode } from "./actielijst"
 
@@ -268,6 +268,19 @@ const STAPPEN: WorkflowStap[] = [
   overslaan_als: sleutel === "aanbetaling_ontvangen" ? "geen_aanbetaling" : "",
   actief: true,
 }))
+
+describe("doorschuiven na een betaling", () => {
+  const metLeDuc: WorkflowStap[] = [...STAPPEN, { sleutel: "le_duc_aangemeld", label: "Le Duc", actie_label: "", volgorde: 95, overslaan_als: "", actief: true }]
+  it("slaat handmatige stappen vóór de factuur over, zoals altijd", () => {
+    expect(doorschuivenTot(STAPPEN, { status: "brochure_verstuurd", betaalwijze: "aanbetaling" }, "aanbetaling_ontvangen")).toBe("aanbetaling_ontvangen")
+    expect(doorschuivenTot(STAPPEN, { status: "factuur_verstuurd", betaalwijze: "ineens" }, "volledig_betaald")).toBe("volledig_betaald")
+  })
+  it("stopt vóór een handmatige stap na de factuur (Le Duc-portaal)", () => {
+    expect(doorschuivenTot(metLeDuc, { status: "factuur_verstuurd", betaalwijze: "aanbetaling" }, "volledig_betaald")).toBe("aanbetaling_ontvangen")
+    expect(doorschuivenTot(metLeDuc, { status: "factuur_verstuurd", betaalwijze: "ineens" }, "volledig_betaald")).toBeNull()
+    expect(doorschuivenTot(metLeDuc, { status: "le_duc_aangemeld", betaalwijze: "ineens" }, "volledig_betaald")).toBe("volledig_betaald")
+  })
+})
 
 describe("workflow", () => {
   it("slaat de aanbetaling over bij betaling ineens", () => {

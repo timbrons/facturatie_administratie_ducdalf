@@ -2,9 +2,10 @@ import { useEffect, useState } from "react"
 import { Link, useParams, useSearchParams } from "react-router-dom"
 import { useQueryClient } from "@tanstack/react-query"
 import { pb } from "../lib/pb"
-import { sleutels, useBoeking, useFacturen, useHistorie, useInstellingen, useSeizoenen, useStappen, useTbTarieven } from "../lib/data"
+import { sleutels, useBetalingen, useBoeking, useFacturen, useHistorie, useInstellingen, useSeizoenen, useStappen, useTbTarieven } from "../lib/data"
 import { gmailBeschikbaar } from "../lib/gmail"
 import { actueleFactuur } from "../lib/mail"
+import { statusNaBetaling } from "../lib/facturen"
 import { boekingNaam, huurderNaam, type Boeking, type Instellingen } from "../lib/types"
 import { aantalNachten, bijStatuswijziging, extrasTotaal, tbOpFactuur, tbRichtbedrag, totaalBoeking } from "../lib/boeking"
 import { formatLang, formatTijdstip } from "../domein/datum"
@@ -50,6 +51,7 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
   const [dialoog, setDialoog] = useState<"" | "annuleren" | "status" | "tb_berekend" | "tb_aangegeven" | "betaling" | "mail">("")
   const [mailSleutels, setMailSleutels] = useState<string[]>([])
   const facturen = useFacturen().data ?? []
+  const betalingen = useBetalingen().data ?? []
   const [params, setParams] = useSearchParams()
 
   function openMail(sleutelsVoorMail: string[]) {
@@ -119,7 +121,9 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
       document.getElementById("facturen")?.scrollIntoView({ behavior: "smooth", block: "start" })
       return
     }
-    zetStatus(volgende.sleutel)
+    // Is er al (volledig) betaald, dan meteen door naar de betaalstap die daarbij hoort.
+    const verder = statusNaBetaling({ ...b, status: volgende.sleutel }, stappen, facturen, betalingen)
+    zetStatus(verder ?? volgende.sleutel)
   }
 
   return (
