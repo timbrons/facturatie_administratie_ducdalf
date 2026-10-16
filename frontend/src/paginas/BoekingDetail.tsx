@@ -11,8 +11,7 @@ import { aantalNachten, bijStatuswijziging, extrasTotaal, tbOpFactuur, tbRichtbe
 import { formatLang, formatTijdstip } from "../domein/datum"
 import { formatEuro } from "../domein/geld"
 import { GEANNULEERD, gesorteerd, isBijOfVoorbij, labelVoor, overgangFout, positie, stappenbalk, volgendeStap, type WorkflowStap } from "../domein/workflow"
-import { Dialoog, Fout, Gegeven, Kaart, Laden, Melding, Paginakop } from "../components/ui"
-import { StatusLabel } from "../components/Status"
+import { Dialoog, Fout, Gegeven, Kaart, Label, Laden, Melding, Paginakop } from "../components/ui"
 import { TbAangifteDialoog, TbBerekenDialoog } from "../components/Toeristenbelasting"
 import { BetalingenKaart, FacturenKaart } from "../components/FacturenBetalingen"
 import { MailKaart } from "../components/Mail"
@@ -165,21 +164,14 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
         )
       })()}
 
-      {/* Volgende actie */}
+      {/* Huidige status en de knop naar de volgende stap */}
       <section className="mb-6 flex flex-col gap-4 border border-lijn bg-zand p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="mb-2 flex items-center gap-2 text-sm text-zacht">
-            Status: <StatusLabel status={b.status} stappen={stappen} optie={b.optie} />
+          <div className="wenkbrauw mb-1">Huidige status</div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-serif text-2xl text-inkt">{labelVoor(stappen, b.status)}</span>
+            {b.optie && <Label kleur="oranje">Optie</Label>}
           </div>
-          <div className="wenkbrauw mb-1">Volgende actie</div>
-          {volgende ? (
-            <>
-              <div className="font-serif text-2xl text-inkt">{volgende.actie_label || volgende.label}</div>
-              {volgende.omschrijving && <div className="text-sm text-tekst">{volgende.omschrijving}</div>}
-            </>
-          ) : (
-            <div className="font-serif text-2xl text-inkt">{b.status === GEANNULEERD ? "Geen – geannuleerd" : "Alles is afgerond"}</div>
-          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {volgende?.sleutel === "le_duc_aangemeld" && inst.pld_portaal_url && (
