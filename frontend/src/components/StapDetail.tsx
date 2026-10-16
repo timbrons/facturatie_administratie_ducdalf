@@ -4,6 +4,7 @@ import type { Boeking, Statuswijziging } from "../lib/types"
 import type { Aanmelding } from "../domein/aanmelding"
 import { formatLang, formatTijdstip } from "../domein/datum"
 import { formatEuro } from "../domein/geld"
+import { pldGefactureerd } from "../domein/financieel"
 import type { WorkflowStap } from "../domein/workflow"
 import { AanmeldingGegevens } from "./AanmeldingKaart"
 import { openParkkostenFactuur } from "../lib/parkkosten"
@@ -118,7 +119,9 @@ export function StapDetail({ boeking: b, stap, nummer, historie, bronnen, onSlui
     case "parkkosten_betaald":
       inhoud = (
         <dl className="text-sm">
-          <Gegeven label="Gefactureerd">{formatEuro(b.parkkosten_cent)}</Gegeven>
+          <Gegeven label="Gefactureerd">
+            {`${formatEuro(pldGefactureerd(b))} (parkkosten ${formatEuro(b.parkkosten_cent)} + eindschoonmaak ${formatEuro(b.schoonmaak_cent)})`}
+          </Gegeven>
           <Gegeven label="Betaald aan PLD">{b.parkkosten_betaald_op ? `${formatEuro(b.parkkosten_betaald_cent)} op ${formatLang(b.parkkosten_betaald_op)}` : ""}</Gegeven>
           <Gegeven label="Factuur van PLD">
             {b.parkkosten_factuur ? (

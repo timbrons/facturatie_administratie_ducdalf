@@ -6,6 +6,7 @@ import { synchroniseerDrive } from "../lib/driveSync"
 import { SCOPES, zorgVoorGoogle } from "../lib/gmail"
 import { formatEuro, type Cent } from "../domein/geld"
 import { vandaag } from "../domein/datum"
+import { pldGefactureerd } from "../domein/financieel"
 import { BedragVeld, Dialoog, Fout, Melding, Veld } from "./ui"
 
 /**
@@ -20,7 +21,7 @@ export function ParkkostenDialoog({ open, boeking: b, inst, onSluiten, onOpgesla
   /** Na opslaan (de aanroeper zet zo nodig de status door) */
   onOpgeslagen: () => Promise<void>
 }) {
-  const [bedrag, setBedrag] = useState<Cent | null>(b.parkkosten_betaald_op ? b.parkkosten_betaald_cent : b.parkkosten_cent || null)
+  const [bedrag, setBedrag] = useState<Cent | null>(b.parkkosten_betaald_op ? b.parkkosten_betaald_cent : pldGefactureerd(b) || null)
   const [datum, setDatum] = useState(b.parkkosten_betaald_op || vandaag())
   const [bestand, setBestand] = useState<File | null>(null)
   const [bezig, setBezig] = useState(false)
@@ -58,8 +59,9 @@ export function ParkkostenDialoog({ open, boeking: b, inst, onSluiten, onOpgesla
     <Dialoog open={open} titel="Parkkosten betalen" onSluiten={onSluiten}>
       <div className="flex flex-col gap-3 text-sm">
         <p>
-          Leg vast wat er werkelijk aan Parc le Duc is betaald en voeg de factuur van PLD toe. Aan de huurder is{" "}
-          {formatEuro(b.parkkosten_cent)} aan parkkosten gefactureerd.
+          Leg vast wat er werkelijk aan Parc le Duc is betaald (parkkosten en eindschoonmaak) en voeg de factuur van PLD toe. Aan
+          de huurder gefactureerd: {formatEuro(b.parkkosten_cent)} parkkosten + {formatEuro(b.schoonmaak_cent)} eindschoonmaak ={" "}
+          <strong>{formatEuro(pldGefactureerd(b))}</strong>.
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
           <Veld label="Betaald aan PLD"><BedragVeld waarde={bedrag} onChange={setBedrag} /></Veld>
@@ -77,9 +79,9 @@ export function ParkkostenDialoog({ open, boeking: b, inst, onSluiten, onOpgesla
             Huidige factuur van PLD bekijken
           </button>
         )}
-        {bedrag !== null && bedrag !== b.parkkosten_cent && (
+        {bedrag !== null && bedrag !== pldGefactureerd(b) && (
           <Melding soort="info">
-            Verschil met wat de huurder betaalt: {formatEuro(b.parkkosten_cent - bedrag)}.
+            Verschil met wat de huurder betaalt: {formatEuro(pldGefactureerd(b) - bedrag)}.
           </Melding>
         )}
         {fout ? <Fout fout={fout} /> : null}

@@ -249,10 +249,11 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
               <PrijsRegel label={`Huur (${nachten} nachten)`} bedrag={b.huur_cent} markering={b.huur_handmatig ? "aangepast" : undefined} />
               {opbouwKlopt && <HuurOpbouw regels={opbouw} />}
               {b.parkkosten_cent > 0 && <PrijsRegel label="Parkkosten" bedrag={b.parkkosten_cent} />}
+              <PrijsRegel label="Eindschoonmaak" bedrag={b.schoonmaak_cent} />
               {b.parkkosten_betaald_op && (
                 <div className="-mt-1 pl-4 text-xs text-zacht">
                   <div className="flex justify-between gap-2">
-                    <span>betaald aan PLD op {formatLang(b.parkkosten_betaald_op)}</span>
+                    <span>parkkosten + schoonmaak betaald aan PLD op {formatLang(b.parkkosten_betaald_op)}</span>
                     <span className="whitespace-nowrap tabular-nums">{formatEuro(b.parkkosten_betaald_cent)}</span>
                   </div>
                   {(b.parkkosten_factuur || b.parkkosten_drive_link) && (
@@ -263,7 +264,6 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
                   )}
                 </div>
               )}
-              <PrijsRegel label="Eindschoonmaak" bedrag={b.schoonmaak_cent} />
               {(b.extras ?? []).map((x) => (
                 <PrijsRegel key={x.naam} label={`${x.naam} × ${x.aantal}`} bedrag={x.prijs_cent * x.aantal * (x.eenheid === "per_nacht" ? nachten : 1)} />
               ))}
