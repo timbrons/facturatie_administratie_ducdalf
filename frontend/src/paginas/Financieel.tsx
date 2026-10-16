@@ -54,7 +54,7 @@ export function Financieel() {
         </select>
       </Paginakop>
       <div className="mb-6 flex gap-1 border-b border-lijn">
-        {([["overzicht", "Overzicht"], ["facturen", "Facturen"], ["toeristenbelasting", "Toeristenbelasting"], ["parkkosten", "Parkkosten PLD"]] as const).map(([k, l]) => (
+        {([["overzicht", "Overzicht"], ["facturen", "Facturen"], ["toeristenbelasting", "Toeristenbelasting"], ["parkkosten", "Park- en schoonmaakkosten PLD"]] as const).map(([k, l]) => (
           <button
             key={k}
             type="button"
@@ -341,7 +341,7 @@ function Parkkosten({ jaar, boekingen }: { jaar: number; boekingen: Boeking[] })
   const open = rijen.filter((r) => r.betaald === null).length
 
   function exporteer() {
-    downloadCsv(`parkkosten-pld-${jaar}.csv`, [
+    downloadCsv(`park-en-schoonmaakkosten-pld-${jaar}.csv`, [
       ["Huurder", "Aankomst", "Vertrek", "Gefactureerd aan huurder (parkkosten + schoonmaak)", "Betaald aan PLD", "Betaald op", "Verschil", "Factuur PLD in Drive"],
       ...rijen.map((r) => [
         r.boeking.naam, r.boeking.aankomst, r.boeking.vertrek, csvBedrag(r.gefactureerd), r.betaald === null ? "" : csvBedrag(r.betaald),
@@ -351,7 +351,7 @@ function Parkkosten({ jaar, boekingen }: { jaar: number; boekingen: Boeking[] })
   }
 
   return (
-    <Kaart titel={`Parkkosten PLD ${jaar}`} actie={<button type="button" className="knop-klein" onClick={exporteer}>Exporteer CSV</button>}>
+    <Kaart titel={`Park- en schoonmaakkosten PLD ${jaar}`} actie={<button type="button" className="knop-klein" onClick={exporteer}>Exporteer CSV</button>}>
       <p className="mb-3 text-sm text-zacht">Gefactureerd = parkkosten + eindschoonmaak; beide rekenen we af via de factuur van PLD.</p>
       {open > 0 && <p className="mb-3 text-sm text-zacht">{open} verblijf{open === 1 ? "" : "en"} nog niet afgerekend met PLD.</p>}
       {rijen.length === 0 ? (
