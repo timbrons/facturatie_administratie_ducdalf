@@ -16,26 +16,33 @@ export function AanmeldingKaart({ boeking }: { boeking: Boeking }) {
       </Kaart>
     )
   }
-  const pas = a.paspoort ? `•••• ${a.paspoort.slice(-3)}` : ""
   return (
     <Kaart titel="Aanmeldformulier" actie={<span className="text-xs text-zacht">ontvangen {formatTijdstip(a.ontvangen ?? boeking.aanmelding_op)}</span>}>
-      <dl className="text-sm">
-        <Gegeven label="Hoofdhuurder">{[a.aanhef, a.voornaam, a.achternaam].filter(Boolean).join(" ")}</Gegeven>
-        <Gegeven label="Geboren">{[a.geboortedatum ? formatLang(a.geboortedatum) : "", a.geboorteplaats].filter(Boolean).join(", ")}</Gegeven>
-        <Gegeven label="Paspoort">{pas}</Gegeven>
-        <Gegeven label="Kenteken">{a.kenteken}</Gegeven>
-        <Gegeven label="Meereizenden">
-          {a.extraPersonen.length === 0 ? "" : (
-            <ul>
-              {a.extraPersonen.map((p, i) => (
-                <li key={i}>{p.naam || "(geen naam)"}{p.geboortedatum ? `, ${formatLang(p.geboortedatum)}` : ""}{p.geboorteplaats ? `, ${p.geboorteplaats}` : ""}</li>
-              ))}
-            </ul>
-          )}
-        </Gegeven>
-        <Gegeven label="Noodcontact">{[a.noodcontact?.naam, a.noodcontact?.telefoonMobiel || a.noodcontact?.telefoonVast, a.noodcontact?.email].filter(Boolean).join(" · ")}</Gegeven>
-        <Gegeven label="Opmerkingen">{a.opmerkingen}</Gegeven>
-      </dl>
+      <AanmeldingGegevens aanmelding={a} />
     </Kaart>
+  )
+}
+
+/** De ingevulde velden van een aanmeldformulier (paspoortnummer afgeschermd). */
+export function AanmeldingGegevens({ aanmelding: a }: { aanmelding: Aanmelding }) {
+  const pas = a.paspoort ? `•••• ${a.paspoort.slice(-3)}` : ""
+  return (
+    <dl className="text-sm">
+      <Gegeven label="Hoofdhuurder">{[a.aanhef, a.voornaam, a.achternaam].filter(Boolean).join(" ")}</Gegeven>
+      <Gegeven label="Geboren">{[a.geboortedatum ? formatLang(a.geboortedatum) : "", a.geboorteplaats].filter(Boolean).join(", ")}</Gegeven>
+      <Gegeven label="Paspoort">{pas}</Gegeven>
+      <Gegeven label="Kenteken">{a.kenteken}</Gegeven>
+      <Gegeven label="Meereizenden">
+        {a.extraPersonen.length === 0 ? "" : (
+          <ul>
+            {a.extraPersonen.map((p, i) => (
+              <li key={i}>{p.naam || "(geen naam)"}{p.geboortedatum ? `, ${formatLang(p.geboortedatum)}` : ""}{p.geboorteplaats ? `, ${p.geboorteplaats}` : ""}</li>
+            ))}
+          </ul>
+        )}
+      </Gegeven>
+      <Gegeven label="Noodcontact">{[a.noodcontact?.naam, a.noodcontact?.telefoonMobiel || a.noodcontact?.telefoonVast, a.noodcontact?.email].filter(Boolean).join(" · ")}</Gegeven>
+      <Gegeven label="Opmerkingen">{a.opmerkingen}</Gegeven>
+    </dl>
   )
 }
