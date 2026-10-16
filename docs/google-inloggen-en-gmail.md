@@ -94,7 +94,9 @@ vertrekdag vrij, net als bij boekingen. Huurders komen alleen uit de app (Nieuwe
 agenda. Instellen bij **Instellingen → Google Agenda (eigen verblijven)**: welke agenda
 (`primary` = de hoofdagenda) en eventueel welke woorden in de titel staan (bijv. `eigen, familie`).
 Leeg = alle afspraken van minstens één nacht; afspraken die de app zelf maakte tellen altijd mee, en
-afspraken met precies dezelfde periode als een boeking worden overgeslagen. Was Google al gekoppeld vóór deze functie, klik dan bij Google-account op
+afspraken met precies dezelfde periode als een boeking worden overgeslagen. Zet bij **Gezinnen voor een eigen verblijf** één gezin per regel; bij een eigen verblijf kies je dan
+voor wie het is. Het gezin komt in de titel van de afspraak (bijv. "Eigen verblijf – Gezin A") en elk
+gezin krijgt een eigen kleur in Google Agenda. Was Google al gekoppeld vóór deze functie, klik dan bij Google-account op
 **Opnieuw koppelen** en vink ook Google Agenda aan (en voeg in Google Cloud bij Data Access de scope
 `calendar.events` toe).
 

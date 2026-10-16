@@ -4,7 +4,7 @@ import { bewaarEigenVerblijf, verwijderEigenVerblijf } from "../lib/agenda"
 import { boekingNaam, type Boeking, type Instellingen } from "../lib/types"
 import { formatLang, isIsoDatum } from "../domein/datum"
 import { overlappendeBoekingen } from "../domein/overlap"
-import type { EigenVerblijf } from "../domein/agenda"
+import { verblijfGroepen, verblijfNaam, type EigenVerblijf } from "../domein/agenda"
 import { Dialoog, Fout, Melding, Veld } from "./ui"
 
 /**
@@ -24,6 +24,10 @@ export function EigenVerblijfDialoog({ open, verblijf, inst, boekingen, onSluite
   const [aankomst, setAankomst] = useState(verblijf?.aankomst ?? "")
   const [vertrek, setVertrek] = useState(verblijf?.vertrek ?? "")
   const [notitie, setNotitie] = useState(verblijf?.notitie ?? "")
+  const groepen = verblijfGroepen(inst.eigen_verblijf_groepen)
+  // Een gezin dat inmiddels niet meer in de instellingen staat, blijft kiesbaar.
+  const keuzes = verblijf?.groep && !groepen.includes(verblijf.groep) ? [...groepen, verblijf.groep] : groepen
+  const [groep, setGroep] = useState(verblijf?.groep ?? "")
   const [bezig, setBezig] = useState(false)
   const [fout, setFout] = useState<unknown>(null)
 
@@ -50,10 +54,21 @@ export function EigenVerblijfDialoog({ open, verblijf, inst, boekingen, onSluite
         className="flex flex-col gap-3 text-sm"
         onSubmit={(e) => {
           e.preventDefault()
-          if (geldig) klaar(() => bewaarEigenVerblijf(inst, { titel, notitie, aankomst, vertrek }, verblijf?.id))
+          if (geldig) klaar(() => bewaarEigenVerblijf(inst, { titel, notitie, aankomst, vertrek, groep }, verblijf?.id))
         }}
       >
         <Veld label="Omschrijving"><input value={titel} onChange={(e) => setTitel(e.target.value)} /></Veld>
+        {keuzes.length > 0 && (
+          <fieldset className="flex flex-col gap-1.5">
+            <legend className="mb-1 text-sm text-tekst">Voor wie</legend>
+            {[...keuzes, ""].map((g) => (
+              <label key={g || "geen"} className="flex items-center gap-2 text-inkt">
+                <input type="radio" name="groep" checked={groep === g} onChange={() => setGroep(g)} />
+                {g || <span className="text-zacht">Niet opgegeven</span>}
+              </label>
+            ))}
+          </fieldset>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <Veld label="Aankomst"><input type="date" value={aankomst} onChange={(e) => setAankomst(e.target.value)} required /></Veld>
           <Veld label="Vertrek"><input type="date" value={vertrek} onChange={(e) => setVertrek(e.target.value)} required /></Veld>
@@ -78,7 +93,7 @@ export function EigenVerblijfDialoog({ open, verblijf, inst, boekingen, onSluite
                 className="knop-rand"
                 disabled={bezig}
                 onClick={() => {
-                  if (window.confirm(`"${verblijf.titel}" verwijderen uit Google Agenda?`)) klaar(() => verwijderEigenVerblijf(inst, verblijf.id))
+                  if (window.confirm(`"${verblijfNaam(verblijf)}" verwijderen uit Google Agenda?`)) klaar(() => verwijderEigenVerblijf(inst, verblijf.id))
                 }}
               >
                 Verwijderen

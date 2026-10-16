@@ -32,9 +32,25 @@ export interface EigenVerblijf {
   notitie: string
   aankomst: IsoDatum
   vertrek: IsoDatum
+  /** Voor wie het verblijf is (een van de gezinnen uit de instellingen), "" = niet opgegeven */
+  groep: string
   /** Gemaakt vanuit de app */
   vanApp: boolean
 }
+
+/** Gezinnen voor een eigen verblijf: één per regel in de instellingen. */
+export function verblijfGroepen(tekst: string | null | undefined): string[] {
+  return (tekst ?? "").split(/\r?\n/).map((r) => r.trim()).filter(Boolean)
+}
+
+/** Naam zoals in de kalender en in Google Agenda, bijv. "Eigen verblijf – Gezin A". */
+export function verblijfNaam(v: { titel: string; groep?: string }): string {
+  const titel = v.titel.trim() || "Eigen verblijf"
+  return v.groep ? `${titel} – ${v.groep}` : titel
+}
+
+// Kleur per gezin in Google Agenda (colorId): pauw, mandarijn, druif, salie, flamingo.
+const KLEUREN = ["7", "6", "3", "2", "4"]
 
 function periode(it: AgendaItem): { aankomst: string; vertrek: string } | null {
   if (it.start?.date && it.end?.date) {
@@ -64,19 +80,35 @@ export function eigenVerblijven(
     const vanApp = kenmerk === "eigen-verblijf"
     if (!vanApp && woorden.length && !woorden.some((w) => titel.toLowerCase().includes(w))) continue
     if (!vanApp && boekingen.some((b) => b.aankomst === p.aankomst && b.vertrek === p.vertrek)) continue
-    uit.push({ id: it.id ?? `${p.aankomst}-${p.vertrek}-${titel}`, titel: titel || "Eigen verblijf", notitie: it.description ?? "", ...p, vanApp })
+    // De app bewaart titel en gezin apart, zodat de samengestelde naam niet terugkomt als titel.
+    const eigen = vanApp ? it.extendedProperties?.private : undefined
+    const groep = eigen?.groep ?? ""
+    const kaal = eigen?.titel ?? titel
+    uit.push({ id: it.id ?? `${p.aankomst}-${p.vertrek}-${titel}`, titel: kaal || "Eigen verblijf", notitie: it.description ?? "", ...p, groep, vanApp })
   }
   return uit.sort((a, b) => a.aankomst.localeCompare(b.aankomst))
 }
 
-/** Google-afspraak (hele dagen, aankomst t/m vertrekdag) voor een eigen verblijf. */
-export function agendaAfspraak(v: { titel: string; notitie?: string; aankomst: IsoDatum; vertrek: IsoDatum }) {
+/**
+ * Google-afspraak (hele dagen, aankomst t/m vertrekdag) voor een eigen verblijf.
+ * Met een gezin staat dat in de titel en krijgt de afspraak de kleur van dat
+ * gezin (groepen: de lijst uit de instellingen, voor de kleur).
+ */
+export function agendaAfspraak(
+  v: { titel: string; notitie?: string; aankomst: IsoDatum; vertrek: IsoDatum; groep?: string },
+  groepen: string[] = [],
+) {
+  const titel = v.titel.trim() || "Eigen verblijf"
+  const groep = (v.groep ?? "").trim()
+  const nr = groep ? groepen.indexOf(groep) : -1
   return {
-    summary: v.titel.trim() || "Eigen verblijf",
+    summary: verblijfNaam({ titel, groep }),
     description: v.notitie ?? "",
     start: { date: v.aankomst },
     end: { date: plusDagen(v.vertrek, 1) },
     transparency: "opaque",
-    extendedProperties: { private: { [APP_KENMERK]: "eigen-verblijf" } },
+    // null wist een eerder gekozen kleur bij het wijzigen.
+    colorId: nr >= 0 ? KLEUREN[nr % KLEUREN.length] : null,
+    extendedProperties: { private: { [APP_KENMERK]: "eigen-verblijf", titel, groep } },
   }
 }
