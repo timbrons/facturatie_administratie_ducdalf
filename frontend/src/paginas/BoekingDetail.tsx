@@ -13,7 +13,7 @@ import { formatEuro } from "../domein/geld"
 import { GEANNULEERD, gesorteerd, isBijOfVoorbij, labelVoor, overgangFout, positie, stappenbalk, volgendeStap, type WorkflowStap } from "../domein/workflow"
 import { Dialoog, Fout, Gegeven, Kaart, Label, Laden, Melding, Paginakop } from "../components/ui"
 import { TbAangifteDialoog, TbBerekenDialoog } from "../components/Toeristenbelasting"
-import { BetalingenKaart, FacturenKaart } from "../components/FacturenBetalingen"
+import { BetalingenKaart, FactuurVersturenDialoog, FacturenKaart } from "../components/FacturenBetalingen"
 import { MailKaart } from "../components/Mail"
 import { AanmeldingKaart } from "../components/AanmeldingKaart"
 import { StapDetail } from "../components/StapDetail"
@@ -48,7 +48,7 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
   const seizoenen = useSeizoenen().data ?? []
   const [fout, setFout] = useState<unknown>(null)
   const [bezig, setBezig] = useState(false)
-  const [dialoog, setDialoog] = useState<"" | "annuleren" | "status" | "tb_berekend" | "tb_aangegeven" | "betaling" | "mail">("")
+  const [dialoog, setDialoog] = useState<"" | "annuleren" | "status" | "tb_berekend" | "tb_aangegeven" | "betaling" | "mail" | "factuur">("")
   const [mailSleutels, setMailSleutels] = useState<string[]>([])
   const [gekozenStap, setGekozenStap] = useState("")
   const facturen = useFacturen().data ?? []
@@ -119,6 +119,8 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
     if (volgende.sleutel === "factuur_verstuurd") {
       const f = actueleFactuur(b, facturen)
       if (viaMail && f?.pdf) return openMail(["factuur"])
+      // Nog geen definitieve factuur: eerst maken, daarna de mail.
+      if (!f) return setDialoog("factuur")
       document.getElementById("facturen")?.scrollIntoView({ behavior: "smooth", block: "start" })
       return
     }
@@ -302,6 +304,18 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
         </div>
       </div>
 
+      <FactuurVersturenDialoog
+        open={dialoog === "factuur"}
+        boeking={b}
+        inst={inst}
+        viaMail={gmailBeschikbaar()}
+        onSluiten={() => setDialoog("")}
+        onKlaar={() => {
+          if (gmailBeschikbaar()) return openMail(["factuur"])
+          setDialoog("")
+          document.getElementById("facturen")?.scrollIntoView({ behavior: "smooth", block: "start" })
+        }}
+      />
       <AnnuleerDialoog
         open={dialoog === "annuleren"}
         onSluiten={() => setDialoog("")}

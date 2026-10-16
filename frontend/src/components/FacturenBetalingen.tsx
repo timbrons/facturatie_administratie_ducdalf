@@ -345,3 +345,104 @@ function BetalingDialoog({ open, voorstel, onSluiten, onOpslaan }: {
     </Dialoog>
   )
 }
+
+/**
+ * Stap "Factuur versturen" vanaf de knop bij de huidige status: factuur maken
+ * (concept → definitief, met PDF) en daarna meteen de mail opstellen. Een
+ * bestaand concept wordt gebruikt; de mail gaat pas na een klik op Versturen.
+ */
+export function FactuurVersturenDialoog({ open, boeking: b, inst, viaMail, onSluiten, onKlaar }: {
+  open: boolean
+  boeking: Boeking
+  inst: Instellingen
+  /** Mailen via Gmail kan: na het maken meteen de mail opstellen */
+  viaMail: boolean
+  onSluiten: () => void
+  /** De factuur is definitief (met PDF) */
+  onKlaar: () => void
+}) {
+  const facturen = useFacturen()
+  const ververs = useVerversen(b.id)
+  const [bezig, setBezig] = useState("")
+  const [fout, setFout] = useState<unknown>(null)
+  const [melding, setMelding] = useState("")
+  const lijst = (facturen.data ?? []).filter((f) => f.boeking === b.id)
+  const concept = lijst.find((f) => f.soort === "factuur" && !f.nummer) ?? null
+  const bezwaar = factuurBezwaar(b, inst)
+
+  async function conceptOfNieuw() {
+    return concept ?? (await maakConcept(b, inst))
+  }
+
+  async function stap(naam: string, fn: () => Promise<void>) {
+    setFout(null)
+    setBezig(naam)
+    try {
+      await fn()
+    } catch (err) {
+      setFout(err)
+    } finally {
+      setBezig("")
+    }
+  }
+
+  return (
+    <Dialoog open={open} titel="Factuur versturen" onSluiten={onSluiten}>
+      <div className="flex flex-col gap-3 text-sm">
+        {bezwaar ? (
+          <Melding soort="waarschuwing">{bezwaar}</Melding>
+        ) : (
+          <>
+            <p>
+              De app maakt de factuur op basis van de boeking (totaal {formatEuro(totaalBoeking(b))})
+              {viaMail ? " en opent daarna de mail met de factuur als bijlage. Je ziet de mail eerst, versturen gaat pas na jouw klik." : "."}
+            </p>
+            <p className="text-xs text-zacht">
+              Bij "Factuur maken" krijgt de factuur een factuurnummer en kan hij niet meer worden gewijzigd. Wil je eerst kijken, open
+              dan het voorbeeld.
+            </p>
+          </>
+        )}
+        {melding && <Melding soort="waarschuwing">{melding}</Melding>}
+        {fout ? <Fout fout={fout} /> : null}
+        <div className="flex flex-wrap justify-end gap-2">
+          <button type="button" className="knop-rand" onClick={onSluiten}>Annuleren</button>
+          {!bezwaar && (
+            <>
+              <button
+                type="button"
+                className="knop-rand"
+                disabled={!!bezig}
+                onClick={() => stap("voorbeeld", async () => {
+                  const f = await conceptOfNieuw()
+                  await ververs()
+                  await openPdf(await pdfVoor(f, inst))
+                })}
+              >
+                {bezig === "voorbeeld" ? "Bezig…" : "Voorbeeld (PDF)"}
+              </button>
+              <button
+                type="button"
+                className="knop"
+                disabled={!!bezig}
+                onClick={() => {
+                  // Voor de kopie in Drive; lukt koppelen niet, dan gaat de factuur gewoon door.
+                  const google = inst.drive_kopie ? zorgVoorGoogle(inst.afzender_email, SCOPES.drive).catch(() => {}) : Promise.resolve()
+                  stap("maken", async () => {
+                    await google
+                    const r = await maakDefinitief(await conceptOfNieuw(), b, inst)
+                    await ververs()
+                    if (r.driveMelding) setMelding(r.driveMelding)
+                    onKlaar()
+                  })
+                }}
+              >
+                {bezig === "maken" ? "Bezig…" : viaMail ? "Factuur maken en mail opstellen" : "Factuur maken"}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </Dialoog>
+  )
+}
