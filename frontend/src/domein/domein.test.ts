@@ -384,6 +384,16 @@ describe("actielijst", () => {
     )
     expect(acties.some((a) => a.soort === "overlap")).toBe(true)
   })
+  it("na het verblijf: toeristenbelasting aangeven, status bijwerken, daarna afronden", () => {
+    const na = { ...basis, id: "1", status: "verblijf", aankomst: "2026-09-13", vertrek: "2026-09-23" }
+    const aangeven = bouwActielijst([na], STAPPEN, inst, "2026-10-16")
+    expect(aangeven[0]).toMatchObject({ soort: "tb_aangifte", titel: "Toeristenbelasting aangeven – Fam. Testman", stap: "tb_aangegeven" })
+    // Aangifte vastgelegd, maar de status loopt achter: toch een actie.
+    const achter = bouwActielijst([{ ...na, tb_aangegeven_op: "2026-10-10" }], STAPPEN, inst, "2026-10-16")
+    expect(achter[0]).toMatchObject({ soort: "tb_aangifte", titel: "Status bijwerken naar Toeristenbelasting aangegeven – Fam. Testman" })
+    const afronden = bouwActielijst([{ ...na, status: "tb_aangegeven", tb_aangegeven_op: "2026-10-10" }], STAPPEN, inst, "2026-10-16")
+    expect(afronden[0]).toMatchObject({ titel: "Boeking afronden – Fam. Testman", stap: "afgerond" })
+  })
   it("formuleert de volgende stap als taak, of als wachten op de huurder", () => {
     const wacht = bouwActielijst([{ ...basis, id: "1", status: "in_afstemming", aankomst: "2027-05-16", vertrek: "2027-06-05" }], STAPPEN, inst, "2026-10-14")
     expect(wacht[0]).toMatchObject({ titel: "Wachten op bevestiging – Fam. Testman", wachten: true })

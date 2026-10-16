@@ -187,13 +187,25 @@ export function bouwActielijst(
       })
     }
 
-    // Na vertrek: aangifte toeristenbelasting
+    // Na vertrek: aangifte toeristenbelasting (zolang de stap niet is afgerond)
+    const aangifteStapGedaan = isBijOfVoorbij(stappen, b, "tb_aangegeven")
+    if (b.vertrek < vandaag && b.tb_aangegeven_op && !aangifteStapGedaan) {
+      // De aangifte is al vastgelegd, maar de status loopt achter.
+      acties.push({
+        boekingId: b.id, soort: "tb_aangifte", urgentie: "normaal", datum: b.vertrek, stap: "tb_aangegeven",
+        titel: `Status bijwerken naar Toeristenbelasting aangegeven – ${b.naam}`,
+        toelichting: `De aangifte is vastgelegd op ${formatLang(b.tb_aangegeven_op)}. Zet de status op Toeristenbelasting aangegeven.`,
+        afgerond: labelVoor(stappen, b.status),
+      })
+      continue
+    }
     if (b.vertrek < vandaag && !b.tb_aangegeven_op) {
       const deadline = tbAangifteDeadline(b.vertrek, inst.tb_aangifte_dag)
       const dagen = dagenTussen(vandaag, deadline)
       acties.push({
         boekingId: b.id, soort: "tb_aangifte", urgentie: dagen < 0 ? "rood" : dagen <= 7 ? "oranje" : "normaal", datum: deadline,
-        titel: `Aangifte toeristenbelasting – ${b.naam}`,
+        stap: "tb_aangegeven", afgerond: labelVoor(stappen, b.status),
+        titel: `Toeristenbelasting aangeven – ${b.naam}`,
         toelichting:
           dagen < 0
             ? `Te laat: de aangifte voor ${tbPeriode(b.vertrek)} moest uiterlijk ${formatLang(deadline)} binnen zijn.`
@@ -220,6 +232,14 @@ export function bouwActielijst(
         wachten: taak?.wachten,
         stap: volgende.sleutel,
         afgerond: b.status === "aanvraag" ? undefined : labelVoor(stappen, b.status),
+      })
+    }
+    if (volgende?.sleutel === AFGEROND && b.vertrek < vandaag) {
+      acties.push({
+        boekingId: b.id, soort: "volgende_stap", urgentie: "normaal", datum: b.vertrek, stap: AFGEROND,
+        titel: `Boeking afronden – ${b.naam}`,
+        toelichting: "Het verblijf is voorbij en de toeristenbelasting is aangegeven. Rond de boeking af.",
+        afgerond: labelVoor(stappen, b.status),
       })
     }
     if (volgende?.sleutel === "verblijf" && b.aankomst <= vandaag) {
