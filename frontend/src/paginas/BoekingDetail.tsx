@@ -283,7 +283,33 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
             </dl>
             <div className="mt-3 flex flex-wrap gap-2">
               <button type="button" className="knop-klein" onClick={() => setDialoog("tb_berekend")}>Invulhulp vooraf</button>
-              <button type="button" className="knop-klein" onClick={() => setDialoog("tb_aangegeven")}>Aangifte registreren</button>
+              <button type="button" className="knop-klein" onClick={() => setDialoog("tb_aangegeven")}>
+                {b.tb_aangegeven_op ? "Aangifte wijzigen" : "Aangifte registreren"}
+              </button>
+              {b.tb_aangegeven_op && !isBijOfVoorbij(stappen, b, "tb_aangegeven") && (
+                <button
+                  type="button"
+                  className="knop-klein text-rood"
+                  disabled={bezig}
+                  onClick={async () => {
+                    if (!window.confirm("De vastgelegde aangifte toeristenbelasting wissen? Doe dit als de aangifte nog niet echt is ingediend.")) return
+                    setBezig(true)
+                    setFout(null)
+                    try {
+                      await pb.collection("boekingen").update(b.id, {
+                        tb_aangegeven_op: "", tb_aangegeven_cent: 0, tb_definitief_volwassenen: 0, tb_definitief_kinderen: 0, tb_aangifte: "",
+                      })
+                      await ververs()
+                    } catch (err) {
+                      setFout(err)
+                    } finally {
+                      setBezig(false)
+                    }
+                  }}
+                >
+                  Aangifte wissen
+                </button>
+              )}
             </div>
           </Kaart>
 
