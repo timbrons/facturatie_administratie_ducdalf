@@ -72,6 +72,11 @@ export function Dashboard() {
                       <div className={a.wachten ? "text-zacht" : "font-medium text-inkt"}>{a.titel}</div>
                       {a.toelichting && <div className="text-sm text-tekst">{a.toelichting}</div>}
                     </Link>
+                    {a.stap === "le_duc_aangemeld" && inst.data?.pld_portaal_url && (
+                      <a href={inst.data.pld_portaal_url} target="_blank" rel="noopener noreferrer" className="knop-klein shrink-0 self-start sm:self-center">
+                        Open PLD-portaal ↗
+                      </a>
+                    )}
                     {a.mail && (
                       <Link to={`/boekingen/${a.boekingId}?mail=${a.mail}`} className="knop-klein shrink-0 self-start sm:self-center">
                         {a.mail === "fijne_reis" ? "Mail opstellen" : "Herinnering sturen"}

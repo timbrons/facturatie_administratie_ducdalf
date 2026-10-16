@@ -166,6 +166,11 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {volgende?.sleutel === "le_duc_aangemeld" && inst.pld_portaal_url && (
+            <a href={inst.pld_portaal_url} target="_blank" rel="noopener noreferrer" className="knop-rand">
+              Open PLD-portaal ↗
+            </a>
+          )}
           {volgende && (
             <button type="button" className="knop" disabled={bezig} onClick={voerVolgendeStapUit}>
               {volgende.actie_label || volgende.label}

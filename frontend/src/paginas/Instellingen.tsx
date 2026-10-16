@@ -149,6 +149,7 @@ function Algemeen({ inst }: { inst: Instellingen }) {
       <Kaart titel="Links">
         <div className="grid gap-4 sm:grid-cols-2">
           {tekst("tb_portaal_url", "Portaal toeristenbelasting", { type: "url" })}
+          {tekst("pld_portaal_url", "Portaal Parc le Duc (aanmelden huurders)", { type: "url" })}
           {tekst("aanmeldformulier_url", "Aanmeldformulier", { type: "url", hint: `Leeg = het formulier van deze app (${formulierUrl()})` })}
         </div>
       </Kaart>

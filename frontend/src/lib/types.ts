@@ -28,6 +28,7 @@ export interface Instellingen extends RecordModel {
   aankomst_vooruit_dagen: number
   tb_aangifte_dag: number
   tb_portaal_url: string
+  pld_portaal_url: string
   aanmeldformulier_url: string
   bewaartermijn_jaren: number
   brochure: string
