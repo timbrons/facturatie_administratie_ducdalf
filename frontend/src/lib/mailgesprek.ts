@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query"
-import { googleFetch, haalServerToken, heeftRecht, SCOPES } from "./gmail"
+import { googleFetch, haalServerToken, heeftRecht, SCOPES, verstuurViaGmail } from "./gmail"
 import type { Huurder, MailLog } from "./types"
 import {
-  adresUit, adressenUit, gmailDatum, onbeantwoordeMails, reactiesUit,
-  type GmailBericht, type MailMoment, type OnbeantwoordeMail, type Reactie,
+  adresUit, adressenUit, bijlagenUit, gmailDatum, onbeantwoordeMails, reactiesUit,
+  type GmailBericht, type GmailBijlage, type MailMoment, type OnbeantwoordeMail, type Reactie,
 } from "../domein/mailgesprek"
+import { bouwMime, naarBase64Url, nieuwMessageId, type MailBijlage } from "../domein/mime"
 
 // Mails van en aan huurders, rechtstreeks uit Gmail (via de vaste koppeling,
 // gmail.readonly). Twee bronnen:
@@ -137,4 +138,53 @@ export function useNieuweMails(huurders: Huurder[], maillog: MailLog[], aan: boo
       })
     },
   })
+}
+
+/** De bijlagen van een mail in Gmail (bijv. een mail die vanuit de app is verstuurd). */
+export async function gmailBijlagen(gmailId: string): Promise<GmailBijlage[]> {
+  if (!(await magLezen())) throw new Error("De Google-koppeling mag Gmail nog niet lezen. Klik bij Instellingen op Opnieuw koppelen.")
+  const m = await haalBericht(gmailId, "full")
+  return m ? bijlagenUit(m.payload) : []
+}
+
+/** Haalt de inhoud van een bijlage op, klaar om mee te sturen. */
+export async function laadGmailBijlage(gmailId: string, b: GmailBijlage): Promise<MailBijlage> {
+  let data = b.data
+  if (!data && b.attachmentId) {
+    const res = await googleFetch(`${GMAIL}/messages/${encodeURIComponent(gmailId)}/attachments/${encodeURIComponent(b.attachmentId)}`)
+    if (!res.ok) throw new Error(`Bijlage "${b.bestandsnaam}" kon niet uit Gmail worden gehaald (${res.status}).`)
+    data = ((await res.json()) as { data?: string }).data
+  }
+  if (!data) throw new Error(`Bijlage "${b.bestandsnaam}" is leeg.`)
+  const b64 = data.replace(/-/g, "+").replace(/_/g, "/")
+  return { bestandsnaam: b.bestandsnaam, mimeType: b.mimeType, base64: b64 + "=".repeat((4 - (b64.length % 4)) % 4) }
+}
+
+export interface Antwoord {
+  van: string
+  aan: string
+  cc?: string
+  onderwerp: string
+  tekst: string
+  bijlagen: MailBijlage[]
+  /** Bij beantwoorden: in hetzelfde Gmail-gesprek */
+  threadId?: string
+  antwoordOp?: string
+  referenties?: string[]
+}
+
+/** Verstuurt een antwoord of doorgestuurde mail via Gmail (alleen na een klik op Versturen). */
+export async function verstuurAntwoord(a: Antwoord) {
+  const mime = bouwMime({
+    van: a.van,
+    aan: a.aan,
+    cc: a.cc || undefined,
+    onderwerp: a.onderwerp,
+    tekst: a.tekst,
+    bijlagen: a.bijlagen,
+    messageId: nieuwMessageId("vakantiehuis-ducdalf.nl"),
+    antwoordOp: a.antwoordOp || undefined,
+    referenties: a.antwoordOp ? [...(a.referenties ?? []), a.antwoordOp].slice(-10) : undefined,
+  })
+  return verstuurViaGmail(naarBase64Url(mime), a.threadId || undefined)
 }

@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-import { useQueryClient } from "@tanstack/react-query"
-import { sleutels, useBetalingen, useFacturen, useMaillog, useSjablonen } from "../lib/data"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { sleutels, useBetalingen, useFacturen, useInstellingen, useMaillog, useSjablonen } from "../lib/data"
 import { gmailBeschikbaar, SCOPES, useGmailGekoppeld, zorgVoorGoogle } from "../lib/gmail"
-import { useMailgesprek, type MailOpties } from "../lib/mailgesprek"
+import { gmailBijlagen, laadGmailBijlage, useMailgesprek, verstuurAntwoord, type MailOpties } from "../lib/mailgesprek"
 import { actueleFactuur, beschikbareBijlagen, bijlageUrl, kiesSjabloon, variabelenVoor, verstuurMail, type BijlageKeuze } from "../lib/mail"
 import type { Boeking, Instellingen, MailLog } from "../lib/types"
-import type { Reactie } from "../domein/mailgesprek"
+import type { GmailBijlage, Reactie } from "../domein/mailgesprek"
+import { antwoordOnderwerp, antwoordTekst, doorstuurOnderwerp, doorstuurTekst } from "../domein/antwoord"
+import { adres } from "../domein/mime"
 import { combineer, vulIn } from "../domein/sjablonen"
 import { formatTijdstip, plusDagen } from "../domein/datum"
 import type { WorkflowStap } from "../domein/workflow"
@@ -71,6 +73,15 @@ export function MailKaart({ boeking: b, inst, stappen, open, sleutels: startSleu
  */
 export function MailTijdlijn({ sleutel, mails, opties }: { sleutel: string; mails: MailLog[]; opties: MailOpties }) {
   const gesprek = useMailgesprek(sleutel, mails, opties)
+  const inst = useInstellingen().data
+  const [actie, setActie] = useState<{ soort: Soort; bron: Bron } | null>(null)
+  const eigenAdres = inst ? adres(inst.afzender_naam, inst.afzender_email) : ""
+  const knoppen = (bron: Bron) => (
+    <div className="mt-2 flex flex-wrap gap-2">
+      <button type="button" className="knop-klein" onClick={() => setActie({ soort: "beantwoorden", bron })}>Beantwoorden</button>
+      <button type="button" className="knop-klein" onClick={() => setActie({ soort: "doorsturen", bron })}>Doorsturen</button>
+    </div>
+  )
   const items: ({ soort: "app"; tijd: string; m: MailLog } | { soort: "gmail"; tijd: string; r: Reactie })[] = [
     ...mails.map((m) => ({ soort: "app" as const, tijd: alsIso(m.created), m })),
     ...(gesprek.data?.reacties ?? []).map((r) => ({ soort: "gmail" as const, tijd: r.ontvangen, r })),
@@ -103,6 +114,11 @@ export function MailTijdlijn({ sleutel, mails, opties }: { sleutel: string; mail
                   <div className="mt-2 border-l-2 border-lijn pl-3">
                     {(it.m.bijlagen ?? []).length > 0 && <div className="mb-1 text-xs text-zacht">Bijlagen: {(it.m.bijlagen ?? []).join(", ")}</div>}
                     <pre className="whitespace-pre-wrap font-sans text-sm text-tekst">{it.m.tekst}</pre>
+                    {knoppen({
+                      gmailId: it.m.gmail_message_id, threadId: it.m.gmail_thread_id, messageId: it.m.message_id, referenties: [],
+                      van: eigenAdres, aan: it.m.aan, antwoordAan: "", onderwerp: it.m.onderwerp, tijd: it.m.created,
+                      tekst: it.m.tekst, bijlagen: (it.m.bijlagen ?? []).length ? null : [], verstuurd: true,
+                    })}
                   </div>
                 </details>
               </li>
@@ -119,6 +135,7 @@ export function MailTijdlijn({ sleutel, mails, opties }: { sleutel: string; mail
                     </span>
                   </summary>
                   <div className="mt-2 border-l-2 border-goud pl-3">
+                    {it.r.bijlagen.length > 0 && <div className="mb-1 text-xs text-zacht">Bijlagen: {it.r.bijlagen.map((x) => x.bestandsnaam).join(", ")}</div>}
                     <pre className="whitespace-pre-wrap font-sans text-sm text-tekst">{it.r.tekst}</pre>
                     {it.r.volledig !== it.r.tekst && (
                       <details className="mt-1">
@@ -126,6 +143,11 @@ export function MailTijdlijn({ sleutel, mails, opties }: { sleutel: string; mail
                         <pre className="mt-1 whitespace-pre-wrap font-sans text-xs text-zacht">{it.r.volledig}</pre>
                       </details>
                     )}
+                    {knoppen({
+                      gmailId: it.r.id, threadId: it.r.threadId, messageId: it.r.messageId, referenties: it.r.referenties,
+                      van: it.r.van, aan: it.r.aan, antwoordAan: it.r.antwoordAan, onderwerp: it.r.onderwerp, tijd: it.r.ontvangen,
+                      tekst: it.r.volledig, bijlagen: it.r.bijlagen, verstuurd: it.r.richting === "verstuurd",
+                    })}
                   </div>
                 </details>
               </li>
@@ -133,7 +155,139 @@ export function MailTijdlijn({ sleutel, mails, opties }: { sleutel: string; mail
           )}
         </ul>
       )}
+      {actie && inst && (
+        <AntwoordDialoog soort={actie.soort} bron={actie.bron} van={eigenAdres} afzenderEmail={inst.afzender_email} onSluiten={() => setActie(null)} />
+      )}
     </>
+  )
+}
+
+type Soort = "beantwoorden" | "doorsturen"
+
+/** De mail waarop wordt gereageerd of die wordt doorgestuurd. */
+interface Bron {
+  gmailId: string
+  threadId: string
+  /** Message-ID-kop, voor In-Reply-To */
+  messageId: string
+  referenties: string[]
+  van: string
+  aan: string
+  antwoordAan: string
+  onderwerp: string
+  tijd: string
+  tekst: string
+  /** null: nog uit Gmail ophalen (mail vanuit de app met bijlagen) */
+  bijlagen: GmailBijlage[] | null
+  /** Zelf verstuurd: een antwoord gaat weer naar dezelfde ontvanger */
+  verstuurd: boolean
+}
+
+/**
+ * Beantwoorden (in hetzelfde Gmail-gesprek, met citaat) of doorsturen (met de
+ * bijlagen van de oorspronkelijke mail). Er wordt pas iets verstuurd na een
+ * klik op Versturen.
+ */
+function AntwoordDialoog({ soort, bron, van, afzenderEmail, onSluiten }: {
+  soort: Soort
+  bron: Bron
+  van: string
+  afzenderEmail: string
+  onSluiten: () => void
+}) {
+  const qc = useQueryClient()
+  const doorsturen = soort === "doorsturen"
+  const origineel = { van: bron.van, aan: bron.aan, onderwerp: bron.onderwerp, tijd: bron.tijd, tekst: bron.tekst }
+  const [aan, setAan] = useState(doorsturen ? "" : bron.verstuurd ? bron.aan : bron.antwoordAan || bron.van)
+  const [cc, setCc] = useState("")
+  const [onderwerp, setOnderwerp] = useState(doorsturen ? doorstuurOnderwerp(bron.onderwerp) : antwoordOnderwerp(bron.onderwerp))
+  const [tekst, setTekst] = useState(doorsturen ? doorstuurTekst(origineel) : antwoordTekst(origineel))
+  const [uit, setUit] = useState<Set<string>>(new Set())
+  const [bezig, setBezig] = useState(false)
+  const [fout, setFout] = useState<unknown>(null)
+  const [klaar, setKlaar] = useState(false)
+
+  // Bijlagen van de oorspronkelijke mail (alleen bij doorsturen).
+  const lijst = useQuery({
+    queryKey: ["gmail-bijlagen", bron.gmailId],
+    enabled: doorsturen && bron.bijlagen === null && !!bron.gmailId,
+    retry: false,
+    queryFn: () => gmailBijlagen(bron.gmailId),
+  })
+  const bijlagen = doorsturen ? (bron.bijlagen ?? lijst.data ?? []) : []
+
+  async function verstuur() {
+    setBezig(true)
+    setFout(null)
+    try {
+      await zorgVoorGoogle(afzenderEmail, SCOPES.verzenden)
+      const mee = []
+      for (const b of bijlagen) if (!uit.has(b.bestandsnaam)) mee.push(await laadGmailBijlage(bron.gmailId, b))
+      await verstuurAntwoord({
+        van, aan, cc, onderwerp, tekst, bijlagen: mee,
+        ...(doorsturen ? {} : { threadId: bron.threadId, antwoordOp: bron.messageId, referenties: bron.referenties }),
+      })
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["mailgesprek"] }),
+        qc.invalidateQueries({ queryKey: ["nieuwe-mails"] }),
+      ])
+      setKlaar(true)
+    } catch (err) {
+      setFout(err)
+    } finally {
+      setBezig(false)
+    }
+  }
+
+  return (
+    <Dialoog open titel={doorsturen ? "E-mail doorsturen" : "E-mail beantwoorden"} onSluiten={onSluiten}>
+      {klaar ? (
+        <>
+          <Melding soort="succes">
+            De e-mail is verstuurd vanuit Gmail{doorsturen ? "" : " (in hetzelfde gesprek)"}. Je vindt hem in Gmail onder "Verzonden" en
+            hij verschijnt hier bij de e-mails.
+          </Melding>
+          <div className="mt-4 flex justify-end"><button type="button" className="knop" onClick={onSluiten}>Sluiten</button></div>
+        </>
+      ) : (
+        <div className="flex flex-col gap-3">
+          <Veld label="Aan"><input value={aan} onChange={(e) => setAan(e.target.value)} placeholder="naam@voorbeeld.nl" /></Veld>
+          <Veld label="Cc (optioneel)"><input value={cc} onChange={(e) => setCc(e.target.value)} /></Veld>
+          <Veld label="Onderwerp"><input value={onderwerp} onChange={(e) => setOnderwerp(e.target.value)} /></Veld>
+          <Veld label="Tekst"><textarea rows={14} value={tekst} onChange={(e) => setTekst(e.target.value)} /></Veld>
+          {doorsturen && (
+            <div>
+              <div className="mb-1 text-sm text-zacht">Bijlagen van de oorspronkelijke mail</div>
+              {lijst.isLoading && <div className="text-xs text-zacht">Bijlagen ophalen…</div>}
+              {lijst.error ? <Fout fout={lijst.error} /> : null}
+              {!lijst.isLoading && bijlagen.length === 0 && <div className="text-xs text-zacht">Geen bijlagen.</div>}
+              {bijlagen.map((b) => (
+                <label key={b.bestandsnaam} className="flex items-center gap-2 text-sm text-inkt">
+                  <input
+                    type="checkbox"
+                    checked={!uit.has(b.bestandsnaam)}
+                    onChange={(e) => {
+                      const n = new Set(uit)
+                      if (e.target.checked) n.delete(b.bestandsnaam)
+                      else n.add(b.bestandsnaam)
+                      setUit(n)
+                    }}
+                  />
+                  {b.bestandsnaam}
+                </label>
+              ))}
+            </div>
+          )}
+          {fout ? <Fout fout={fout} /> : null}
+          <div className="flex justify-end gap-2">
+            <button type="button" className="knop-rand" onClick={onSluiten}>Annuleren</button>
+            <button type="button" className="knop" disabled={bezig || !aan.trim() || !onderwerp.trim() || !tekst.trim()} onClick={verstuur}>
+              {bezig ? "Versturen…" : "Versturen"}
+            </button>
+          </div>
+        </div>
+      )}
+    </Dialoog>
   )
 }
 
