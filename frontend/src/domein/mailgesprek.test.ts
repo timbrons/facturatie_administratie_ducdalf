@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { adresUit, adressenUit, gmailDatum, onbeantwoordeMails, reactiesUit, vanBase64Url, zonderCitaat, type GmailBericht } from "./mailgesprek"
+import { adresUit, adressenUit, bijlagenUit, gmailDatum, onbeantwoordeMails, reactiesUit, vanBase64Url, zonderCitaat, type GmailBericht } from "./mailgesprek"
 
 const b64 = (s: string) => btoa(String.fromCharCode(...new TextEncoder().encode(s))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")
 
@@ -53,5 +53,22 @@ describe("onbeantwoorde mails", () => {
     const verstuurd = [{ adres: "a@x.test", tijd: "2026-10-02T10:00:00Z" }, { adres: "b@x.test", tijd: "2026-10-03T10:00:00Z" }]
     const r = onbeantwoordeMails(ontvangen, verstuurd, { "c@x.test": "2026-10-03T10:00:00Z" })
     expect(r).toEqual([{ adres: "a@x.test", tijd: "2026-10-06T10:00:00Z", onderwerp: "Vraag 3", id: "3", aantal: 2 }])
+  })
+})
+
+describe("bijlagenUit", () => {
+  it("vindt bijlagen in geneste delen en negeert de tekst", () => {
+    const b = bijlagenUit({
+      mimeType: "multipart/mixed",
+      parts: [
+        { mimeType: "multipart/alternative", parts: [{ mimeType: "text/plain", body: { data: "SGFsbG8" } }] },
+        { mimeType: "application/pdf", filename: "Factuur.pdf", body: { attachmentId: "abc", size: 1000 } },
+        { mimeType: "text/plain", filename: "notitie.txt", body: { data: "eA" } },
+      ],
+    })
+    expect(b).toEqual([
+      { bestandsnaam: "Factuur.pdf", mimeType: "application/pdf", attachmentId: "abc", data: undefined },
+      { bestandsnaam: "notitie.txt", mimeType: "text/plain", attachmentId: undefined, data: "eA" },
+    ])
   })
 })

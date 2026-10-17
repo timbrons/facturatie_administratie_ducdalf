@@ -4,7 +4,8 @@
 
 export interface GmailDeel {
   mimeType?: string
-  body?: { data?: string }
+  filename?: string
+  body?: { data?: string; attachmentId?: string; size?: number }
   parts?: GmailDeel[]
   headers?: { name: string; value: string }[]
 }
@@ -18,11 +19,27 @@ export interface GmailBericht {
   payload?: GmailDeel
 }
 
+/** Een bijlage van een mail in Gmail (ophalen via attachmentId) */
+export interface GmailBijlage {
+  bestandsnaam: string
+  mimeType: string
+  attachmentId?: string
+  /** Kleine bijlagen staan soms direct in het bericht (base64url) */
+  data?: string
+}
+
 export interface Reactie {
   id: string
   threadId: string
   van: string
   aan: string
+  cc: string
+  /** Reply-To-kop (leeg als die er niet is) */
+  antwoordAan: string
+  /** Message-ID- en References-kop, om een antwoord in hetzelfde gesprek te zetten */
+  messageId: string
+  referenties: string[]
+  bijlagen: GmailBijlage[]
   onderwerp: string
   /** ontvangen: van de huurder; verstuurd: zelf beantwoord in Gmail (niet via de app) */
   richting: "ontvangen" | "verstuurd"
@@ -48,12 +65,22 @@ function kop(deel: GmailDeel | undefined, naam: string): string {
 
 function zoek(deel: GmailDeel | undefined, type: string): string | null {
   if (!deel) return null
-  if (deel.mimeType === type && deel.body?.data) return vanBase64Url(deel.body.data)
+  if (deel.mimeType === type && deel.body?.data && !deel.filename) return vanBase64Url(deel.body.data)
   for (const d of deel.parts ?? []) {
     const t = zoek(d, type)
     if (t !== null) return t
   }
   return null
+}
+
+/** Alle bijlagen (delen met een bestandsnaam) in een bericht. */
+export function bijlagenUit(deel: GmailDeel | undefined): GmailBijlage[] {
+  if (!deel) return []
+  const hier: GmailBijlage[] =
+    deel.filename && (deel.body?.attachmentId || deel.body?.data)
+      ? [{ bestandsnaam: deel.filename, mimeType: deel.mimeType || "application/octet-stream", attachmentId: deel.body?.attachmentId, data: deel.body?.data }]
+      : []
+  return [...hier, ...(deel.parts ?? []).flatMap(bijlagenUit)]
 }
 
 /** HTML → platte tekst (alleen als er geen tekstversie is). */
@@ -115,6 +142,11 @@ export function reactiesUit(berichten: GmailBericht[], eigenIds: Set<string>): R
       threadId: m.threadId,
       van: kop(m.payload, "From"),
       aan: kop(m.payload, "To"),
+      cc: kop(m.payload, "Cc"),
+      antwoordAan: kop(m.payload, "Reply-To"),
+      messageId: kop(m.payload, "Message-ID"),
+      referenties: kop(m.payload, "References").split(/\s+/).filter(Boolean),
+      bijlagen: bijlagenUit(m.payload),
       richting: labels.includes("SENT") ? "verstuurd" : "ontvangen",
       onderwerp: kop(m.payload, "Subject"),
       ontvangen: Number.isFinite(tijd) && tijd > 0 ? new Date(tijd).toISOString() : "",

@@ -114,12 +114,14 @@ account wordt geweigerd.
 
 > **Mails van huurders** verschijnen bij de boeking en op de huurderskaart onder **E-mails**. De app
 > leest daarvoor uit Gmail: het gesprek van elke mail die vanuit de app is verstuurd, en alle mails
-> van en aan het e-mailadres van de huurder (bij een boeking: vanaf twee weken vóór de aanvraag tot
-> twee maanden na vertrek; op de huurderskaart: alles). Er wordt niets opgeslagen; Gmail blijft de
+> van en aan het e-mailadres van de huurder (bij een boeking: vanaf een jaar vóór aankomst (of twee weken vóór
+> de invoer, als dat eerder is) tot twee maanden na vertrek; op de huurderskaart: alles). Er wordt niets opgeslagen; Gmail blijft de
 > bron. Op het overzicht (Acties) staat **Nieuwe mail van …** zolang er op een mail van een huurder
 > met een lopende of recente boeking (laatste 60 dagen) nog niet is gereageerd, via de app of
 > Gmail. Met **Afgehandeld** verberg je de melding (bijv. als je telefonisch hebt gereageerd), tot er
-> een nieuwe mail binnenkomt.
+> een nieuwe mail binnenkomt. Elke mail heeft de knoppen **Beantwoorden** (in hetzelfde Gmail-gesprek,
+> met citaat) en **Doorsturen** (met de bijlagen van de oorspronkelijke mail); er gaat pas iets weg
+> na een klik op Versturen.
 
 ## Testen
 
