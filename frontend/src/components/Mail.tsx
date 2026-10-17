@@ -42,7 +42,11 @@ export function MailKaart({ boeking: b, inst, stappen, open, sleutels: startSleu
   const mails = (log.data ?? []).filter((m) => m.boeking === b.id)
   const snel = (sjablonen.data ?? []).filter((s) => s.taal === "nl")
   // Losse mails van en aan de huurder rond deze boeking: vanaf kort voor de aanvraag tot ruim na vertrek.
-  const van = plusDagen((b.created || b.aankomst).slice(0, 10), -14)
+  // Een boeking die later in de app is ingevoerd heeft een late aanmaakdatum; daarom ook altijd
+  // het jaar vóór aankomst meenemen (zo ver vooruit wordt er geboekt).
+  const ingevoerd = plusDagen((b.created || b.aankomst).slice(0, 10), -14)
+  const jaarVoor = plusDagen(b.aankomst, -365)
+  const van = ingevoerd < jaarVoor ? ingevoerd : jaarVoor
   const tot = plusDagen(b.vertrek, 60)
   return (
     <Kaart titel="E-mails" actie={<GmailKnop inst={inst} klein />}>
