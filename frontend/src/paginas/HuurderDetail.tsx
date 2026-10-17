@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
+import { MailTijdlijn } from "../components/Mail"
 import { useQueryClient } from "@tanstack/react-query"
 import { sleutels, useBoekingen, useFacturen, useHuurder, useInstellingen, useMaillog, useOpslaan, useStappen } from "../lib/data"
 import { verwijderHuurder, type VerwijderResultaat } from "../lib/verwijderen"
@@ -138,6 +139,16 @@ function Formulier({ huurder }: { huurder: Huurder }) {
             </ul>
           )}
         </Kaart>
+        {huurder.email && !huurder.geanonimiseerd_op && (
+          <Kaart titel="E-mails" className="lg:col-span-3">
+            <p className="mb-3 text-xs text-zacht">Alle mails van en aan {huurder.email}: verstuurd vanuit de app en uit Gmail.</p>
+            <MailTijdlijn
+              sleutel={`huurder-${huurder.id}`}
+              mails={(maillog.data ?? []).filter((m) => verblijven.some((b) => b.id === m.boeking))}
+              opties={{ email: huurder.email }}
+            />
+          </Kaart>
+        )}
       </div>
     </>
   )

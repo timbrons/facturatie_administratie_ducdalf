@@ -93,6 +93,8 @@ export interface Huurder extends RecordModel {
   taal: Taal | ""
   notities: string
   geanonimiseerd_op: string
+  /** Meldingen van nieuwe mails van deze huurder tot dit tijdstip zijn afgehandeld (ISO) */
+  mail_gezien_tot?: string
 }
 
 export interface WorkflowStapRecord extends RecordModel {
