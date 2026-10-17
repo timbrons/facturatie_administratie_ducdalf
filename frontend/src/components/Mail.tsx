@@ -104,7 +104,7 @@ export function MailTijdlijn({ sleutel, mails, opties }: { sleutel: string; mail
               </li>
             ) : (
               <li key={it.r.id} className={`py-2 text-sm ${it.r.richting === "ontvangen" ? "bg-zand/60 -mx-2 px-2" : ""}`}>
-                <details open={it.r.richting === "ontvangen"}>
+                <details>
                   <summary className="cursor-pointer">
                     <span className={`mr-2 text-xs ${it.r.richting === "ontvangen" ? "font-semibold text-goud-donker" : "text-zacht"}`}>
                       {it.r.richting === "ontvangen" ? "Ontvangen" : "Verstuurd vanuit Gmail"}
