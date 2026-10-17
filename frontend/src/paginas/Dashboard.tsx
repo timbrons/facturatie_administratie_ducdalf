@@ -1,10 +1,13 @@
 import { Link } from "react-router-dom"
 import { useMemo } from "react"
-import { useAanmeldingen, useBoekingen, useInstellingen, useMaillog, useStappen } from "../lib/data"
+import { sleutels, useAanmeldingen, useBoekingen, useHuurders, useInstellingen, useMaillog, useStappen } from "../lib/data"
+import { useNieuweMails } from "../lib/mailgesprek"
+import { pb } from "../lib/pb"
+import { useQueryClient } from "@tanstack/react-query"
 import { boekingNaam } from "../lib/types"
 import { isActief } from "../lib/boeking"
 import { bouwActielijst, type Urgentie } from "../domein/actielijst"
-import { formatMiddel, vandaag } from "../domein/datum"
+import { formatMiddel, formatTijdstip, plusDagen, vandaag } from "../domein/datum"
 import { Fout, Kaart, Laden, Paginakop } from "../components/ui"
 import { StatusLabel } from "../components/Status"
 
@@ -20,7 +23,20 @@ export function Dashboard() {
   const inst = useInstellingen()
   const maillog = useMaillog()
   const aanmeldingen = useAanmeldingen()
+  const huurders = useHuurders()
+  const qc = useQueryClient()
   const nu = vandaag()
+  // Huurders met een lopende of recente boeking (tot 60 dagen na vertrek): nieuwe mails van hen melden.
+  const relevant = useMemo(() => {
+    const ids = new Set((boekingen.data ?? []).filter((b) => b.status !== "geannuleerd" && b.vertrek >= plusDagen(nu, -60)).map((b) => b.huurder))
+    return (huurders.data ?? []).filter((h) => ids.has(h.id) && h.email && !h.geanonimiseerd_op)
+  }, [boekingen.data, huurders.data, nu])
+  const nieuweMails = useNieuweMails(relevant, maillog.data ?? [], !!maillog.data)
+  /** De boeking waar een mail van deze huurder het best bij past: de eerstvolgende lopende, anders de laatste. */
+  const boekingVoor = (huurderId: string) => {
+    const eigen = (boekingen.data ?? []).filter((b) => b.huurder === huurderId && b.status !== "geannuleerd")
+    return eigen.filter((b) => b.vertrek >= nu).sort((a, b) => a.aankomst.localeCompare(b.aankomst))[0] ?? eigen.sort((a, b) => b.aankomst.localeCompare(a.aankomst))[0]
+  }
 
   const acties = useMemo(() => {
     if (!boekingen.data || !stappen.data || !inst.data) return []
@@ -49,6 +65,35 @@ export function Dashboard() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
+          {(nieuweMails.data ?? []).length > 0 && (
+            <ul className="mb-2 flex flex-col gap-2">
+              {(nieuweMails.data ?? []).map((m) => {
+                const b = boekingVoor(m.huurder.id)
+                const naam = [m.huurder.voornaam, m.huurder.achternaam].filter(Boolean).join(" ") || m.adres
+                return (
+                  <li key={m.adres}>
+                    <div className={`flex flex-col gap-2 border border-lijn border-l-4 px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${KLEUR.oranje}`}>
+                      <Link to={b ? `/boekingen/${b.id}` : `/huurders/${m.huurder.id}`} className="no-underline">
+                        <div className="font-medium text-inkt">Nieuwe mail van {naam}{m.aantal > 1 ? ` (${m.aantal})` : ""}</div>
+                        <div className="text-sm text-tekst">"{m.onderwerp || "(geen onderwerp)"}" · {formatTijdstip(m.tijd)} · nog niet beantwoord</div>
+                      </Link>
+                      <button
+                        type="button"
+                        className="knop-klein shrink-0 self-start sm:self-center"
+                        title="Verberg deze melding tot er een nieuwe mail binnenkomt (bijv. als je telefonisch hebt gereageerd)"
+                        onClick={async () => {
+                          await pb.collection("huurders").update(m.huurder.id, { mail_gezien_tot: m.tijd })
+                          await qc.invalidateQueries({ queryKey: sleutels.huurders })
+                        }}
+                      >
+                        Afgehandeld
+                      </button>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
           {nieuweAanmeldingen.length > 0 && (
             <ul className="mb-2 flex flex-col gap-2">
               {nieuweAanmeldingen.map((a) => (
@@ -61,7 +106,7 @@ export function Dashboard() {
               ))}
             </ul>
           )}
-          {acties.length === 0 && nieuweAanmeldingen.length === 0 ? (
+          {acties.length === 0 && nieuweAanmeldingen.length === 0 && (nieuweMails.data ?? []).length === 0 ? (
             <div className="infoblok">Er staat niets open. Alles is bijgewerkt.</div>
           ) : acties.length === 0 ? null : (
             <ul className="flex flex-col gap-2">

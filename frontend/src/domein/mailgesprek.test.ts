@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { reactiesUit, vanBase64Url, zonderCitaat, type GmailBericht } from "./mailgesprek"
+import { adresUit, adressenUit, gmailDatum, onbeantwoordeMails, reactiesUit, vanBase64Url, zonderCitaat, type GmailBericht } from "./mailgesprek"
 
 const b64 = (s: string) => btoa(String.fromCharCode(...new TextEncoder().encode(s))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")
 
@@ -32,5 +32,26 @@ describe("mailgesprek", () => {
     expect(r.map((x) => [x.id, x.richting])).toEqual([["b", "ontvangen"], ["c", "verstuurd"]])
     expect(r[0]).toMatchObject({ van: "Jan Test <jan@voorbeeld.test>", onderwerp: "Re: Uw aanvraag", tekst: "Ja, akkoord.", ontvangen: new Date(1760100000000).toISOString() })
     expect(r[1].tekst).toBe("Fijn, tot dan\nGroet")
+  })
+})
+
+describe("onbeantwoorde mails", () => {
+  it("leest adressen uit mailkoppen", () => {
+    expect(adresUit("Jan Test <Jan@Voorbeeld.test>")).toBe("jan@voorbeeld.test")
+    expect(adresUit("piet@voorbeeld.test")).toBe("piet@voorbeeld.test")
+    expect(adressenUit("A <a@x.test>, b@y.test")).toEqual(["a@x.test", "b@y.test"])
+    expect(gmailDatum("2026-10-17T10:00:00Z")).toBe("2026/10/17")
+  })
+  it("meldt alleen mails die na ons laatste antwoord of 'afgehandeld' binnenkwamen", () => {
+    const ontvangen = [
+      { adres: "a@x.test", tijd: "2026-10-01T10:00:00Z", onderwerp: "Vraag 1", id: "1" },
+      { adres: "a@x.test", tijd: "2026-10-05T10:00:00Z", onderwerp: "Vraag 2", id: "2" },
+      { adres: "a@x.test", tijd: "2026-10-06T10:00:00Z", onderwerp: "Vraag 3", id: "3" },
+      { adres: "b@x.test", tijd: "2026-10-02T10:00:00Z", onderwerp: "Hoi", id: "4" },
+      { adres: "c@x.test", tijd: "2026-10-03T10:00:00Z", onderwerp: "Bedankt", id: "5" },
+    ]
+    const verstuurd = [{ adres: "a@x.test", tijd: "2026-10-02T10:00:00Z" }, { adres: "b@x.test", tijd: "2026-10-03T10:00:00Z" }]
+    const r = onbeantwoordeMails(ontvangen, verstuurd, { "c@x.test": "2026-10-03T10:00:00Z" })
+    expect(r).toEqual([{ adres: "a@x.test", tijd: "2026-10-06T10:00:00Z", onderwerp: "Vraag 3", id: "3", aantal: 2 }])
   })
 })

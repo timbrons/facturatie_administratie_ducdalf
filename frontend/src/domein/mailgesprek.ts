@@ -124,3 +124,65 @@ export function reactiesUit(berichten: GmailBericht[], eigenIds: Set<string>): R
   }
   return uit
 }
+
+/** "Jan Test <Jan@Voorbeeld.test>" → "jan@voorbeeld.test" (eerste adres). */
+export function adresUit(kopwaarde: string): string {
+  const m = /<([^>]+)>/.exec(kopwaarde) ?? /([^\s,;<>"]+@[^\s,;<>"]+)/.exec(kopwaarde)
+  return (m?.[1] ?? "").trim().toLowerCase()
+}
+
+/** Alle adressen in een To/Cc-kop, in kleine letters. */
+export function adressenUit(kopwaarde: string): string[] {
+  return kopwaarde.split(",").map(adresUit).filter(Boolean)
+}
+
+/** Gmail-zoekdatum: 2026-10-17 → "2026/10/17". */
+export function gmailDatum(iso: string): string {
+  return iso.slice(0, 10).replace(/-/g, "/")
+}
+
+export interface MailMoment {
+  /** E-mailadres van de huurder (kleine letters) */
+  adres: string
+  /** ISO-tijdstip */
+  tijd: string
+  onderwerp?: string
+  id?: string
+}
+
+export interface OnbeantwoordeMail {
+  adres: string
+  tijd: string
+  onderwerp: string
+  id: string
+  /** Aantal ontvangen mails sinds ons laatste antwoord */
+  aantal: number
+}
+
+/**
+ * Per huurderadres: de laatst ontvangen mail waarop nog niet is gereageerd.
+ * "Gereageerd" = er is daarna een mail aan dat adres verstuurd (via de app of
+ * Gmail), of de melding is als afgehandeld gemarkeerd (gezien[adres]).
+ */
+export function onbeantwoordeMails(
+  ontvangen: MailMoment[],
+  verstuurd: MailMoment[],
+  gezien: Record<string, string> = {},
+): OnbeantwoordeMail[] {
+  const laatsteUit = new Map<string, string>()
+  for (const v of verstuurd) {
+    if (!laatsteUit.has(v.adres) || v.tijd > laatsteUit.get(v.adres)!) laatsteUit.set(v.adres, v.tijd)
+  }
+  const per = new Map<string, OnbeantwoordeMail>()
+  for (const o of ontvangen) {
+    const grens = [laatsteUit.get(o.adres) ?? "", gezien[o.adres] ?? ""].sort().at(-1)!
+    if (o.tijd <= grens) continue
+    const huidig = per.get(o.adres)
+    if (!huidig) per.set(o.adres, { adres: o.adres, tijd: o.tijd, onderwerp: o.onderwerp ?? "", id: o.id ?? "", aantal: 1 })
+    else {
+      huidig.aantal++
+      if (o.tijd > huidig.tijd) Object.assign(huidig, { tijd: o.tijd, onderwerp: o.onderwerp ?? "", id: o.id ?? "" })
+    }
+  }
+  return [...per.values()].sort((a, b) => b.tijd.localeCompare(a.tijd))
+}

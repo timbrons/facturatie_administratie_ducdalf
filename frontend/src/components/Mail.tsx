@@ -3,12 +3,12 @@ import { Link } from "react-router-dom"
 import { useQueryClient } from "@tanstack/react-query"
 import { sleutels, useBetalingen, useFacturen, useMaillog, useSjablonen } from "../lib/data"
 import { gmailBeschikbaar, SCOPES, useGmailGekoppeld, zorgVoorGoogle } from "../lib/gmail"
-import { useMailgesprek } from "../lib/mailgesprek"
+import { useMailgesprek, type MailOpties } from "../lib/mailgesprek"
 import { actueleFactuur, beschikbareBijlagen, bijlageUrl, kiesSjabloon, variabelenVoor, verstuurMail, type BijlageKeuze } from "../lib/mail"
 import type { Boeking, Instellingen, MailLog } from "../lib/types"
 import type { Reactie } from "../domein/mailgesprek"
 import { combineer, vulIn } from "../domein/sjablonen"
-import { formatTijdstip } from "../domein/datum"
+import { formatTijdstip, plusDagen } from "../domein/datum"
 import type { WorkflowStap } from "../domein/workflow"
 import { Dialoog, Fout, Kaart, Melding, Veld } from "./ui"
 
@@ -40,13 +40,10 @@ export function MailKaart({ boeking: b, inst, stappen, open, sleutels: startSleu
   const log = useMaillog()
   const sjablonen = useSjablonen()
   const mails = (log.data ?? []).filter((m) => m.boeking === b.id)
-  const gesprek = useMailgesprek(b.id, mails)
-  // Verstuurde mails en reacties uit Gmail in één tijdlijn, nieuwste bovenaan.
-  const items: ({ soort: "app"; tijd: string; m: MailLog } | { soort: "gmail"; tijd: string; r: Reactie })[] = [
-    ...mails.map((m) => ({ soort: "app" as const, tijd: alsIso(m.created), m })),
-    ...(gesprek.data?.reacties ?? []).map((r) => ({ soort: "gmail" as const, tijd: r.ontvangen, r })),
-  ].sort((x, y) => y.tijd.localeCompare(x.tijd))
   const snel = (sjablonen.data ?? []).filter((s) => s.taal === "nl")
+  // Losse mails van en aan de huurder rond deze boeking: vanaf kort voor de aanvraag tot ruim na vertrek.
+  const van = plusDagen((b.created || b.aankomst).slice(0, 10), -14)
+  const tot = plusDagen(b.vertrek, 60)
   return (
     <Kaart titel="E-mails" actie={<GmailKnop inst={inst} klein />}>
       {!gmailBeschikbaar() && (
@@ -58,17 +55,36 @@ export function MailKaart({ boeking: b, inst, stappen, open, sleutels: startSleu
           <button key={s.id} type="button" className="knop-klein" onClick={() => onOpen([s.sleutel])}>{s.naam}</button>
         ))}
       </div>
+      <MailTijdlijn sleutel={b.id} mails={mails} opties={{ email: b.expand?.huurder?.email, van, tot }} />
+      {open && <MailDialoog boeking={b} inst={inst} stappen={stappen} startSleutels={startSleutels} onSluiten={onSluiten} />}
+    </Kaart>
+  )
+}
+
+/**
+ * Verstuurde mails (maillog) en mails uit Gmail (reacties, losse mails van de
+ * huurder, antwoorden vanuit Gmail) in één tijdlijn, nieuwste bovenaan.
+ */
+export function MailTijdlijn({ sleutel, mails, opties }: { sleutel: string; mails: MailLog[]; opties: MailOpties }) {
+  const gesprek = useMailgesprek(sleutel, mails, opties)
+  const items: ({ soort: "app"; tijd: string; m: MailLog } | { soort: "gmail"; tijd: string; r: Reactie })[] = [
+    ...mails.map((m) => ({ soort: "app" as const, tijd: alsIso(m.created), m })),
+    ...(gesprek.data?.reacties ?? []).map((r) => ({ soort: "gmail" as const, tijd: r.ontvangen, r })),
+  ].sort((x, y) => y.tijd.localeCompare(x.tijd))
+  return (
+    <>
       {gesprek.data && !gesprek.data.beschikbaar && (
         <div className="mb-3">
           <Melding soort="info">
-            Reacties van de huurder kunnen nog niet worden getoond: de Google-koppeling mag Gmail nog niet lezen. Klik bij
+            Mails van de huurder kunnen nog niet worden getoond: de Google-koppeling mag Gmail nog niet lezen. Klik bij
             Instellingen → Google-account op Opnieuw koppelen.
           </Melding>
         </div>
       )}
       {gesprek.error ? <div className="mb-3"><Fout fout={gesprek.error} /></div> : null}
+      {gesprek.isLoading && <p className="mb-2 text-xs text-zacht">Mails uit Gmail ophalen…</p>}
       {items.length === 0 ? (
-        <p className="text-sm text-zacht">Nog geen e-mails verstuurd vanuit het systeem.</p>
+        <p className="text-sm text-zacht">Nog geen e-mails.</p>
       ) : (
         <ul className="divide-y divide-lijn border-t border-lijn">
           {items.map((it) =>
@@ -83,7 +99,6 @@ export function MailKaart({ boeking: b, inst, stappen, open, sleutels: startSleu
                   <div className="mt-2 border-l-2 border-lijn pl-3">
                     {(it.m.bijlagen ?? []).length > 0 && <div className="mb-1 text-xs text-zacht">Bijlagen: {(it.m.bijlagen ?? []).join(", ")}</div>}
                     <pre className="whitespace-pre-wrap font-sans text-sm text-tekst">{it.m.tekst}</pre>
-                    <div className="mt-1 text-xs text-zacht">Gmail-gesprek: {it.m.gmail_thread_id || "—"}</div>
                   </div>
                 </details>
               </li>
@@ -92,7 +107,7 @@ export function MailKaart({ boeking: b, inst, stappen, open, sleutels: startSleu
                 <details open={it.r.richting === "ontvangen"}>
                   <summary className="cursor-pointer">
                     <span className={`mr-2 text-xs ${it.r.richting === "ontvangen" ? "font-semibold text-goud-donker" : "text-zacht"}`}>
-                      {it.r.richting === "ontvangen" ? "Reactie ontvangen" : "Beantwoord in Gmail"}
+                      {it.r.richting === "ontvangen" ? "Ontvangen" : "Verstuurd vanuit Gmail"}
                     </span>
                     <span className="text-inkt">{it.r.onderwerp || "(geen onderwerp)"}</span>
                     <span className="ml-2 text-xs text-zacht">
@@ -114,8 +129,7 @@ export function MailKaart({ boeking: b, inst, stappen, open, sleutels: startSleu
           )}
         </ul>
       )}
-      {open && <MailDialoog boeking={b} inst={inst} stappen={stappen} startSleutels={startSleutels} onSluiten={onSluiten} />}
-    </Kaart>
+    </>
   )
 }
 
