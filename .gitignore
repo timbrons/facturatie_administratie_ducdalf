@@ -24,3 +24,6 @@ coverage/
 .vite/
 *.tsbuildinfo
 backend/bin/
+
+# Door het testscript (seed) automatisch aangemaakte migratie: nooit meenemen
+backend/pb_migrations/*_updated_users.js
