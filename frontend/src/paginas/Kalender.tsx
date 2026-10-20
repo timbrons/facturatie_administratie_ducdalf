@@ -7,7 +7,7 @@ import { datumVan, formatLang, jaarVan, maandNaam, maandVan, plusDagen, vandaag 
 import { alleOverlappen, overlappendeBoekingen } from "../domein/overlap"
 import { useEigenVerblijven } from "../lib/agenda"
 import { inEigenHuis, verblijfNaam, type EigenVerblijf } from "../domein/agenda"
-import { Fout, Laden, Melding, Paginakop } from "../components/ui"
+import { Dialoog, Fout, Laden, Melding, Paginakop } from "../components/ui"
 
 const WEEKDAGEN = ["ma", "di", "wo", "do", "vr", "za", "zo"]
 
@@ -23,9 +23,14 @@ function dagenInMaand(jaar: number, maand: number): string[] {
   return uit
 }
 
-function MaandRaster({ jaar, maand, boekingen, eigen, groot, onKlik, onEigen }: {
-  jaar: number; maand: number; boekingen: Boeking[]; eigen: EigenVerblijf[]; groot?: boolean
-  onKlik: (b: Boeking) => void; onEigen: (v: EigenVerblijf) => void
+type Keuze = { soort: "boeking"; b: Boeking } | { soort: "eigen"; v: EigenVerblijf }
+
+function MaandRaster({ jaar, maand, boekingen, eigen, elders, groot, onKies }: {
+  jaar: number; maand: number; boekingen: Boeking[]; eigen: EigenVerblijf[]
+  /** Verblijven in een gehuurd (ander) huis: bezetten ons huis niet, alleen een streepje */
+  elders: EigenVerblijf[]
+  groot?: boolean
+  onKies: (keuzes: Keuze[]) => void
 }) {
   const dagen = dagenInMaand(jaar, maand)
   const eersteWeekdag = (new Date(Date.UTC(jaar, maand - 1, 1)).getUTCDay() + 6) % 7
@@ -37,20 +42,27 @@ function MaandRaster({ jaar, maand, boekingen, eigen, groot, onKlik, onEigen }: 
       {dagen.map((d) => {
         const bezet = bezetting(boekingen, d)
         const zelf = eigen.filter((v) => v.aankomst <= d && d < v.vertrek)
+        const ander = elders.filter((v) => v.aankomst <= d && d < v.vertrek)
         const aankomst = boekingen.find((b) => b.aankomst === d)
         const eigenStart = eigen.find((v) => v.aankomst === d)
         const dubbel = bezet.length + zelf.length > 1
         const b = bezet[0]
         const kleur = dubbel ? "bg-rood text-white" : b ? (b.optie ? "bg-zand-donker text-inkt" : "bg-goud text-white") : zelf.length ? "bg-olijf text-white" : "bg-white"
-        const namen = [...bezet.map((x) => `${boekingNaam(x)}${x.optie ? " (optie)" : ""}`), ...zelf.map((v) => `Eigen verblijf: ${verblijfNaam(v)}`)]
+        const namen = [
+          ...bezet.map((x) => `${boekingNaam(x)}${x.optie ? " (optie)" : ""}`),
+          ...zelf.map((v) => `Eigen verblijf: ${verblijfNaam(v)}`),
+          ...ander.map((v) => verblijfNaam(v)),
+        ]
+        const keuzes: Keuze[] = [...bezet.map((x) => ({ soort: "boeking" as const, b: x })), ...[...zelf, ...ander].map((v) => ({ soort: "eigen" as const, v }))]
         return (
           <button
             key={d}
             type="button"
             title={namen.length ? namen.join(" + ") : formatLang(d)}
-            onClick={() => (b ? onKlik(b) : zelf[0] ? onEigen(zelf[0]) : undefined)}
-            className={`relative ${groot ? "min-h-16 p-1 text-left" : "aspect-square text-[11px]"} ${kleur} ${d === nu ? "outline-2 -outline-offset-2 outline-inkt" : ""} ${b || zelf.length ? "cursor-pointer" : "cursor-default"}`}
+            onClick={() => (keuzes.length ? onKies(keuzes) : undefined)}
+            className={`relative ${groot ? "min-h-16 p-1 text-left" : "aspect-square text-[11px]"} ${kleur} ${d === nu ? "outline-2 -outline-offset-2 outline-inkt" : ""} ${keuzes.length ? "cursor-pointer" : "cursor-default"}`}
           >
+            {ander.length > 0 && <span className="absolute inset-x-0 bottom-0 h-1 bg-inkt/70" aria-hidden />}
             <span className={groot ? "text-xs" : ""}>{Number(d.slice(8))}</span>
             {groot && aankomst && (
               <span className="mt-0.5 block truncate text-[11px] leading-tight">{boekingNaam(aankomst)}</span>
@@ -58,6 +70,9 @@ function MaandRaster({ jaar, maand, boekingen, eigen, groot, onKlik, onEigen }: 
             {groot && !aankomst && eigenStart && (
               <span className="mt-0.5 block truncate text-[11px] leading-tight">{verblijfNaam(eigenStart)}</span>
             )}
+            {groot && ander.filter((v) => v.aankomst === d).map((v) => (
+              <span key={v.id} className="mt-0.5 block truncate text-[11px] leading-tight opacity-90">{verblijfNaam(v)}</span>
+            ))}
           </button>
         )
       })}
@@ -80,15 +95,25 @@ export function Kalender() {
   const [eigenOpen, setEigenOpen] = useState<EigenVerblijf | null | undefined>(undefined)
   const kanSchrijven = !!agenda.data?.schrijven && !!inst
   const openEigen = (v: EigenVerblijf) => (kanSchrijven ? setEigenOpen(v) : undefined)
-  // Verblijven in een gehuurd (ander) huis bezetten ons huis niet; die staan onder de kalender.
+  // Meerdere dingen op één dag (bijv. de overlapweek): eerst kiezen wat je wilt openen.
+  const [keuzes, setKeuzes] = useState<Keuze[] | null>(null)
+  // Verblijven in een gehuurd (ander) huis bezetten ons huis niet: alleen een streepje onder de dag.
   const eigen = inEigenHuis(agenda.data?.verblijven ?? [])
-  const elders = (agenda.data?.verblijven ?? []).filter((v) => v.anderHuis && jaarVan(v.aankomst) <= jaar && jaarVan(v.vertrek) >= jaar)
+  const alleElders = (agenda.data?.verblijven ?? []).filter((v) => v.anderHuis)
+  const elders = alleElders.filter((v) => jaarVan(v.aankomst) <= jaar && jaarVan(v.vertrek) >= jaar)
   const botsingen = eigen.flatMap((v) => overlappendeBoekingen({ aankomst: v.aankomst, vertrek: v.vertrek }, actief).map((b) => [v, b] as const))
 
   if (boekingen.isLoading) return <Laden />
   if (boekingen.error) return <Fout fout={boekingen.error} />
 
   const open = (b: Boeking) => navigate(`/boekingen/${b.id}`)
+  const kies = (k: Keuze) => (k.soort === "boeking" ? open(k.b) : openEigen(k.v))
+  const onKies = (lijst: Keuze[]) => {
+    // Alleen eigen verblijven die je kunt wijzigen tellen als keuze.
+    const bruikbaar = lijst.filter((k) => k.soort === "boeking" || kanSchrijven)
+    if (bruikbaar.length === 1) kies(bruikbaar[0])
+    else if (bruikbaar.length > 1) setKeuzes(bruikbaar)
+  }
 
   function verschuif(stap: 1 | -1) {
     if (!maand) return setJaar(jaar + stap)
@@ -106,6 +131,26 @@ export function Kalender() {
         {maand && <button type="button" className="knop-rand" onClick={() => setMaand(null)}>Jaaroverzicht</button>}
         {kanSchrijven && <button type="button" className="knop" onClick={() => setEigenOpen(null)}>+ Eigen verblijf</button>}
       </Paginakop>
+      {keuzes && (
+        <Dialoog open titel="Wat wil je openen?" onSluiten={() => setKeuzes(null)}>
+          <ul className="flex flex-col gap-2">
+            {keuzes.map((k) => (
+              <li key={k.soort === "boeking" ? k.b.id : k.v.id}>
+                <button
+                  type="button"
+                  className="w-full border border-lijn bg-white px-3 py-2 text-left text-sm hover:border-goud"
+                  onClick={() => { setKeuzes(null); kies(k) }}
+                >
+                  <span className="text-inkt">{k.soort === "boeking" ? boekingNaam(k.b) : verblijfNaam(k.v)}</span>
+                  <span className="ml-2 text-xs text-zacht">
+                    {formatLang(k.soort === "boeking" ? k.b.aankomst : k.v.aankomst)} – {formatLang(k.soort === "boeking" ? k.b.vertrek : k.v.vertrek)}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </Dialoog>
+      )}
       {eigenOpen !== undefined && inst && (
         <EigenVerblijfDialoog
           key={eigenOpen?.id ?? "nieuw"}
@@ -122,6 +167,7 @@ export function Kalender() {
         <span className="flex items-center gap-1"><span className="inline-block h-3 w-3 bg-zand-donker" /> Optie</span>
         <span className="flex items-center gap-1"><span className="inline-block h-3 w-3 bg-olijf" /> Eigen verblijf (Google Agenda)</span>
         <span className="flex items-center gap-1"><span className="inline-block h-3 w-3 bg-rood" /> Dubbel geboekt</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-1 w-3 bg-inkt/70" /> Gezin in een gehuurd huis op het park</span>
         <span>Een dag is bezet als er die nacht iemand slaapt; de vertrekdag is dus vrij.</span>
       </div>
 
@@ -171,7 +217,7 @@ export function Kalender() {
       {agenda.error ? <div className="mb-4"><Fout fout={agenda.error} /></div> : null}
 
       {maand ? (
-        <MaandRaster jaar={jaar} maand={maand} boekingen={actief} eigen={eigen} groot onKlik={open} onEigen={openEigen} />
+        <MaandRaster jaar={jaar} maand={maand} boekingen={actief} eigen={eigen} elders={alleElders} groot onKies={onKies} />
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
@@ -179,7 +225,7 @@ export function Kalender() {
               <button type="button" className="mb-2 font-serif text-lg text-inkt hover:text-goud-tekst" onClick={() => setMaand(m)}>
                 {maandNaam(m)}
               </button>
-              <MaandRaster jaar={jaar} maand={m} boekingen={actief} eigen={eigen} onKlik={open} onEigen={openEigen} />
+              <MaandRaster jaar={jaar} maand={m} boekingen={actief} eigen={eigen} elders={alleElders} onKies={onKies} />
             </div>
           ))}
         </div>
@@ -191,12 +237,11 @@ export function Kalender() {
           <ul className="divide-y divide-lijn border-t border-lijn text-sm">
             {elders.map((v) => (
               <li key={v.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                {kanSchrijven ? (
-                  <button type="button" className="text-left text-inkt underline-offset-2 hover:underline" onClick={() => openEigen(v)}>{verblijfNaam(v)}</button>
-                ) : (
-                  <span className="text-inkt">{verblijfNaam(v)}</span>
-                )}
-                <span className="text-xs text-zacht">{formatLang(v.aankomst)} – {formatLang(v.vertrek)}</span>
+                <span className="text-inkt">
+                  {verblijfNaam(v)}
+                  <span className="ml-2 text-xs text-zacht">{formatLang(v.aankomst)} – {formatLang(v.vertrek)}</span>
+                </span>
+                {kanSchrijven && <button type="button" className="knop-klein" onClick={() => openEigen(v)}>Wijzigen</button>}
               </li>
             ))}
           </ul>

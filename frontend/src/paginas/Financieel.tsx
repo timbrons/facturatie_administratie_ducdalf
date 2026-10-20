@@ -11,7 +11,8 @@ import { betaalstatus, bouwFactuurregels } from "../domein/factuur"
 import { financieelOverzicht, parkkostenOverzicht, pldGefactureerd, tbOverzicht, type FinBoeking } from "../domein/financieel"
 import { RECHT_NACHTEN, standaardZomer, wekenTekst, ZOMERVAKANTIES, zomerverdeling, zomerVoor, type ZomerVerhuur } from "../domein/zomer"
 import { useEigenVerblijvenIn } from "../lib/agenda"
-import { verblijfGroepen } from "../domein/agenda"
+import { verblijfGroepen, type EigenVerblijf } from "../domein/agenda"
+import { EigenVerblijfDialoog } from "../components/EigenVerblijf"
 import { openParkkostenFactuur } from "../lib/parkkosten"
 import { csvBedrag, schrijfCsv } from "../domein/csv"
 import { BedragVeld, Fout, Kaart, Laden, Melding, Paginakop, Veld } from "../components/ui"
@@ -436,6 +437,7 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
   const periode = inst ? zomerVoor(jaar, inst.zomerperiodes) : null
   const agenda = useEigenVerblijvenIn(periode?.van, periode?.tot)
   const [wijzigen, setWijzigen] = useState(false)
+  const [verblijfOpen, setVerblijfOpen] = useState<EigenVerblijf | null>(null)
 
   if (!inst) return <Laden />
   if (!periode || wijzigen) {
@@ -614,13 +616,26 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
                     {v.groep || <span className="text-oranje">Gezin niet opgegeven</span>}
                     {v.anderHuis && <span className="ml-1 text-xs text-zacht">(gehuurd huis)</span>}
                   </span>
-                  <span className="text-xs text-zacht">{formatLang(v.aankomst)} – {formatLang(v.vertrek)}{v.titel && v.titel !== "Eigen verblijf" ? ` · ${v.titel}` : ""}</span>
+                  <span className="flex items-center gap-3 text-xs text-zacht">
+                    {formatLang(v.aankomst)} – {formatLang(v.vertrek)}{v.titel && v.titel !== "Eigen verblijf" ? ` · ${v.titel}` : ""}
+                    {agenda.data?.schrijven && <button type="button" className="knop-klein" onClick={() => setVerblijfOpen(v)}>Wijzigen</button>}
+                  </span>
                 </li>
               ))}
             </ul>
           )
         })()}
       </Kaart>
+      {verblijfOpen && (
+        <EigenVerblijfDialoog
+          key={verblijfOpen.id}
+          open
+          verblijf={verblijfOpen}
+          inst={inst}
+          boekingen={boekingen.filter((b) => b.status !== "geannuleerd")}
+          onSluiten={() => setVerblijfOpen(null)}
+        />
+      )}
     </div>
   )
 }
