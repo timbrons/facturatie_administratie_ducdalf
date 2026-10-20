@@ -30,22 +30,48 @@ export function EigenVerblijfDialoog({ open, verblijf, inst, boekingen, onSluite
   const [groep, setGroep] = useState(verblijf?.groep ?? "")
   const [bezig, setBezig] = useState(false)
   const [fout, setFout] = useState<unknown>(null)
+  // Na het opslaan van een nieuw verblijf (of nieuwe data): wijzen op de aanmelding bij Parc le Duc.
+  const [aanmelden, setAanmelden] = useState(false)
 
   const geldig = isIsoDatum(aankomst) && isIsoDatum(vertrek) && vertrek > aankomst
   const botsing = geldig ? overlappendeBoekingen({ aankomst, vertrek }, boekingen) : []
 
-  async function klaar(fn: () => Promise<void>) {
+  async function klaar(fn: () => Promise<void>, wijsOpAanmelding = false) {
     setBezig(true)
     setFout(null)
     try {
       await fn()
       await qc.invalidateQueries({ queryKey: ["agenda"] })
-      onSluiten()
+      if (wijsOpAanmelding) setAanmelden(true)
+      else onSluiten()
     } catch (err) {
       setFout(err)
     } finally {
       setBezig(false)
     }
+  }
+
+  if (aanmelden) {
+    return (
+      <Dialoog open={open} titel="Aanmelden bij Parc le Duc" onSluiten={onSluiten}>
+        <div className="flex flex-col gap-4 text-sm">
+          <Melding soort="succes">Het eigen verblijf is opgeslagen en staat in Google Agenda.</Melding>
+          <Melding soort="waarschuwing">
+            Vergeet niet dit verblijf ({formatLang(aankomst)} – {formatLang(vertrek)}{groep ? `, ${groep}` : ""}) zelf aan te melden in het
+            portaal van Parc le Duc. Dat gebeurt niet automatisch.
+          </Melding>
+          {!inst.pld_portaal_url && (
+            <p className="text-xs text-zacht">Het adres van het PLD-portaal staat nog niet bij Instellingen.</p>
+          )}
+          <div className="flex flex-wrap justify-end gap-2">
+            {inst.pld_portaal_url && (
+              <a href={inst.pld_portaal_url} target="_blank" rel="noopener noreferrer" className="knop-rand">Open PLD-portaal ↗</a>
+            )}
+            <button type="button" className="knop" onClick={onSluiten}>Sluiten</button>
+          </div>
+        </div>
+      </Dialoog>
+    )
   }
 
   return (
@@ -54,7 +80,9 @@ export function EigenVerblijfDialoog({ open, verblijf, inst, boekingen, onSluite
         className="flex flex-col gap-3 text-sm"
         onSubmit={(e) => {
           e.preventDefault()
-          if (geldig) klaar(() => bewaarEigenVerblijf(inst, { titel, notitie, aankomst, vertrek, groep }, verblijf?.id))
+          // Nieuw verblijf of andere data: daarna wijzen op de aanmelding bij Parc le Duc.
+          const nieuweData = !verblijf || verblijf.aankomst !== aankomst || verblijf.vertrek !== vertrek
+          if (geldig) klaar(() => bewaarEigenVerblijf(inst, { titel, notitie, aankomst, vertrek, groep }, verblijf?.id), nieuweData)
         }}
       >
         <Veld label="Omschrijving"><input value={titel} onChange={(e) => setTitel(e.target.value)} /></Veld>
