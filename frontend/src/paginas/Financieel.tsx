@@ -2,19 +2,22 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useMemo, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom"
 import { pb } from "../lib/pb"
-import { sleutels, useBetalingen, useBoekingen, useFacturen, useOpslaan, useTbAangiften } from "../lib/data"
-import { boekingNaam, type Boeking, type TbAangifte } from "../lib/types"
+import { sleutels, useBetalingen, useBoekingen, useFacturen, useInstellingen, useOpslaan, useTbAangiften } from "../lib/data"
+import { boekingNaam, type Boeking, type Factuur, type Instellingen, type TbAangifte } from "../lib/types"
 import { pdfUrl } from "../lib/facturen"
-import { formatLang, jaarVan, maandNaam, vandaag } from "../domein/datum"
+import { dagenTussen, formatLang, isIsoDatum, jaarVan, maandNaam, vandaag } from "../domein/datum"
 import { formatEuro, type Cent } from "../domein/geld"
-import { betaalstatus } from "../domein/factuur"
-import { financieelOverzicht, parkkostenOverzicht, tbOverzicht, type FinBoeking } from "../domein/financieel"
+import { betaalstatus, bouwFactuurregels } from "../domein/factuur"
+import { financieelOverzicht, parkkostenOverzicht, pldGefactureerd, tbOverzicht, type FinBoeking } from "../domein/financieel"
+import { RECHT_NACHTEN, standaardZomer, wekenTekst, ZOMERVAKANTIES, zomerverdeling, zomerVoor, type ZomerVerhuur } from "../domein/zomer"
+import { useEigenVerblijvenIn } from "../lib/agenda"
+import { verblijfGroepen } from "../domein/agenda"
 import { openParkkostenFactuur } from "../lib/parkkosten"
 import { csvBedrag, schrijfCsv } from "../domein/csv"
-import { BedragVeld, Fout, Kaart, Laden, Paginakop, Veld } from "../components/ui"
+import { BedragVeld, Fout, Kaart, Laden, Melding, Paginakop, Veld } from "../components/ui"
 import { StatusFactuur } from "../components/FacturenBetalingen"
 
-type Tab = "overzicht" | "facturen" | "toeristenbelasting" | "parkkosten"
+type Tab = "overzicht" | "facturen" | "toeristenbelasting" | "parkkosten" | "zomer"
 
 function downloadCsv(naam: string, rijen: (string | number | null | undefined)[][]) {
   const blob = new Blob([schrijfCsv(rijen)], { type: "text/csv;charset=utf-8" })
@@ -44,7 +47,8 @@ export function Financieel() {
   const fout = boekingen.error || facturen.error || betalingen.error || aangiften.error
   if (fout) return <Fout fout={fout} />
 
-  const jaren = [...new Set([...fin.map((b) => jaarVan(b.aankomst)), jaarVan(vandaag())])].sort((a, b) => b - a)
+  // Ook volgend jaar, om de zomerverdeling vooruit te bekijken.
+  const jaren = [...new Set([...fin.map((b) => jaarVan(b.aankomst)), jaarVan(vandaag()), jaarVan(vandaag()) + 1, jaar])].sort((a, b) => b - a)
 
   return (
     <>
@@ -53,13 +57,13 @@ export function Financieel() {
           {jaren.map((j) => <option key={j} value={j}>{j}</option>)}
         </select>
       </Paginakop>
-      <div className="mb-6 flex gap-1 border-b border-lijn">
-        {([["overzicht", "Overzicht"], ["facturen", "Facturen"], ["toeristenbelasting", "Toeristenbelasting"], ["parkkosten", "Park- en schoonmaakkosten PLD"]] as const).map(([k, l]) => (
+      <div className="mb-6 flex gap-1 overflow-x-auto border-b border-lijn pb-px">
+        {([["overzicht", "Overzicht"], ["facturen", "Facturen"], ["toeristenbelasting", "Toeristenbelasting"], ["parkkosten", "Park- en schoonmaakkosten PLD"], ["zomer", "Zomerverdeling"]] as const).map(([k, l]) => (
           <button
             key={k}
             type="button"
             onClick={() => zet("tab", k)}
-            className={`-mb-px border-b-2 px-4 py-2 text-sm ${tab === k ? "border-goud text-inkt" : "border-transparent text-zacht hover:text-inkt"}`}
+            className={`shrink-0 whitespace-nowrap border-b-2 px-4 py-2 text-sm ${tab === k ? "border-goud text-inkt" : "border-transparent text-zacht hover:text-inkt"}`}
           >
             {l}
           </button>
@@ -69,6 +73,7 @@ export function Financieel() {
       {tab === "facturen" && <FacturenLijst jaar={jaar} />}
       {tab === "toeristenbelasting" && <Toeristenbelasting jaar={jaar} boekingen={fin} aangiften={aangiften.data ?? []} />}
       {tab === "parkkosten" && <Parkkosten jaar={jaar} boekingen={boekingen.data ?? []} />}
+      {tab === "zomer" && <Zomerverdeling jaar={jaar} boekingen={boekingen.data ?? []} facturen={facturen.data ?? []} />}
     </>
   )
 }
@@ -409,5 +414,215 @@ function Parkkosten({ jaar, boekingen }: { jaar: number; boekingen: Boeking[] })
         </div>
       )}
     </Kaart>
+  )
+}
+
+/**
+ * Opbrengst van een verblijf voor de zomerverdeling: wat de huurder betaalt
+ * zonder toeristenbelasting, min wat we aan PLD betalen (park- en
+ * schoonmaakkosten; het werkelijk betaalde bedrag zodra dat bekend is).
+ * Zonder geldige factuur: geschat uit de boeking.
+ */
+function zomerOpbrengst(b: Boeking, facturen: Factuur[]): ZomerVerhuur {
+  const fs = facturen.filter((f) => f.boeking === b.id && f.nummer && !f.geannuleerd_op)
+  const regels = fs.length ? fs.flatMap((f) => f.regels ?? []) : bouwFactuurregels({ ...b, nachten: dagenTussen(b.aankomst, b.vertrek) })
+  const zonderTb = regels.filter((r) => r.soort !== "toeristenbelasting").reduce((t, r) => t + r.bedrag_cent, 0)
+  const pld = b.parkkosten_betaald_op ? b.parkkosten_betaald_cent : pldGefactureerd(b)
+  return { id: b.id, naam: boekingNaam(b), aankomst: b.aankomst, vertrek: b.vertrek, opbrengst_cent: zonderTb - pld, geschat: fs.length === 0 }
+}
+
+function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen: Boeking[]; facturen: Factuur[] }) {
+  const inst = useInstellingen().data
+  const periode = inst ? zomerVoor(jaar, inst.zomerperiodes) : null
+  const agenda = useEigenVerblijvenIn(periode?.van, periode?.tot)
+  const [wijzigen, setWijzigen] = useState(false)
+
+  if (!inst) return <Laden />
+  if (!periode || wijzigen) {
+    return (
+      <Kaart titel={`Zomerverdeling ${jaar}`}>
+        {!periode && <p className="mb-3 text-sm text-zacht">De zomervakantie van {jaar} staat nog niet in de app. Vul de periode in (eerste t/m laatste vakantiedag, over alle regio's).</p>}
+        <PeriodeInvoer jaar={jaar} inst={inst} huidig={periode} onKlaar={() => setWijzigen(false)} />
+      </Kaart>
+    )
+  }
+
+  const gezinnen = verblijfGroepen(inst.eigen_verblijf_groepen)
+  const verhuur = boekingen
+    .filter((b) => b.status !== "geannuleerd" && b.aankomst < periode.tot && b.vertrek > periode.van)
+    .map((b) => zomerOpbrengst(b, facturen))
+  const z = zomerverdeling({ periode, gezinnen, verblijven: agenda.data?.verblijven ?? [], verhuur })
+  const regios = ZOMERVAKANTIES[jaar]
+  const standaard = standaardZomer(jaar)
+  const eigenPeriode = !!inst.zomerperiodes?.[String(jaar)]
+  const geschat = z.verhuur.filter((r) => r.geschat).length
+
+  function exporteer() {
+    downloadCsv(`zomerverdeling-${jaar}.csv`, [
+      ["Zomer", periode!.van, periode!.tot, `${z.nachten} nachten`],
+      [],
+      ["Gezin", "Recht (nachten)", "Gebruikt (nachten)", "Afgezien (nachten)", "Opbrengst afgeziene weken", "Aandeel gedeelde opbrengst", "Totaal"],
+      ...z.gezinnen.map((g) => [g.gezin, g.recht, g.gebruikt, g.afgezien, csvBedrag(g.opbrengstAfgezien_cent), csvBedrag(g.opbrengstGedeeld_cent), csvBedrag(g.opbrengst_cent)]),
+      [],
+      ["Huurder", "Aankomst", "Vertrek", "Nachten", "Nachten in de zomer", "Opbrengst verblijf", "Opbrengst zomerdeel", "Geschat"],
+      ...z.verhuur.map((r) => [r.naam, r.aankomst, r.vertrek, r.nachten, r.zomerNachten, csvBedrag(r.opbrengst_cent), csvBedrag(r.zomerOpbrengst_cent), r.geschat ? "ja" : ""]),
+    ])
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <Kaart titel={`Zomerverdeling ${jaar}`} actie={<button type="button" className="knop-klein" onClick={exporteer}>Exporteer CSV</button>}>
+        <p className="mb-3 text-sm text-tekst">
+          Zomervakantie {formatLang(periode.van)} t/m {formatLang(periode.tot)}: {wekenTekst(z.nachten)}
+          {" "}<button type="button" className="text-xs underline" onClick={() => setWijzigen(true)}>Periode aanpassen</button>
+        </p>
+        {regios && !eigenPeriode && (
+          <p className="mb-3 text-xs text-zacht">
+            Noord {formatLang(regios.noord[0])} – {formatLang(regios.noord[1])} · Midden {formatLang(regios.midden[0])} – {formatLang(regios.midden[1])} · Zuid {formatLang(regios.zuid[0])} – {formatLang(regios.zuid[1])}
+          </p>
+        )}
+        {eigenPeriode && standaard && <p className="mb-3 text-xs text-zacht">Aangepaste periode (schoolvakanties: {formatLang(standaard.van)} t/m {formatLang(standaard.tot)}).</p>}
+        <p className="mb-4 text-xs text-zacht">
+          Elk gezin heeft recht op {wekenTekst(RECHT_NACHTEN)} in de zomer. Verhuurde nachten worden eerst toegerekend aan de weken waarvan een gezin
+          heeft afgezien (bij beide gezinnen naar verhouding); de opbrengst van wat daarboven is verhuurd, wordt gelijk verdeeld. Opbrengst = huur en
+          extra's zonder toeristenbelasting, min park- en schoonmaakkosten PLD; gemiddeld per verhuurde nacht.
+        </p>
+
+        {agenda.isLoading && <p className="mb-3 text-sm text-zacht">Eigen verblijven uit Google Agenda ophalen…</p>}
+        {agenda.error ? <div className="mb-3"><Fout fout={agenda.error} /></div> : null}
+        {agenda.data && !agenda.data.beschikbaar && (
+          <div className="mb-3"><Melding soort="waarschuwing">Google Agenda kan niet worden gelezen, dus de eigen verblijven ontbreken. Koppel Google opnieuw bij Instellingen.</Melding></div>
+        )}
+        {gezinnen.length === 0 && (
+          <div className="mb-3"><Melding soort="waarschuwing">Er staan nog geen gezinnen bij Instellingen → Gezinnen voor een eigen verblijf.</Melding></div>
+        )}
+        {z.zonderGezin > 0 && (
+          <div className="mb-3">
+            <Melding soort="waarschuwing">
+              {wekenTekst(z.zonderGezin)} eigen verblijf in deze zomer zonder gezin; die tellen nog niet mee. Geef bij het verblijf (Kalender) aan voor wie het was.
+            </Melding>
+          </div>
+        )}
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[44rem] text-left text-sm">
+            <thead className="border-b border-lijn text-xs uppercase tracking-wider text-zacht">
+              <tr>
+                <th className="py-2 pr-3 font-semibold">Gezin</th>
+                <th className="py-2 pr-3 font-semibold">Zelf gebruikt</th>
+                <th className="py-2 pr-3 font-semibold">Afgezien</th>
+                <th className="py-2 pr-3 text-right font-semibold">Afgeziene weken</th>
+                <th className="py-2 pr-3 text-right font-semibold">Gedeeld</th>
+                <th className="py-2 text-right font-semibold">Recht op</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-lijn tabular-nums">
+              {z.gezinnen.map((g) => (
+                <tr key={g.gezin}>
+                  <td className="py-2 pr-3 text-inkt">{g.gezin}</td>
+                  <td className="py-2 pr-3">{wekenTekst(g.gebruikt)}</td>
+                  <td className={`py-2 pr-3 ${g.afgezien ? "text-oranje" : ""}`}>{g.afgezien ? wekenTekst(g.afgezien) : "–"}</td>
+                  <td className="py-2 pr-3 text-right">{formatEuro(g.opbrengstAfgezien_cent)}</td>
+                  <td className="py-2 pr-3 text-right">{formatEuro(g.opbrengstGedeeld_cent)}</td>
+                  <td className="py-2 text-right font-semibold text-inkt">{formatEuro(g.opbrengst_cent)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot className="border-t-2 border-inkt/50 font-semibold tabular-nums text-inkt">
+              <tr>
+                <td className="py-2 pr-3" colSpan={3}>Verhuurd in de zomer: {wekenTekst(z.verhuurdeNachten)}{z.gedeeldeNachten ? `, waarvan ${wekenTekst(z.gedeeldeNachten)} gedeeld` : ""}</td>
+                <td className="py-2 pr-3 text-right">{formatEuro(z.opbrengst_cent - z.gedeeld_cent)}</td>
+                <td className="py-2 pr-3 text-right">{formatEuro(z.gedeeld_cent)}</td>
+                <td className="py-2 text-right">{formatEuro(z.opbrengst_cent)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </Kaart>
+
+      <Kaart titel="Verhuur in de zomer">
+        {geschat > 0 && <p className="mb-3 text-sm text-zacht">Bij {geschat} {geschat === 1 ? "verblijf" : "verblijven"} is er nog geen factuur; het bedrag komt uit de boeking.</p>}
+        {z.verhuur.length === 0 ? (
+          <p className="text-sm text-zacht">Geen verhuur in de zomer van {jaar}.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[40rem] text-left text-sm">
+              <thead className="border-b border-lijn text-xs uppercase tracking-wider text-zacht">
+                <tr>
+                  <th className="py-2 pr-3 font-semibold">Huurder</th>
+                  <th className="py-2 pr-3 font-semibold">Verblijf</th>
+                  <th className="py-2 pr-3 font-semibold">In de zomer</th>
+                  <th className="py-2 pr-3 text-right font-semibold">Opbrengst</th>
+                  <th className="py-2 text-right font-semibold">Zomerdeel</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-lijn tabular-nums">
+                {z.verhuur.map((r) => (
+                  <tr key={r.id}>
+                    <td className="py-2 pr-3"><Link to={`/boekingen/${r.id}`}>{r.naam}</Link></td>
+                    <td className="py-2 pr-3 whitespace-nowrap">{formatLang(r.aankomst)} – {formatLang(r.vertrek)}</td>
+                    <td className="py-2 pr-3">{r.zomerNachten === r.nachten ? wekenTekst(r.nachten) : `${wekenTekst(r.zomerNachten)} van ${wekenTekst(r.nachten)}`}</td>
+                    <td className="py-2 pr-3 text-right">{formatEuro(r.opbrengst_cent)}{r.geschat && <span className="ml-1 text-xs text-zacht">(geschat)</span>}</td>
+                    <td className="py-2 text-right">{formatEuro(r.zomerOpbrengst_cent)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Kaart>
+
+      <Kaart titel="Eigen verblijven in de zomer">
+        {(() => {
+          const lijst = (agenda.data?.verblijven ?? []).filter((v) => v.aankomst < periode.tot && v.vertrek > periode.van)
+          if (lijst.length === 0) return <p className="text-sm text-zacht">{agenda.isLoading ? "Ophalen…" : "Geen eigen verblijven in deze zomer."}</p>
+          return (
+            <ul className="divide-y divide-lijn border-t border-lijn text-sm">
+              {lijst.map((v) => (
+                <li key={v.id} className="flex flex-wrap justify-between gap-2 py-2">
+                  <span className="text-inkt">{v.groep || <span className="text-oranje">Gezin niet opgegeven</span>}</span>
+                  <span className="text-xs text-zacht">{formatLang(v.aankomst)} – {formatLang(v.vertrek)}{v.titel && v.titel !== "Eigen verblijf" ? ` · ${v.titel}` : ""}</span>
+                </li>
+              ))}
+            </ul>
+          )
+        })()}
+      </Kaart>
+    </div>
+  )
+}
+
+function PeriodeInvoer({ jaar, inst, huidig, onKlaar }: {
+  jaar: number
+  inst: Instellingen
+  huidig: { van: string; tot: string } | null
+  onKlaar: () => void
+}) {
+  const opslaan = useOpslaan<Instellingen>("instellingen", [sleutels.instellingen])
+  const [van, setVan] = useState(huidig?.van ?? `${jaar}-07-01`)
+  const [tot, setTot] = useState(huidig?.tot ?? `${jaar}-08-31`)
+  const geldig = isIsoDatum(van) && isIsoDatum(tot) && tot > van
+  const bewaar = (periodes: Record<string, { van: string; tot: string }>) =>
+    opslaan.mutate({ id: inst.id, data: { zomerperiodes: periodes } }, { onSuccess: onKlaar })
+  const zonder = () => {
+    const p = { ...(inst.zomerperiodes ?? {}) }
+    delete p[String(jaar)]
+    return p
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap gap-3">
+        <Veld label="Eerste vakantiedag"><input type="date" value={van} onChange={(e) => setVan(e.target.value)} /></Veld>
+        <Veld label="Laatste vakantiedag"><input type="date" value={tot} onChange={(e) => setTot(e.target.value)} /></Veld>
+      </div>
+      {opslaan.error ? <Fout fout={opslaan.error} /> : null}
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className="knop" disabled={!geldig || opslaan.isPending} onClick={() => bewaar({ ...zonder(), [String(jaar)]: { van, tot } })}>Opslaan</button>
+        {inst.zomerperiodes?.[String(jaar)] && standaardZomer(jaar) && (
+          <button type="button" className="knop-rand" disabled={opslaan.isPending} onClick={() => bewaar(zonder())}>Schoolvakanties gebruiken</button>
+        )}
+        {huidig && <button type="button" className="knop-rand" onClick={onKlaar}>Annuleren</button>}
+      </div>
+    </div>
   )
 }

@@ -31,6 +31,8 @@ export interface Instellingen extends RecordModel {
   pld_portaal_url: string
   /** Gezinnen voor een eigen verblijf, één per regel */
   eigen_verblijf_groepen: string
+  /** Afwijkende zomerperiode per jaar (Financieel → Zomerverdeling) */
+  zomerperiodes?: Record<string, { van: string; tot: string }> | null
   aanmeldformulier_url: string
   bewaartermijn_jaren: number
   brochure: string
