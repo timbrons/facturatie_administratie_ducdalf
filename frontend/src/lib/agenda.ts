@@ -25,12 +25,15 @@ function basis(agendaId: string): string {
   return `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(agendaId || "primary")}/events`
 }
 
-/** Haalt afspraken uit Google Agenda (vorig jaar t/m twee jaar vooruit). Nooit een Google-venster. */
-async function haalAgenda(agendaId: string): Promise<AgendaItem[] | null> {
+/**
+ * Haalt afspraken uit Google Agenda (standaard vorig jaar t/m twee jaar
+ * vooruit). Nooit een Google-venster.
+ */
+async function haalAgenda(agendaId: string, vanaf = plusDagen(vandaag(), -400), totDag = plusDagen(vandaag(), 800)): Promise<AgendaItem[] | null> {
   if (!magLezen()) await haalServerToken()
   if (!magLezen()) return null
-  const van = `${plusDagen(vandaag(), -400)}T00:00:00Z`
-  const tot = `${plusDagen(vandaag(), 800)}T00:00:00Z`
+  const van = `${vanaf}T00:00:00Z`
+  const tot = `${totDag}T00:00:00Z`
   const items: AgendaItem[] = []
   let pagina: string | undefined
   for (let i = 0; i < 10; i++) {
@@ -58,6 +61,25 @@ export function useEigenVerblijven() {
     queryFn: async () => {
       if (!inst!.agenda_tonen) return { verblijven: [], beschikbaar: true, schrijven: false }
       const items = await haalAgenda(inst!.agenda_id)
+      if (!items) return { verblijven: [], beschikbaar: false, schrijven: false }
+      const actief = boekingen!.filter((b) => b.status !== "geannuleerd")
+      return { verblijven: eigenVerblijven(items, inst!.agenda_filter ?? "", actief), beschikbaar: true, schrijven: heeftRecht(SCOPES.agenda) }
+    },
+  })
+}
+
+/** Eigen verblijven in een bepaalde periode (bijv. de zomer van een eerder jaar). */
+export function useEigenVerblijvenIn(van: string | undefined, tot: string | undefined) {
+  const inst = useInstellingen().data
+  const boekingen = useBoekingen().data
+  return useQuery<AgendaResultaat>({
+    queryKey: ["agenda", "periode", van, tot, inst?.agenda_id, inst?.agenda_filter, boekingen?.length],
+    enabled: !!inst && !!boekingen && !!van && !!tot,
+    staleTime: 5 * 60_000,
+    retry: false,
+    queryFn: async () => {
+      // Ruimte ervoor: een verblijf dat vóór de zomer begint, telt ook mee.
+      const items = await haalAgenda(inst!.agenda_id, plusDagen(van!, -60), plusDagen(tot!, 2))
       if (!items) return { verblijven: [], beschikbaar: false, schrijven: false }
       const actief = boekingen!.filter((b) => b.status !== "geannuleerd")
       return { verblijven: eigenVerblijven(items, inst!.agenda_filter ?? "", actief), beschikbaar: true, schrijven: heeftRecht(SCOPES.agenda) }
