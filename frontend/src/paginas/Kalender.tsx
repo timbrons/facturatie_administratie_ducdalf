@@ -6,7 +6,7 @@ import { boekingNaam, type Boeking } from "../lib/types"
 import { datumVan, formatLang, jaarVan, maandNaam, maandVan, plusDagen, vandaag } from "../domein/datum"
 import { alleOverlappen, overlappendeBoekingen } from "../domein/overlap"
 import { useEigenVerblijven } from "../lib/agenda"
-import { verblijfNaam, type EigenVerblijf } from "../domein/agenda"
+import { inEigenHuis, verblijfNaam, type EigenVerblijf } from "../domein/agenda"
 import { Fout, Laden, Melding, Paginakop } from "../components/ui"
 
 const WEEKDAGEN = ["ma", "di", "wo", "do", "vr", "za", "zo"]
@@ -80,7 +80,9 @@ export function Kalender() {
   const [eigenOpen, setEigenOpen] = useState<EigenVerblijf | null | undefined>(undefined)
   const kanSchrijven = !!agenda.data?.schrijven && !!inst
   const openEigen = (v: EigenVerblijf) => (kanSchrijven ? setEigenOpen(v) : undefined)
-  const eigen = agenda.data?.verblijven ?? []
+  // Verblijven in een gehuurd (ander) huis bezetten ons huis niet; die staan onder de kalender.
+  const eigen = inEigenHuis(agenda.data?.verblijven ?? [])
+  const elders = (agenda.data?.verblijven ?? []).filter((v) => v.anderHuis && jaarVan(v.aankomst) <= jaar && jaarVan(v.vertrek) >= jaar)
   const botsingen = eigen.flatMap((v) => overlappendeBoekingen({ aankomst: v.aankomst, vertrek: v.vertrek }, actief).map((b) => [v, b] as const))
 
   if (boekingen.isLoading) return <Laden />
@@ -180,6 +182,24 @@ export function Kalender() {
               <MaandRaster jaar={jaar} maand={m} boekingen={actief} eigen={eigen} onKlik={open} onEigen={openEigen} />
             </div>
           ))}
+        </div>
+      )}
+
+      {elders.length > 0 && (
+        <div className="mt-8">
+          <div className="wenkbrauw mb-2">In een gehuurd huis op het park</div>
+          <ul className="divide-y divide-lijn border-t border-lijn text-sm">
+            {elders.map((v) => (
+              <li key={v.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                {kanSchrijven ? (
+                  <button type="button" className="text-left text-inkt underline-offset-2 hover:underline" onClick={() => openEigen(v)}>{verblijfNaam(v)}</button>
+                ) : (
+                  <span className="text-inkt">{verblijfNaam(v)}</span>
+                )}
+                <span className="text-xs text-zacht">{formatLang(v.aankomst)} – {formatLang(v.vertrek)}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </>

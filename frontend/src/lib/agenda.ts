@@ -3,7 +3,7 @@ import { googleFetch, haalServerToken, heeftRecht, SCOPES, zorgVoorGoogle } from
 import { useBoekingen, useInstellingen } from "./data"
 import type { Instellingen } from "./types"
 import { plusDagen, vandaag } from "../domein/datum"
-import { agendaAfspraak, eigenVerblijven, verblijfGroepen, type AgendaItem, type EigenVerblijf } from "../domein/agenda"
+import { agendaAfspraak, eigenVerblijven, verblijfGroepen, type AgendaItem, type EigenVerblijf, type EigenVerblijfGegevens } from "../domein/agenda"
 
 // Eigen verblijven in Google Agenda (het afzenderaccount, via de vaste
 // koppeling). Lezen kan ook met een oudere koppeling met alleen leesrechten;
@@ -87,7 +87,7 @@ export function useEigenVerblijvenIn(van: string | undefined, tot: string | unde
   })
 }
 
-export interface EigenVerblijfInvoer { titel: string; notitie: string; aankomst: string; vertrek: string; groep: string }
+export type EigenVerblijfInvoer = EigenVerblijfGegevens
 
 async function schrijf(url: string, init: RequestInit, inst: Instellingen): Promise<Response> {
   await zorgVoorGoogle(inst.afzender_email, SCOPES.agenda)

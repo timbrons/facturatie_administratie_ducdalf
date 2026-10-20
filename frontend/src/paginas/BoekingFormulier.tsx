@@ -12,7 +12,7 @@ import { HuurOpbouw } from "../components/HuurOpbouw"
 import { aanbetalingZinvol, restVervaldatum } from "../domein/betaling"
 import { overlappendeBoekingen } from "../domein/overlap"
 import { useEigenVerblijven } from "../lib/agenda"
-import { verblijfNaam } from "../domein/agenda"
+import { inEigenHuis, verblijfNaam } from "../domein/agenda"
 import { BedragVeld, Fout, Kaart, Laden, Melding, Paginakop, Veld } from "../components/ui"
 
 type HuurderInvoer = Pick<Huurder, "aanhef" | "voornaam" | "achternaam" | "email" | "telefoon_mobiel" | "adres" | "postcode" | "plaats" | "land">
@@ -110,7 +110,7 @@ function Formulier({ boeking, vooringevuldeHuurder }: { boeking?: Boeking; voori
     return overlappendeBoekingen({ id: boeking?.id, aankomst, vertrek }, boekingen.filter((b) => b.status !== "geannuleerd"))
   }, [datumsGeldig, aankomst, vertrek, boekingen, boeking?.id])
   const agenda = useEigenVerblijven()
-  const eigenOverlap = datumsGeldig ? overlappendeBoekingen({ aankomst, vertrek }, agenda.data?.verblijven ?? []) : []
+  const eigenOverlap = datumsGeldig ? overlappendeBoekingen({ aankomst, vertrek }, inEigenHuis(agenda.data?.verblijven ?? [])) : []
 
   const minNachten = Math.max(inst.min_nachten, huur?.minNachten ?? 0)
   const gevondenHuurders = huurderZoek.trim()

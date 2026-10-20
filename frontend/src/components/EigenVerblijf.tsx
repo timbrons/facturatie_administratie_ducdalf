@@ -5,7 +5,8 @@ import { boekingNaam, type Boeking, type Instellingen } from "../lib/types"
 import { formatLang, isIsoDatum } from "../domein/datum"
 import { overlappendeBoekingen } from "../domein/overlap"
 import { verblijfGroepen, verblijfNaam, type EigenVerblijf } from "../domein/agenda"
-import { Dialoog, Fout, Melding, Veld } from "./ui"
+import { BedragVeld, Dialoog, Fout, Melding, Veld } from "./ui"
+import type { Cent } from "../domein/geld"
 
 /**
  * Eigen verblijf toevoegen of wijzigen. Wordt direct in Google Agenda gezet
@@ -28,13 +29,16 @@ export function EigenVerblijfDialoog({ open, verblijf, inst, boekingen, onSluite
   // Een gezin dat inmiddels niet meer in de instellingen staat, blijft kiesbaar.
   const keuzes = verblijf?.groep && !groepen.includes(verblijf.groep) ? [...groepen, verblijf.groep] : groepen
   const [groep, setGroep] = useState(verblijf?.groep ?? "")
+  const [anderHuis, setAnderHuis] = useState(verblijf?.anderHuis ?? false)
+  const [huurkosten, setHuurkosten] = useState<Cent | null>(verblijf?.anderHuis ? verblijf.huurkosten_cent : null)
+  const [betaaldDoor, setBetaaldDoor] = useState(verblijf?.betaaldDoor ?? "")
   const [bezig, setBezig] = useState(false)
   const [fout, setFout] = useState<unknown>(null)
   // Na het opslaan van een nieuw verblijf (of nieuwe data): wijzen op de aanmelding bij Parc le Duc.
   const [aanmelden, setAanmelden] = useState(false)
 
   const geldig = isIsoDatum(aankomst) && isIsoDatum(vertrek) && vertrek > aankomst
-  const botsing = geldig ? overlappendeBoekingen({ aankomst, vertrek }, boekingen) : []
+  const botsing = geldig && !anderHuis ? overlappendeBoekingen({ aankomst, vertrek }, boekingen) : []
 
   async function klaar(fn: () => Promise<void>, wijsOpAanmelding = false) {
     setBezig(true)
@@ -80,9 +84,10 @@ export function EigenVerblijfDialoog({ open, verblijf, inst, boekingen, onSluite
         className="flex flex-col gap-3 text-sm"
         onSubmit={(e) => {
           e.preventDefault()
-          // Nieuw verblijf of andere data: daarna wijzen op de aanmelding bij Parc le Duc.
-          const nieuweData = !verblijf || verblijf.aankomst !== aankomst || verblijf.vertrek !== vertrek
-          if (geldig) klaar(() => bewaarEigenVerblijf(inst, { titel, notitie, aankomst, vertrek, groep }, verblijf?.id), nieuweData)
+          // Nieuw verblijf of andere data in ons huis: daarna wijzen op de aanmelding bij Parc le Duc.
+          const nieuweData = !verblijf || verblijf.aankomst !== aankomst || verblijf.vertrek !== vertrek || !!verblijf.anderHuis
+          const gegevens = { titel, notitie, aankomst, vertrek, groep, anderHuis, huurkosten_cent: huurkosten ?? 0, betaaldDoor: betaaldDoor || groep }
+          if (geldig) klaar(() => bewaarEigenVerblijf(inst, gegevens, verblijf?.id), nieuweData && !anderHuis)
         }}
       >
         <Veld label="Omschrijving"><input value={titel} onChange={(e) => setTitel(e.target.value)} /></Veld>
@@ -96,6 +101,27 @@ export function EigenVerblijfDialoog({ open, verblijf, inst, boekingen, onSluite
               </label>
             ))}
           </fieldset>
+        )}
+        <label className="flex items-start gap-2 text-inkt">
+          <input type="checkbox" className="mt-0.5" checked={anderHuis} onChange={(e) => setAnderHuis(e.target.checked)} />
+          <span>
+            Verblijft in een gehuurd (ander) huis op het park
+            <span className="block text-xs text-zacht">Bijv. de overlapweek. Ons huis blijft dan vrij in de kalender; de week telt wel mee als gebruikt van het zomerrecht.</span>
+          </span>
+        </label>
+        {anderHuis && (
+          <div className="grid gap-3 border-l-2 border-goud pl-3 sm:grid-cols-2">
+            <Veld label="Huurkosten van dat huis"><BedragVeld waarde={huurkosten} onChange={setHuurkosten} /></Veld>
+            {keuzes.length > 0 && (
+              <Veld label="Betaald door">
+                <select value={betaaldDoor || groep} onChange={(e) => setBetaaldDoor(e.target.value)}>
+                  {!groep && !betaaldDoor && <option value="">Kies…</option>}
+                  {keuzes.map((g) => <option key={g} value={g}>{g}</option>)}
+                </select>
+              </Veld>
+            )}
+            <p className="text-xs text-zacht sm:col-span-2">De huurkosten worden bij Financieel → Zomerverdeling gelijk over de gezinnen verdeeld.</p>
+          </div>
         )}
         <div className="grid grid-cols-2 gap-3">
           <Veld label="Aankomst"><input type="date" value={aankomst} onChange={(e) => setAankomst(e.target.value)} required /></Veld>
