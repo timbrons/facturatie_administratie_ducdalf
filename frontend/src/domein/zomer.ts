@@ -5,8 +5,10 @@ import type { Cent } from "./geld"
 //
 // Afspraak: in de zomervakantie (van de eerste tot de laatste vakantiedag,
 // over alle onderwijsregio's samen) heeft elk gezin recht op drie weken in het
-// huis. Ziet een gezin (deels) af van dat recht, dan is de huuropbrengst van
-// die weken voor dat gezin. Verhuurde nachten vullen eerst de afgeziene weken
+// huis. Een verblijf in een gehuurd ander huis op het park (de overlapweek)
+// telt ook als gebruikt; die huur wordt gelijk over de gezinnen verdeeld. Ziet
+// een gezin (deels) af van zijn recht, dan is de huuropbrengst van die weken
+// voor dat gezin. Verhuurde nachten vullen eerst de afgeziene weken
 // (bij meerdere gezinnen naar verhouding); wat verder in de zomer is
 // verhuurd, wordt gelijk over de gezinnen verdeeld. De opbrengst per nacht is
 // het gemiddelde over alle verhuurde zomernachten.
@@ -60,6 +62,19 @@ export interface ZomerVerblijf {
   groep: string
   aankomst: IsoDatum
   vertrek: IsoDatum
+  /** In een gehuurd (ander) huis: telt mee als gebruikt, de huur wordt gedeeld */
+  anderHuis?: boolean
+  huurkosten_cent?: Cent
+  /** Gezin dat de huur betaalde ("" = het gezin zelf) */
+  betaaldDoor?: string
+}
+
+export interface HuurhuisRij {
+  groep: string
+  aankomst: IsoDatum
+  vertrek: IsoDatum
+  huurkosten_cent: Cent
+  betaaldDoor: string
 }
 
 export interface ZomerVerhuur {
@@ -91,6 +106,8 @@ export interface GezinRij {
   /** Aandeel in de gedeelde opbrengst */
   opbrengstGedeeld_cent: Cent
   opbrengst_cent: Cent
+  /** Huur van een gehuurd huis: betaald min eigen aandeel (positief: krijgt terug) */
+  verrekening_cent: Cent
 }
 
 export interface Zomerverdeling {
@@ -104,6 +121,9 @@ export interface Zomerverdeling {
   gedeeld_cent: Cent
   /** Nachten eigen verblijf in de zomer waarbij geen gezin is opgegeven */
   zonderGezin: number
+  /** Gehuurde (andere) huizen in de zomer, met de huurkosten */
+  huurhuizen: HuurhuisRij[]
+  huurkosten_cent: Cent
 }
 
 /** Verdeelt een bedrag in centen naar gewichten, zonder afrondingsverschil (grootste rest). */
@@ -133,7 +153,9 @@ export function zomerverdeling(input: {
 
   // Gebruikte nachten per gezin (dubbele afspraken tellen één keer).
   const namen = [...input.gezinnen]
-  for (const v of input.verblijven) if (v.groep && !namen.includes(v.groep)) namen.push(v.groep)
+  for (const v of input.verblijven) {
+    for (const g of [v.groep, v.anderHuis ? v.betaaldDoor : ""]) if (g && !namen.includes(g)) namen.push(g)
+  }
   const gebruikt = new Map(namen.map((g) => [g, new Set<IsoDatum>()]))
   const zonderGezin = new Set<IsoDatum>()
   for (const v of input.verblijven) {
@@ -162,6 +184,20 @@ export function zomerverdeling(input: {
   const perAfgezien = verdeel(deelAfgezien, afgezien)
   const perGedeeld = verdeel(deelGedeeld, namen.map(() => 1))
 
+  // Huur van een ander huis (bijv. in de overlapweek): gelijk verdeeld over de gezinnen.
+  const huurhuizen: HuurhuisRij[] = input.verblijven
+    .filter((v) => v.anderHuis && inZomer(v.aankomst, v.vertrek).length > 0)
+    .map((v) => ({ groep: v.groep, aankomst: v.aankomst, vertrek: v.vertrek, huurkosten_cent: v.huurkosten_cent ?? 0, betaaldDoor: v.betaaldDoor || v.groep }))
+    .sort((a, b) => a.aankomst.localeCompare(b.aankomst))
+  const verrekening = namen.map(() => 0)
+  for (const h of huurhuizen) {
+    const delen = verdeel(h.huurkosten_cent, namen.map(() => 1))
+    namen.forEach((g, i) => {
+      verrekening[i] -= delen[i]
+      if (g === h.betaaldDoor) verrekening[i] += h.huurkosten_cent
+    })
+  }
+
   return {
     nachten: zomer.size,
     gezinnen: namen.map((g, i) => ({
@@ -173,6 +209,7 @@ export function zomerverdeling(input: {
       opbrengstAfgezien_cent: perAfgezien[i],
       opbrengstGedeeld_cent: perGedeeld[i],
       opbrengst_cent: perAfgezien[i] + perGedeeld[i],
+      verrekening_cent: verrekening[i],
     })),
     verhuur,
     verhuurdeNachten: N,
@@ -180,6 +217,8 @@ export function zomerverdeling(input: {
     gedeeldeNachten,
     gedeeld_cent: deelGedeeld,
     zonderGezin: zonderGezin.size,
+    huurhuizen,
+    huurkosten_cent: huurhuizen.reduce((t, h) => t + h.huurkosten_cent, 0),
   }
 }
 

@@ -36,6 +36,23 @@ export interface EigenVerblijf {
   groep: string
   /** Gemaakt vanuit de app */
   vanApp: boolean
+  /** Het gezin verblijft in een gehuurd (ander) huis op het park, niet in ons huis */
+  anderHuis: boolean
+  /** Huurkosten van het andere huis (verdeeld over de gezinnen) */
+  huurkosten_cent: number
+  /** Welk gezin de huur van het andere huis heeft betaald ("" = het gezin zelf) */
+  betaaldDoor: string
+}
+
+export interface EigenVerblijfGegevens {
+  titel: string
+  notitie?: string
+  aankomst: IsoDatum
+  vertrek: IsoDatum
+  groep?: string
+  anderHuis?: boolean
+  huurkosten_cent?: number
+  betaaldDoor?: string
 }
 
 /** Gezinnen voor een eigen verblijf: één per regel in de instellingen. */
@@ -43,10 +60,11 @@ export function verblijfGroepen(tekst: string | null | undefined): string[] {
   return (tekst ?? "").split(/\r?\n/).map((r) => r.trim()).filter(Boolean)
 }
 
-/** Naam zoals in de kalender en in Google Agenda, bijv. "Eigen verblijf – Gezin A". */
-export function verblijfNaam(v: { titel: string; groep?: string }): string {
+/** Naam zoals in de kalender en in Google Agenda, bijv. "Eigen verblijf – Gezin A (gehuurd huis)". */
+export function verblijfNaam(v: { titel: string; groep?: string; anderHuis?: boolean }): string {
   const titel = v.titel.trim() || "Eigen verblijf"
-  return v.groep ? `${titel} – ${v.groep}` : titel
+  const naam = v.groep ? `${titel} – ${v.groep}` : titel
+  return v.anderHuis ? `${naam} (gehuurd huis)` : naam
 }
 
 // Kleur per gezin in Google Agenda (colorId): pauw, mandarijn, druif, salie, flamingo.
@@ -84,7 +102,12 @@ export function eigenVerblijven(
     const eigen = vanApp ? it.extendedProperties?.private : undefined
     const groep = eigen?.groep ?? ""
     const kaal = eigen?.titel ?? titel
-    uit.push({ id: it.id ?? `${p.aankomst}-${p.vertrek}-${titel}`, titel: kaal || "Eigen verblijf", notitie: it.description ?? "", ...p, groep, vanApp })
+    uit.push({
+      id: it.id ?? `${p.aankomst}-${p.vertrek}-${titel}`, titel: kaal || "Eigen verblijf", notitie: it.description ?? "", ...p, groep, vanApp,
+      anderHuis: eigen?.ander_huis === "ja",
+      huurkosten_cent: Number(eigen?.huurkosten_cent) || 0,
+      betaaldDoor: eigen?.betaald_door ?? "",
+    })
   }
   return uit.sort((a, b) => a.aankomst.localeCompare(b.aankomst))
 }
@@ -94,21 +117,33 @@ export function eigenVerblijven(
  * Met een gezin staat dat in de titel en krijgt de afspraak de kleur van dat
  * gezin (groepen: de lijst uit de instellingen, voor de kleur).
  */
-export function agendaAfspraak(
-  v: { titel: string; notitie?: string; aankomst: IsoDatum; vertrek: IsoDatum; groep?: string },
-  groepen: string[] = [],
-) {
+export function agendaAfspraak(v: EigenVerblijfGegevens, groepen: string[] = []) {
   const titel = v.titel.trim() || "Eigen verblijf"
   const groep = (v.groep ?? "").trim()
   const nr = groep ? groepen.indexOf(groep) : -1
+  const anderHuis = !!v.anderHuis
   return {
-    summary: verblijfNaam({ titel, groep }),
+    summary: verblijfNaam({ titel, groep, anderHuis }),
     description: v.notitie ?? "",
     start: { date: v.aankomst },
     end: { date: plusDagen(v.vertrek, 1) },
-    transparency: "opaque",
+    // Een verblijf in een ander (gehuurd) huis houdt ons huis niet bezet.
+    transparency: anderHuis ? "transparent" : "opaque",
     // null wist een eerder gekozen kleur bij het wijzigen.
     colorId: nr >= 0 ? KLEUREN[nr % KLEUREN.length] : null,
-    extendedProperties: { private: { [APP_KENMERK]: "eigen-verblijf", titel, groep } },
+    extendedProperties: {
+      private: {
+        [APP_KENMERK]: "eigen-verblijf", titel, groep,
+        // Lege waarden wissen bij het wijzigen een eerder gezet gegeven.
+        ander_huis: anderHuis ? "ja" : "",
+        huurkosten_cent: anderHuis ? String(v.huurkosten_cent ?? 0) : "",
+        betaald_door: anderHuis ? (v.betaaldDoor ?? "") : "",
+      },
+    },
   }
+}
+
+/** Alleen de verblijven in ons eigen huis (voor bezetting en overlap). */
+export function inEigenHuis<T extends { anderHuis?: boolean }>(verblijven: T[]): T[] {
+  return verblijven.filter((v) => !v.anderHuis)
 }

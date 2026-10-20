@@ -91,6 +91,8 @@ function eigenVerblijven(app, boekingen) {
     // Huurboekingen die de app zelf in de agenda zet, staan al in de boekingen.
     if (kenmerk === "boeking") continue
     const vanApp = kenmerk === "eigen-verblijf"
+    // Een gezin in een gehuurd (ander) huis op het park houdt ons huis niet bezet.
+    if (vanApp && it.extendedProperties.private.ander_huis === "ja") continue
     if (!vanApp && woorden.length && !woorden.some((w) => titel.indexOf(w) !== -1)) continue
     if (!vanApp && boekingen.some((b) => b.aankomst === p.aankomst && b.vertrek === p.vertrek)) continue
     uit.push(p)

@@ -456,13 +456,20 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
   const standaard = standaardZomer(jaar)
   const eigenPeriode = !!inst.zomerperiodes?.[String(jaar)]
   const geschat = z.verhuur.filter((r) => r.geschat).length
+  const metHuur = z.huurkosten_cent > 0
 
   function exporteer() {
     downloadCsv(`zomerverdeling-${jaar}.csv`, [
       ["Zomer", periode!.van, periode!.tot, `${z.nachten} nachten`],
       [],
-      ["Gezin", "Recht (nachten)", "Gebruikt (nachten)", "Afgezien (nachten)", "Opbrengst afgeziene weken", "Aandeel gedeelde opbrengst", "Totaal"],
-      ...z.gezinnen.map((g) => [g.gezin, g.recht, g.gebruikt, g.afgezien, csvBedrag(g.opbrengstAfgezien_cent), csvBedrag(g.opbrengstGedeeld_cent), csvBedrag(g.opbrengst_cent)]),
+      ["Gezin", "Recht (nachten)", "Gebruikt (nachten)", "Afgezien (nachten)", "Opbrengst afgeziene weken", "Aandeel gedeelde opbrengst", "Totaal opbrengst", "Verrekening huur ander huis", "Saldo"],
+      ...z.gezinnen.map((g) => [
+        g.gezin, g.recht, g.gebruikt, g.afgezien, csvBedrag(g.opbrengstAfgezien_cent), csvBedrag(g.opbrengstGedeeld_cent), csvBedrag(g.opbrengst_cent),
+        csvBedrag(g.verrekening_cent), csvBedrag(g.opbrengst_cent + g.verrekening_cent),
+      ]),
+      [],
+      ["Gehuurd huis", "Aankomst", "Vertrek", "Huurkosten", "Betaald door"],
+      ...z.huurhuizen.map((h) => [h.groep, h.aankomst, h.vertrek, csvBedrag(h.huurkosten_cent), h.betaaldDoor]),
       [],
       ["Huurder", "Aankomst", "Vertrek", "Nachten", "Nachten in de zomer", "Opbrengst verblijf", "Opbrengst zomerdeel", "Geschat"],
       ...z.verhuur.map((r) => [r.naam, r.aankomst, r.vertrek, r.nachten, r.zomerNachten, csvBedrag(r.opbrengst_cent), csvBedrag(r.zomerOpbrengst_cent), r.geschat ? "ja" : ""]),
@@ -514,6 +521,8 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
                 <th className="py-2 pr-3 text-right font-semibold">Afgeziene weken</th>
                 <th className="py-2 pr-3 text-right font-semibold">Gedeeld</th>
                 <th className="py-2 text-right font-semibold">Recht op</th>
+                {metHuur && <th className="py-2 pl-3 text-right font-semibold">Huur ander huis</th>}
+                {metHuur && <th className="py-2 pl-3 text-right font-semibold">Saldo</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-lijn tabular-nums">
@@ -525,6 +534,8 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
                   <td className="py-2 pr-3 text-right">{formatEuro(g.opbrengstAfgezien_cent)}</td>
                   <td className="py-2 pr-3 text-right">{formatEuro(g.opbrengstGedeeld_cent)}</td>
                   <td className="py-2 text-right font-semibold text-inkt">{formatEuro(g.opbrengst_cent)}</td>
+                  {metHuur && <td className={`py-2 pl-3 text-right ${g.verrekening_cent < 0 ? "text-oranje" : ""}`}>{formatEuro(g.verrekening_cent)}</td>}
+                  {metHuur && <td className="py-2 pl-3 text-right font-semibold text-inkt">{formatEuro(g.opbrengst_cent + g.verrekening_cent)}</td>}
                 </tr>
               ))}
             </tbody>
@@ -534,11 +545,30 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
                 <td className="py-2 pr-3 text-right">{formatEuro(z.opbrengst_cent - z.gedeeld_cent)}</td>
                 <td className="py-2 pr-3 text-right">{formatEuro(z.gedeeld_cent)}</td>
                 <td className="py-2 text-right">{formatEuro(z.opbrengst_cent)}</td>
+                {metHuur && <td className="py-2 pl-3" colSpan={2} />}
               </tr>
             </tfoot>
           </table>
         </div>
       </Kaart>
+
+      {z.huurhuizen.length > 0 && (
+        <Kaart titel="Gehuurd huis (overlapweek)">
+          <p className="mb-3 text-sm text-zacht">
+            De huur wordt gelijk over de gezinnen verdeeld. In de kolom "Huur ander huis" hierboven: positief = krijgt terug, negatief = moet bijbetalen.
+          </p>
+          <ul className="divide-y divide-lijn border-t border-lijn text-sm">
+            {z.huurhuizen.map((h, i) => (
+              <li key={i} className="flex flex-wrap justify-between gap-2 py-2">
+                <span className="text-inkt">{h.groep || "Gezin niet opgegeven"} · {formatLang(h.aankomst)} – {formatLang(h.vertrek)}</span>
+                <span className="tabular-nums text-xs text-zacht">
+                  {h.huurkosten_cent ? `${formatEuro(h.huurkosten_cent)}, betaald door ${h.betaaldDoor || "?"}` : <span className="text-oranje">huurkosten nog niet ingevuld</span>}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Kaart>
+      )}
 
       <Kaart titel="Verhuur in de zomer">
         {geschat > 0 && <p className="mb-3 text-sm text-zacht">Bij {geschat} {geschat === 1 ? "verblijf" : "verblijven"} is er nog geen factuur; het bedrag komt uit de boeking.</p>}
@@ -580,7 +610,10 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
             <ul className="divide-y divide-lijn border-t border-lijn text-sm">
               {lijst.map((v) => (
                 <li key={v.id} className="flex flex-wrap justify-between gap-2 py-2">
-                  <span className="text-inkt">{v.groep || <span className="text-oranje">Gezin niet opgegeven</span>}</span>
+                  <span className="text-inkt">
+                    {v.groep || <span className="text-oranje">Gezin niet opgegeven</span>}
+                    {v.anderHuis && <span className="ml-1 text-xs text-zacht">(gehuurd huis)</span>}
+                  </span>
                   <span className="text-xs text-zacht">{formatLang(v.aankomst)} – {formatLang(v.vertrek)}{v.titel && v.titel !== "Eigen verblijf" ? ` · ${v.titel}` : ""}</span>
                 </li>
               ))}

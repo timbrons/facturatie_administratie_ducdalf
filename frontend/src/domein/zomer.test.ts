@@ -84,3 +84,37 @@ describe("zomerverdeling", () => {
     expect(z.zonderGezin).toBe(2)
   })
 })
+
+describe("zomerverdeling met een gehuurd huis (overlapweek)", () => {
+  it("telt de week mee als gebruikt en verdeelt de huur gelijk", () => {
+    const z = zomerverdeling({
+      periode,
+      gezinnen: [A, B],
+      verblijven: [
+        { groep: A, aankomst: "2026-07-04", vertrek: "2026-07-25" },
+        { groep: B, aankomst: "2026-07-18", vertrek: "2026-08-01" },
+        // overlapweek: B in een gehuurd huis, B betaalt
+        { groep: B, aankomst: "2026-07-11", vertrek: "2026-07-18", anderHuis: true, huurkosten_cent: 120_001 },
+      ],
+      verhuur: [],
+    })
+    const [a, b] = z.gezinnen
+    expect(b.gebruikt).toBe(21)
+    expect(b.afgezien).toBe(0)
+    expect(z.huurkosten_cent).toBe(120_001)
+    expect(z.huurhuizen[0].betaaldDoor).toBe(B)
+    expect(a.verrekening_cent).toBe(-60_001)
+    expect(b.verrekening_cent).toBe(60_001)
+    expect(a.verrekening_cent + b.verrekening_cent).toBe(0)
+  })
+
+  it("betaald door het andere gezin", () => {
+    const z = zomerverdeling({
+      periode,
+      gezinnen: [A, B],
+      verblijven: [{ groep: B, aankomst: "2026-07-11", vertrek: "2026-07-18", anderHuis: true, huurkosten_cent: 100_000, betaaldDoor: A }],
+      verhuur: [],
+    })
+    expect(z.gezinnen.map((g) => g.verrekening_cent)).toEqual([50_000, -50_000])
+  })
+})
