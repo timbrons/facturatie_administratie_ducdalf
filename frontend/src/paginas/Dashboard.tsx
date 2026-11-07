@@ -118,7 +118,7 @@ export function Dashboard() {
 
           {wachten.length > 0 && (
             <section className="mt-10">
-              <h2 className="mb-1 font-serif text-2xl text-inkt">Wachten</h2>
+              <h2 className="mb-1 text-3xl sm:text-4xl">Wachten</h2>
               <p className="mb-3 text-sm text-zacht">Hier wachten we op de huurder; van ons is (nog) niets nodig.</p>
               <ul className="flex flex-col gap-2">
                 {wachten.map((a, i) => <ActieRegel key={`${a.boekingId}-${a.soort}-${i}`} a={a} pld={inst.data?.pld_portaal_url} />)}
