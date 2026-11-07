@@ -132,7 +132,7 @@ function Formulier({ huurder }: { huurder: Huurder }) {
                 <li key={b.id} className="py-2">
                   <Link to={`/boekingen/${b.id}`} className="flex flex-col no-underline">
                     <span className="text-inkt">{formatLang(b.aankomst)} – {formatLang(b.vertrek)}</span>
-                    <span className="mt-1"><StatusLabel status={b.status} stappen={stappen.data ?? []} optie={b.optie} /></span>
+                    <span className="mt-1"><StatusLabel boeking={b} stappen={stappen.data ?? []} /></span>
                   </Link>
                 </li>
               ))}

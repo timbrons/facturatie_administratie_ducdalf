@@ -8,7 +8,7 @@ import { actueleFactuur } from "../lib/mail"
 import { statusNaBetaling } from "../lib/facturen"
 import { boekingNaam, huurderNaam, type Boeking, type Instellingen } from "../lib/types"
 import { aantalNachten, bijStatuswijziging, extrasTotaal, tbOpFactuur, tbRichtbedrag, totaalBoeking } from "../lib/boeking"
-import { formatLang, formatTijdstip } from "../domein/datum"
+import { formatLang, formatTijdstip, vandaag } from "../domein/datum"
 import { formatEuro } from "../domein/geld"
 import { nuTeDoen } from "../domein/actielijst"
 import { AFGEROND, GEANNULEERD, gesorteerd, isBijOfVoorbij, labelVoor, overgangFout, positie, stappenbalk, volgendeStap, type WorkflowStap } from "../domein/workflow"
@@ -183,7 +183,7 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
             // Het label van een stap kan als taak geformuleerd zijn ("Factuur versturen"):
             // daarom expliciet "afgerond" erbij, en wat er nu gebeurt.
             const klaar = b.status === GEANNULEERD || b.status === AFGEROND
-            const nu = klaar ? null : nuTeDoen(stappen, { ...b, naam: "" })
+            const nu = klaar ? null : nuTeDoen(stappen, { ...b, naam: "" }, vandaag())
             return (
               <>
                 <div className="wenkbrauw mb-1">{klaar ? "Status" : "Laatst afgeronde stap"}</div>

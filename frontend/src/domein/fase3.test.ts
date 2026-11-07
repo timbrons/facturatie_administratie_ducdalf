@@ -121,3 +121,16 @@ describe("wachten op betaling in de actielijst", () => {
     expect(a.map((x) => x.titel)).toEqual(["Wachten op de restbetaling – Bram"])
   })
 })
+
+describe("nuTeDoen rond het verblijf", () => {
+  const b = { id: "b3", naam: "", status: "volledig_betaald", betaalwijze: "ineens", aankomst: "2027-06-19", vertrek: "2027-07-11" }
+  it("wacht op aankomst, en zegt na de aankomstdatum dat het verblijf gestart moet worden", () => {
+    expect(nuTeDoen(STAPPEN, b, "2027-06-01")?.titel).toBe("Wachten op aankomst")
+    expect(nuTeDoen(STAPPEN, b, "2027-06-19")?.titel).toBe("Verblijf starten")
+  })
+  it("tijdens het verblijf: verblijf loopt; daarna de aangifte", () => {
+    const v = { ...b, status: "verblijf" }
+    expect(nuTeDoen(STAPPEN, v, "2027-06-25")?.titel).toBe("Verblijf loopt")
+    expect(nuTeDoen(STAPPEN, v, "2027-07-12")?.titel).toBe("Toeristenbelasting aangeven")
+  })
+})
