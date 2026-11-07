@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useMemo, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom"
 import { pb } from "../lib/pb"
-import { sleutels, useBetalingen, useBoekingen, useFacturen, useInstellingen, useOpslaan, useTbAangiften } from "../lib/data"
+import { sleutels, useBetalingen, useBoekingen, useFacturen, useInstellingen, useOpslaan, useTbAangiften, useZomerVerrekeningen } from "../lib/data"
 import { boekingNaam, type Boeking, type Factuur, type Instellingen, type TbAangifte } from "../lib/types"
 import { pdfUrl } from "../lib/facturen"
 import { dagenTussen, formatLang, isIsoDatum, jaarVan, maandNaam, vandaag } from "../domein/datum"
@@ -14,6 +14,7 @@ import { useEigenVerblijvenIn } from "../lib/agenda"
 import { verblijfGroepen, type EigenVerblijf } from "../domein/agenda"
 import { EigenVerblijfDialoog } from "../components/EigenVerblijf"
 import { Starlink, TbBetalingen } from "../components/Uitgaven"
+import { TussentijdsVerrekend } from "../components/ZomerVerrekeningen"
 import { openParkkostenFactuur } from "../lib/parkkosten"
 import { csvBedrag, schrijfCsv } from "../domein/csv"
 import { Fout, Kaart, Laden, Melding, Paginakop, Veld } from "../components/ui"
@@ -435,6 +436,7 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
   const agenda = useEigenVerblijvenIn(periode?.van, periode?.tot)
   const [wijzigen, setWijzigen] = useState(false)
   const [verblijfOpen, setVerblijfOpen] = useState<EigenVerblijf | null>(null)
+  const verrekeningen = (useZomerVerrekeningen().data ?? []).filter((v) => v.jaar === jaar)
 
   if (!inst) return <Laden />
   if (!periode || wijzigen) {
@@ -450,22 +452,27 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
   const verhuur = boekingen
     .filter((b) => b.status !== "geannuleerd" && b.aankomst < periode.tot && b.vertrek > periode.van)
     .map((b) => zomerOpbrengst(b, facturen))
-  const z = zomerverdeling({ periode, gezinnen, verblijven: agenda.data?.verblijven ?? [], verhuur })
+  const z = zomerverdeling({ periode, gezinnen, verblijven: agenda.data?.verblijven ?? [], verhuur, verrekend: verrekeningen })
   const regios = ZOMERVAKANTIES[jaar]
   const standaard = standaardZomer(jaar)
   const eigenPeriode = !!inst.zomerperiodes?.[String(jaar)]
   const geschat = z.verhuur.filter((r) => r.geschat).length
   const metHuur = z.huurkosten_cent > 0
+  const metVerrekend = verrekeningen.length > 0
+  const metSaldo = metHuur || metVerrekend
 
   function exporteer() {
     downloadCsv(`zomerverdeling-${jaar}.csv`, [
       ["Zomer", periode!.van, periode!.tot, `${z.nachten} nachten`],
       [],
-      ["Gezin", "Recht (nachten)", "Gebruikt (nachten)", "Afgezien (nachten)", "Opbrengst afgeziene weken", "Aandeel gedeelde opbrengst", "Totaal opbrengst", "Verrekening huur ander huis", "Saldo"],
+      ["Gezin", "Recht (nachten)", "Gebruikt (nachten)", "Afgezien (nachten)", "Opbrengst afgeziene weken", "Aandeel gedeelde opbrengst", "Totaal opbrengst", "Verrekening huur ander huis", "Saldo", "Al verrekend", "Nog te verrekenen"],
       ...z.gezinnen.map((g) => [
         g.gezin, g.recht, g.gebruikt, g.afgezien, csvBedrag(g.opbrengstAfgezien_cent), csvBedrag(g.opbrengstGedeeld_cent), csvBedrag(g.opbrengst_cent),
-        csvBedrag(g.verrekening_cent), csvBedrag(g.opbrengst_cent + g.verrekening_cent),
+        csvBedrag(g.verrekening_cent), csvBedrag(g.saldo_cent), csvBedrag(g.verrekend_cent), csvBedrag(g.nogOpen_cent),
       ]),
+      [],
+      ["Tussentijds verrekend", "Datum", "Van", "Aan", "Bedrag"],
+      ...verrekeningen.map((v) => [v.omschrijving, v.datum, v.van, v.aan, csvBedrag(v.bedrag_cent)]),
       [],
       ["Gehuurd huis", "Aankomst", "Vertrek", "Huurkosten", "Betaald door"],
       ...z.huurhuizen.map((h) => [h.groep, h.aankomst, h.vertrek, csvBedrag(h.huurkosten_cent), h.betaaldDoor]),
@@ -521,7 +528,9 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
                 <th className="py-2 pr-3 text-right font-semibold">Gedeeld</th>
                 <th className="py-2 text-right font-semibold">Recht op</th>
                 {metHuur && <th className="py-2 pl-3 text-right font-semibold">Huur ander huis</th>}
-                {metHuur && <th className="py-2 pl-3 text-right font-semibold">Saldo</th>}
+                {metSaldo && <th className="py-2 pl-3 text-right font-semibold">Saldo</th>}
+                {metVerrekend && <th className="py-2 pl-3 text-right font-semibold">Al verrekend</th>}
+                {metVerrekend && <th className="py-2 pl-3 text-right font-semibold">Nog te verrekenen</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-lijn tabular-nums">
@@ -534,7 +543,11 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
                   <td className="py-2 pr-3 text-right">{formatEuro(g.opbrengstGedeeld_cent)}</td>
                   <td className="py-2 text-right font-semibold text-inkt">{formatEuro(g.opbrengst_cent)}</td>
                   {metHuur && <td className={`py-2 pl-3 text-right ${g.verrekening_cent < 0 ? "text-oranje" : ""}`}>{formatEuro(g.verrekening_cent)}</td>}
-                  {metHuur && <td className="py-2 pl-3 text-right font-semibold text-inkt">{formatEuro(g.opbrengst_cent + g.verrekening_cent)}</td>}
+                  {metSaldo && <td className={`py-2 pl-3 text-right ${metVerrekend ? "" : "font-semibold text-inkt"}`}>{formatEuro(g.saldo_cent)}</td>}
+                  {metVerrekend && <td className="py-2 pl-3 text-right">{formatEuro(g.verrekend_cent)}</td>}
+                  {metVerrekend && (
+                    <td className={`py-2 pl-3 text-right font-semibold ${g.nogOpen_cent < 0 ? "text-oranje" : "text-inkt"}`}>{formatEuro(g.nogOpen_cent)}</td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -544,7 +557,7 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
                 <td className="py-2 pr-3 text-right">{formatEuro(z.opbrengst_cent - z.gedeeld_cent)}</td>
                 <td className="py-2 pr-3 text-right">{formatEuro(z.gedeeld_cent)}</td>
                 <td className="py-2 text-right">{formatEuro(z.opbrengst_cent)}</td>
-                {metHuur && <td className="py-2 pl-3" colSpan={2} />}
+                {(metHuur || metSaldo || metVerrekend) && <td className="py-2 pl-3" colSpan={(metHuur ? 1 : 0) + (metSaldo ? 1 : 0) + (metVerrekend ? 2 : 0)} />}
               </tr>
             </tfoot>
           </table>
@@ -555,6 +568,7 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
         <Kaart titel="Gehuurd huis (overlapweek)">
           <p className="mb-3 text-sm text-zacht">
             De huur wordt gelijk over de gezinnen verdeeld. In de kolom "Huur ander huis" hierboven: positief = krijgt terug, negatief = moet bijbetalen.
+            Is dat al (deels) verrekend, leg dat dan vast bij Tussentijds verrekend.
           </p>
           <ul className="divide-y divide-lijn border-t border-lijn text-sm">
             {z.huurhuizen.map((h, i) => (
@@ -568,6 +582,8 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
           </ul>
         </Kaart>
       )}
+
+      <TussentijdsVerrekend jaar={jaar} lijst={verrekeningen} gezinnen={z.gezinnen} />
 
       <Kaart titel="Verhuur in de zomer">
         {geschat > 0 && <p className="mb-3 text-sm text-zacht">Bij {geschat} {geschat === 1 ? "verblijf" : "verblijven"} is er nog geen factuur; het bedrag komt uit de boeking.</p>}

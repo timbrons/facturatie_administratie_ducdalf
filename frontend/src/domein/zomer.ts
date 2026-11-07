@@ -108,6 +108,21 @@ export interface GezinRij {
   opbrengst_cent: Cent
   /** Huur van een gehuurd huis: betaald min eigen aandeel (positief: krijgt terug) */
   verrekening_cent: Cent
+  /** Opbrengst + huur ander huis (positief: krijgt nog) */
+  saldo_cent: Cent
+  /** Al tussentijds verrekend: betaald aan de andere gezinnen min ontvangen */
+  verrekend_cent: Cent
+  /** Wat na de tussentijdse verrekeningen nog openstaat (positief: krijgt nog) */
+  nogOpen_cent: Cent
+}
+
+/** Een tussentijdse verrekening tussen twee gezinnen (bijv. de helft van de huur van een ander huis). */
+export interface ZomerVerrekening {
+  /** Gezin dat betaalde */
+  van: string
+  /** Gezin dat ontving */
+  aan: string
+  bedrag_cent: Cent
 }
 
 export interface Zomerverdeling {
@@ -147,6 +162,8 @@ export function zomerverdeling(input: {
   gezinnen: string[]
   verblijven: ZomerVerblijf[]
   verhuur: ZomerVerhuur[]
+  /** Tussentijds al verrekende bedragen tussen de gezinnen */
+  verrekend?: ZomerVerrekening[]
 }): Zomerverdeling {
   const zomer = new Set(zomerNachten(input.periode))
   const inZomer = (a: IsoDatum, v: IsoDatum) => nachten(a, v).filter((n) => zomer.has(n))
@@ -156,6 +173,7 @@ export function zomerverdeling(input: {
   for (const v of input.verblijven) {
     for (const g of [v.groep, v.anderHuis ? v.betaaldDoor : ""]) if (g && !namen.includes(g)) namen.push(g)
   }
+  for (const v of input.verrekend ?? []) for (const g of [v.van, v.aan]) if (g && !namen.includes(g)) namen.push(g)
   const gebruikt = new Map(namen.map((g) => [g, new Set<IsoDatum>()]))
   const zonderGezin = new Set<IsoDatum>()
   for (const v of input.verblijven) {
@@ -198,6 +216,13 @@ export function zomerverdeling(input: {
     })
   }
 
+  // Tussentijds verrekend: wie betaalde, heeft minder te betalen; wie ontving, krijgt minder.
+  const verrekend = namen.map(() => 0)
+  for (const v of input.verrekend ?? []) {
+    verrekend[namen.indexOf(v.van)] += v.bedrag_cent
+    verrekend[namen.indexOf(v.aan)] -= v.bedrag_cent
+  }
+
   return {
     nachten: zomer.size,
     gezinnen: namen.map((g, i) => ({
@@ -210,6 +235,9 @@ export function zomerverdeling(input: {
       opbrengstGedeeld_cent: perGedeeld[i],
       opbrengst_cent: perAfgezien[i] + perGedeeld[i],
       verrekening_cent: verrekening[i],
+      saldo_cent: perAfgezien[i] + perGedeeld[i] + verrekening[i],
+      verrekend_cent: verrekend[i],
+      nogOpen_cent: perAfgezien[i] + perGedeeld[i] + verrekening[i] + verrekend[i],
     })),
     verhuur,
     verhuurdeNachten: N,
