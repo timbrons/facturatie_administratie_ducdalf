@@ -19,6 +19,9 @@ export interface Instellingen extends RecordModel {
   schoonmaak_cent: Cent
   parkkosten_per_nacht_cent: Cent
   parkkosten_apart_op_factuur: boolean
+  /** Starlink: standaardbedrag per maand als het abonnement actief / gepauzeerd is */
+  starlink_actief_cent?: Cent
+  starlink_pauze_cent?: Cent
   min_nachten: number
   max_personen: number
   aanbetaling_pct: number
@@ -221,6 +224,20 @@ export interface TbAangifte extends RecordModel {
   bewijs: string[]
   afgedragen_op: string
   afgedragen_cent: Cent
+  notities: string
+}
+
+/** Een betaling die we zelf doen: afdracht toeristenbelasting, Starlink, ... */
+export interface Uitgave extends RecordModel {
+  soort: "toeristenbelasting" | "starlink" | "overig"
+  /** Afgeschreven op (JJJJ-MM-DD) */
+  datum: string
+  /** Over welke maand (JJJJ-MM) */
+  periode: string
+  bedrag_cent: Cent
+  status: "actief" | "gepauzeerd" | ""
+  omschrijving: string
+  bewijs: string[]
   notities: string
 }
 

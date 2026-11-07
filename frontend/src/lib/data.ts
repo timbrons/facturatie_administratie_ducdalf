@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { stelAfzenderIn } from "./gmail"
 import { pb } from "./pb"
 import type {
-  Betaling, Factuur, MailLog, MailSjabloon, TbAangifte,
+  Betaling, Factuur, MailLog, MailSjabloon, TbAangifte, Uitgave,
   Boeking, ExtraRecord, Huurder, Instellingen, Nummerreeks, SeizoenRecord, Statuswijziging, TbTariefRecord,
   WorkflowStapRecord, AanmeldingRecord,
 } from "./types"
@@ -28,6 +28,7 @@ export const sleutels = {
   sjablonen: ["mail_sjablonen"] as const,
   maillog: ["mail_log"] as const,
   aanmeldingen: ["aanmeldingen"] as const,
+  uitgaven: ["uitgaven"] as const,
 }
 
 /** Inzendingen van het eigen aanmeldformulier, nieuwste eerst. */
@@ -187,5 +188,13 @@ export function useMaillog() {
   return useQuery({
     queryKey: sleutels.maillog,
     queryFn: () => pb.collection("mail_log").getFullList<MailLog>({ sort: "-created" }),
+  })
+}
+
+/** Uitgaven (afdracht toeristenbelasting, Starlink), op datum. */
+export function useUitgaven() {
+  return useQuery({
+    queryKey: sleutels.uitgaven,
+    queryFn: () => pb.collection("uitgaven").getFullList<Uitgave>({ sort: "periode,datum" }),
   })
 }
