@@ -8,8 +8,7 @@ import { boekingNaam } from "../lib/types"
 import { isActief } from "../lib/boeking"
 import { bouwActielijst, type Urgentie } from "../domein/actielijst"
 import { formatMiddel, formatTijdstip, plusDagen, vandaag } from "../domein/datum"
-import { Fout, Kaart, Laden, Paginakop } from "../components/ui"
-import { StatusLabel } from "../components/Status"
+import { Fout, Kaart, Label, Laden, Paginakop } from "../components/ui"
 
 const KLEUR: Record<Urgentie, string> = {
   rood: "border-l-rood bg-rood-zacht",
@@ -157,7 +156,8 @@ export function Dashboard() {
                     <Link to={`/boekingen/${b.id}`} className="flex flex-col no-underline">
                       <span className="text-inkt">{boekingNaam(b)}</span>
                       <span className="text-xs text-zacht">{formatMiddel(b.aankomst)} – {formatMiddel(b.vertrek)}</span>
-                      <span className="mt-1"><StatusLabel status={b.status} stappen={stappen.data ?? []} optie={b.optie} /></span>
+                      {/* Geen workflowstap hier (die staat bij Acties); alleen of het een optie is. */}
+                      {b.optie && <span className="mt-1"><Label kleur="oranje">Optie</Label></span>}
                     </Link>
                   </li>
                 ))}
