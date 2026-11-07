@@ -95,8 +95,10 @@ function Algemeen({ inst }: { inst: Instellingen }) {
           {bedrag("parkkosten_per_nacht_cent", "Parkkosten per nacht", "Zitten in de seizoensprijs")}
           <label className="flex items-center gap-2 pt-6 text-inkt">
             <input type="checkbox" checked={d.parkkosten_apart_op_factuur} onChange={(e) => setD({ ...d, parkkosten_apart_op_factuur: e.target.checked })} />
-            Parkkosten apart op de factuur
+            Parkkosten apart bijhouden (voor de afrekening met PLD; op de factuur zitten ze in de huur)
           </label>
+          {bedrag("starlink_actief_cent", "Starlink per maand (actief)")}
+          {bedrag("starlink_pauze_cent", "Starlink per maand (gepauzeerd)")}
           {getal("min_nachten", "Minimum aantal nachten")}
           {getal("max_personen", "Maximum aantal personen")}
           {getal("bewaartermijn_jaren", "Bewaartermijn persoonsgegevens (jaren)")}

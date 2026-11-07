@@ -13,12 +13,13 @@ import { RECHT_NACHTEN, standaardZomer, wekenTekst, ZOMERVAKANTIES, zomerverdeli
 import { useEigenVerblijvenIn } from "../lib/agenda"
 import { verblijfGroepen, type EigenVerblijf } from "../domein/agenda"
 import { EigenVerblijfDialoog } from "../components/EigenVerblijf"
+import { Starlink, TbBetalingen } from "../components/Uitgaven"
 import { openParkkostenFactuur } from "../lib/parkkosten"
 import { csvBedrag, schrijfCsv } from "../domein/csv"
-import { BedragVeld, Fout, Kaart, Laden, Melding, Paginakop, Veld } from "../components/ui"
+import { Fout, Kaart, Laden, Melding, Paginakop, Veld } from "../components/ui"
 import { StatusFactuur } from "../components/FacturenBetalingen"
 
-type Tab = "overzicht" | "facturen" | "toeristenbelasting" | "parkkosten" | "zomer"
+type Tab = "overzicht" | "facturen" | "toeristenbelasting" | "parkkosten" | "zomer" | "starlink"
 
 function downloadCsv(naam: string, rijen: (string | number | null | undefined)[][]) {
   const blob = new Blob([schrijfCsv(rijen)], { type: "text/csv;charset=utf-8" })
@@ -59,7 +60,7 @@ export function Financieel() {
         </select>
       </Paginakop>
       <div className="mb-6 flex gap-1 overflow-x-auto border-b border-lijn pb-px">
-        {([["overzicht", "Overzicht"], ["facturen", "Facturen"], ["toeristenbelasting", "Toeristenbelasting"], ["parkkosten", "Park- en schoonmaakkosten PLD"], ["zomer", "Zomerverdeling"]] as const).map(([k, l]) => (
+        {([["overzicht", "Overzicht"], ["facturen", "Facturen"], ["toeristenbelasting", "Toeristenbelasting"], ["parkkosten", "Park- en schoonmaakkosten PLD"], ["zomer", "Zomerverdeling"], ["starlink", "Starlink"]] as const).map(([k, l]) => (
           <button
             key={k}
             type="button"
@@ -74,6 +75,7 @@ export function Financieel() {
       {tab === "facturen" && <FacturenLijst jaar={jaar} />}
       {tab === "toeristenbelasting" && <Toeristenbelasting jaar={jaar} boekingen={fin} aangiften={aangiften.data ?? []} />}
       {tab === "parkkosten" && <Parkkosten jaar={jaar} boekingen={boekingen.data ?? []} />}
+      {tab === "starlink" && <Starlink jaar={jaar} />}
       {tab === "zomer" && <Zomerverdeling jaar={jaar} boekingen={boekingen.data ?? []} facturen={facturen.data ?? []} />}
     </>
   )
@@ -206,10 +208,10 @@ function Toeristenbelasting({ jaar, boekingen, aangiften }: { jaar: number; boek
 
   function exporteer() {
     downloadCsv(`toeristenbelasting-${jaar}.csv`, [
-      ["Huurder", "Aankomst", "Vertrek", "Geïnd via factuur", "Aangegeven", "Aangegeven op", "Verschil", "Maand aangifte", "Referentie", "Afgedragen op"],
+      ["Huurder", "Aankomst", "Vertrek", "Geïnd via factuur", "Aangegeven", "Aangegeven op", "Verschil", "Maand aangifte", "Referentie"],
       ...rijen.map((r) => {
         const m = aangiften.find((a) => a.id === r.boeking.tb_aangifte)
-        return [r.boeking.naam, r.boeking.aankomst, r.boeking.vertrek, csvBedrag(r.geind), csvBedrag(r.aangegeven), r.boeking.tb_aangegeven_op, csvBedrag(r.verschil), m?.periode ?? "", m?.referentie ?? "", m?.afgedragen_op ?? ""]
+        return [r.boeking.naam, r.boeking.aankomst, r.boeking.vertrek, csvBedrag(r.geind), csvBedrag(r.aangegeven), r.boeking.tb_aangegeven_op, csvBedrag(r.verschil), m?.periode ?? "", m?.referentie ?? ""]
       }),
     ])
   }
@@ -253,8 +255,10 @@ function Toeristenbelasting({ jaar, boekingen, aangiften }: { jaar: number; boek
         </div>
       </Kaart>
 
-      <Kaart titel="Maandaangiften en afdracht">
-        <p className="mb-3 text-sm text-zacht">Per maand: wanneer de aangifte is ingediend en, als jullie apart worden aangeslagen, wanneer en hoeveel is afgedragen.</p>
+      <TbBetalingen jaar={jaar} aangegevenCent={tot.aangegeven} />
+
+      <Kaart titel="Maandaangiften">
+        <p className="mb-3 text-sm text-zacht">Per maand: wanneer de aangifte is ingediend, met de referentie uit het portaal.</p>
         {maanden.length === 0 ? (
           <p className="text-sm text-zacht">Nog geen aangiften voor {jaar}. Een aangifte registreer je bij de boeking (stap "Toeristenbelasting aangeven").</p>
         ) : (
@@ -271,8 +275,6 @@ function MaandRij({ aangifte: m, boekingen }: { aangifte: TbAangifte; boekingen:
   const opslaan = useOpslaan<TbAangifte>("tb_aangiften", [sleutels.tbAangiften])
   const qc = useQueryClient()
   const [fout, setFout] = useState<unknown>(null)
-  const [afgedragenOp, setAfgedragenOp] = useState(m.afgedragen_op)
-  const [afgedragen, setAfgedragen] = useState<Cent | null>(m.afgedragen_op ? m.afgedragen_cent : null)
   const [referentie, setReferentie] = useState(m.referentie)
   const gekoppeld = boekingen.filter((b) => b.tb_aangifte === m.id)
   const aangegeven = gekoppeld.reduce((t, b) => t + (b.tb_aangegeven_cent || 0), 0)
@@ -294,22 +296,17 @@ function MaandRij({ aangifte: m, boekingen }: { aangifte: TbAangifte; boekingen:
           ) : null}
         </div>
       </div>
-      <div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end">
+      <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
         <Veld label="Referentie"><input value={referentie} onChange={(e) => setReferentie(e.target.value)} /></Veld>
-        <Veld label="Afgedragen op"><input type="date" value={afgedragenOp} onChange={(e) => setAfgedragenOp(e.target.value)} /></Veld>
-        <Veld label="Afgedragen bedrag"><BedragVeld waarde={afgedragen} onChange={setAfgedragen} /></Veld>
         <button
           type="button"
           className="knop"
           disabled={opslaan.isPending}
-          onClick={() => opslaan.mutate({ id: m.id, data: { referentie, afgedragen_op: afgedragenOp, afgedragen_cent: afgedragen ?? 0, aangegeven_cent: aangegeven } })}
+          onClick={() => opslaan.mutate({ id: m.id, data: { referentie, aangegeven_cent: aangegeven } })}
         >
           Opslaan
         </button>
       </div>
-      {afgedragen !== null && afgedragenOp && afgedragen !== aangegeven && (
-        <p className="mt-2 text-xs text-oranje">Afgedragen bedrag wijkt {formatEuro(afgedragen - aangegeven)} af van het aangegeven bedrag.</p>
-      )}
       {gekoppeld.length === 0 && (
         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-zacht">
           Bij deze maand hoort geen verblijf (meer).
