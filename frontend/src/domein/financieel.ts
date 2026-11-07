@@ -61,7 +61,14 @@ export function financieelOverzicht(jaar: number, boekingen: FinBoeking[], factu
     const bs = betalingen.filter((p) => p.boeking === b.id)
     if (fs.length === 0 && bs.length === 0) continue
     const verdeling = LEEG()
-    for (const f of fs) for (const r of f.regels ?? []) verdeling[r.soort] = (verdeling[r.soort] ?? 0) + r.bedrag_cent
+    for (const f of fs) {
+      for (const r of f.regels ?? []) {
+        // Een huurregel inclusief parkkosten: het parkkostendeel apart tellen.
+        const park = r.waarvan_parkkosten_cent ?? 0
+        verdeling[r.soort] = (verdeling[r.soort] ?? 0) + r.bedrag_cent - park
+        verdeling.parkkosten += park
+      }
+    }
     const gefactureerd = fs.reduce((t, f) => t + f.totaal_cent, 0)
     const ontvangen = bs.reduce((t, p) => t + p.bedrag_cent, 0)
     const rij = { boeking: b, facturen: fs.map((f) => f.nummer), verdeling, gefactureerd, ontvangen, openstaand: fs.length ? gefactureerd - ontvangen : 0 }
