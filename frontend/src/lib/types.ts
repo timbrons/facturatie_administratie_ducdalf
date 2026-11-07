@@ -22,6 +22,9 @@ export interface Instellingen extends RecordModel {
   /** Starlink: standaardbedrag per maand als het abonnement actief / gepauzeerd is */
   starlink_actief_cent?: Cent
   starlink_pauze_cent?: Cent
+  /** Onderwerp van de betaalbevestiging toeristenbelasting (voor het automatisch vastleggen) */
+  tb_betaalmail_onderwerp?: string
+  tb_betaalmail_afzender?: string
   min_nachten: number
   max_personen: number
   aanbetaling_pct: number
@@ -239,6 +242,10 @@ export interface Uitgave extends RecordModel {
   omschrijving: string
   bewijs: string[]
   notities: string
+  /** "gmail:<id>": automatisch vastgelegd uit een betaalbevestiging */
+  bron?: string
+  /** Automatisch vastgelegd, maar het bedrag moet nog worden nagekeken */
+  controleren?: boolean
 }
 
 export interface MailSjabloon extends RecordModel {

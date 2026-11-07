@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom"
 import { useMemo } from "react"
-import { sleutels, useAanmeldingen, useBoekingen, useHuurders, useInstellingen, useMaillog, useStappen } from "../lib/data"
+import { sleutels, useAanmeldingen, useBoekingen, useHuurders, useInstellingen, useMaillog, useStappen, useUitgaven } from "../lib/data"
 import { useNieuweMails } from "../lib/mailgesprek"
 import { pb } from "../lib/pb"
 import { useQueryClient } from "@tanstack/react-query"
@@ -22,6 +22,7 @@ export function Dashboard() {
   const inst = useInstellingen()
   const maillog = useMaillog()
   const aanmeldingen = useAanmeldingen()
+  const uitgaven = useUitgaven()
   const huurders = useHuurders()
   const qc = useQueryClient()
   const nu = vandaag()
@@ -57,6 +58,8 @@ export function Dashboard() {
   const wachten = acties.filter((a) => a.wachten)
   const alle = boekingen.data ?? []
   const nieuweAanmeldingen = (aanmeldingen.data ?? []).filter((a) => a.status === "nieuw")
+  // Automatisch vastgelegde betalingen waarvan het bedrag niet zeker was.
+  const teControleren = (uitgaven.data ?? []).filter((u) => u.controleren)
   const komend = alle.filter((b) => isActief(b) && b.vertrek >= nu).slice(0, 6)
 
   return (
@@ -96,6 +99,23 @@ export function Dashboard() {
               })}
             </ul>
           )}
+          {teControleren.length > 0 && (
+            <ul className="mb-2 flex flex-col gap-2">
+              {teControleren.map((u) => (
+                <li key={u.id}>
+                  <Link
+                    to={`/financieel?tab=toeristenbelasting&jaar=${(u.datum || u.periode).slice(0, 4)}`}
+                    className={`flex flex-col border border-lijn border-l-4 px-4 py-3 no-underline ${KLEUR.oranje}`}
+                  >
+                    <span className="font-medium text-inkt">Betaling toeristenbelasting controleren</span>
+                    <span className="text-sm text-tekst">
+                      Automatisch vastgelegd uit de betaalbevestiging{u.datum ? ` van ${formatMiddel(u.datum)}` : ""}; het bedrag kon niet met zekerheid worden gelezen.
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
           {nieuweAanmeldingen.length > 0 && (
             <ul className="mb-2 flex flex-col gap-2">
               {nieuweAanmeldingen.map((a) => (
@@ -108,7 +128,7 @@ export function Dashboard() {
               ))}
             </ul>
           )}
-          {teDoen.length === 0 && nieuweAanmeldingen.length === 0 && (nieuweMails.data ?? []).length === 0 ? (
+          {teDoen.length === 0 && nieuweAanmeldingen.length === 0 && teControleren.length === 0 && (nieuweMails.data ?? []).length === 0 ? (
             <div className="infoblok">Er is niets te doen. Alles is bijgewerkt.</div>
           ) : teDoen.length === 0 ? null : (
             <ul className="flex flex-col gap-2">
