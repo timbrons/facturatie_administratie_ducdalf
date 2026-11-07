@@ -18,8 +18,7 @@ export function TussentijdsVerrekend({ jaar, lijst, gezinnen }: { jaar: number; 
   return (
     <Kaart titel="Tussentijds verrekend" actie={<button type="button" className="knop-klein" onClick={() => setOpen(null)}>+ Verrekening</button>}>
       <p className="mb-3 text-sm text-zacht">
-        Wat de gezinnen voor de zomer van {jaar} al met elkaar hebben verrekend. Dit gaat af van het saldo hierboven; "Nog te verrekenen" is wat er na de
-        zomer overblijft. In de kolom "Al verrekend": plus = betaald aan het andere gezin, min = ontvangen.
+        Wat de gezinnen voor de zomer van {jaar} al met elkaar hebben verrekend. Dit gaat af van wat de gezinnen elkaar nog moeten betalen ("Nog tussen gezinnen"). In de kolom "Al verrekend": plus = betaald aan het andere gezin, min = ontvangen.
       </p>
       {lijst.length === 0 ? (
         <p className="text-sm text-zacht">Nog niets tussentijds verrekend.</p>
@@ -52,10 +51,10 @@ function VerrekeningDialoog({ jaar, record: r, gezinnen, onSluiten }: {
 }) {
   const qc = useQueryClient()
   // Voorstel bij een nieuwe verrekening: wie nog moet betalen aan wie nog krijgt, voor het openstaande bedrag.
-  const betaler = [...gezinnen].sort((a, b) => a.nogOpen_cent - b.nogOpen_cent)[0]
-  const ontvanger = [...gezinnen].sort((a, b) => b.nogOpen_cent - a.nogOpen_cent)[0]
-  const voorstel = betaler && ontvanger && betaler.nogOpen_cent < 0 && ontvanger.nogOpen_cent > 0
-    ? Math.min(-betaler.nogOpen_cent, ontvanger.nogOpen_cent)
+  const betaler = [...gezinnen].sort((a, b) => a.tussenGezinnen_cent - b.tussenGezinnen_cent)[0]
+  const ontvanger = [...gezinnen].sort((a, b) => b.tussenGezinnen_cent - a.tussenGezinnen_cent)[0]
+  const voorstel = betaler && ontvanger && betaler.tussenGezinnen_cent < 0 && ontvanger.tussenGezinnen_cent > 0
+    ? Math.min(-betaler.tussenGezinnen_cent, ontvanger.tussenGezinnen_cent)
     : null
   const namen = gezinnen.map((g) => g.gezin)
   const [van, setVan] = useState(r?.van ?? (voorstel ? betaler.gezin : namen[1] ?? ""))

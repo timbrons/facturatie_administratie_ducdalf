@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { standaardZomer, verdeel, wekenTekst, zomerverdeling, zomerVoor, type ZomerVerhuur } from "./zomer"
+import { standaardZomer, toelichting, verdeel, wekenTekst, zomerverdeling, zomerVoor, type ZomerVerhuur } from "./zomer"
 
 const periode = { van: "2026-07-04", tot: "2026-08-30" }
 const A = "Gezin A"
@@ -133,5 +133,30 @@ describe("tussentijds verrekend", () => {
     expect([a.verrekend_cent, b.verrekend_cent]).toEqual([-50_000, 50_000])
     expect([a.nogOpen_cent, b.nogOpen_cent]).toEqual([5_000, -5_000])
     expect(zomerverdeling(basis).gezinnen.map((g) => g.nogOpen_cent)).toEqual([55_000, -55_000])
+  })
+})
+
+describe("toelichting", () => {
+  it("legt huur, tussentijdse betaling, rest en huuropbrengst in gewone zinnen uit", () => {
+    const z = zomerverdeling({
+      periode,
+      gezinnen: [A, B],
+      verblijven: [
+        { groep: A, aankomst: "2026-07-04", vertrek: "2026-07-25" },
+        { groep: A, aankomst: "2026-07-11", vertrek: "2026-07-18", anderHuis: true, huurkosten_cent: 106_750 },
+        { groep: B, aankomst: "2026-07-18", vertrek: "2026-08-02" },
+      ],
+      verhuur: [week("2026-08-10", "2026-08-11", 9_500)],
+      verrekend: [{ van: B, aan: A, bedrag_cent: 54_625 }],
+    })
+    const [a, b] = z.gezinnen
+    expect([a.tussenGezinnen_cent, b.tussenGezinnen_cent]).toEqual([-1_250, 1_250])
+    expect(b.opbrengst_cent).toBe(9_500)
+    const t = toelichting(z).join("\n")
+    expect(t).toContain("Gezin A heeft het andere huis gehuurd voor € 1.067,50. De helft (€ 533,75) komt voor rekening van het andere gezin.")
+    expect(t).toContain("Gezin B heeft al € 546,25 aan Gezin A betaald.")
+    expect(t).toContain("Gezin A betaalt nog € 12,50 aan Gezin B (Gezin B heeft eerder € 12,50 te veel betaald).")
+    expect(t).toContain("Gezin B krijgt € 95,00 uit de huuropbrengst van de zomer")
+    expect(t).toContain("van de gezamenlijke rekening")
   })
 })

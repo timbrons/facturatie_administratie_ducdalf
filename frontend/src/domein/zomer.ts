@@ -1,5 +1,5 @@
 import { dagenTussen, nachten, type IsoDatum } from "./datum"
-import type { Cent } from "./geld"
+import { formatEuro, type Cent } from "./geld"
 
 // Zomerverdeling tussen de gezinnen die samen eigenaar zijn.
 //
@@ -114,6 +114,12 @@ export interface GezinRij {
   verrekend_cent: Cent
   /** Wat na de tussentijdse verrekeningen nog openstaat (positief: krijgt nog) */
   nogOpen_cent: Cent
+  /**
+   * Deel daarvan dat tussen de gezinnen moet worden verrekend: huur ander
+   * huis + al verrekend (positief: krijgt nog van een ander gezin). De rest
+   * (opbrengst_cent) komt uit de huuropbrengst op de gezamenlijke rekening.
+   */
+  tussenGezinnen_cent: Cent
 }
 
 /** Een tussentijdse verrekening tussen twee gezinnen (bijv. de helft van de huur van een ander huis). */
@@ -139,6 +145,8 @@ export interface Zomerverdeling {
   /** Gehuurde (andere) huizen in de zomer, met de huurkosten */
   huurhuizen: HuurhuisRij[]
   huurkosten_cent: Cent
+  /** De tussentijdse verrekeningen (zoals meegegeven) */
+  verrekeningen: ZomerVerrekening[]
 }
 
 /** Verdeelt een bedrag in centen naar gewichten, zonder afrondingsverschil (grootste rest). */
@@ -238,6 +246,7 @@ export function zomerverdeling(input: {
       saldo_cent: perAfgezien[i] + perGedeeld[i] + verrekening[i],
       verrekend_cent: verrekend[i],
       nogOpen_cent: perAfgezien[i] + perGedeeld[i] + verrekening[i] + verrekend[i],
+      tussenGezinnen_cent: verrekening[i] + verrekend[i],
     })),
     verhuur,
     verhuurdeNachten: N,
@@ -247,6 +256,7 @@ export function zomerverdeling(input: {
     zonderGezin: zonderGezin.size,
     huurhuizen,
     huurkosten_cent: huurhuizen.reduce((t, h) => t + h.huurkosten_cent, 0),
+    verrekeningen: input.verrekend ?? [],
   }
 }
 
@@ -254,4 +264,56 @@ export function zomerverdeling(input: {
 export function zomerVoor(jaar: number, eigen: Record<string, Zomerperiode> | null | undefined): Zomerperiode | null {
   const e = eigen?.[String(jaar)]
   return e?.van && e?.tot ? e : standaardZomer(jaar)
+}
+
+/**
+ * Toelichting in gewone zinnen bij de zomerverdeling: hoe de huur van een
+ * ander huis is verdeeld, wat er al is verrekend, wie wie nog moet betalen en
+ * wie wat krijgt uit de huuropbrengst (van de gezamenlijke rekening).
+ */
+export function toelichting(z: Zomerverdeling): string[] {
+  const uit: string[] = []
+  const n = z.gezinnen.length
+  for (const h of z.huurhuizen) {
+    if (!h.huurkosten_cent) continue
+    const deel = Math.round(h.huurkosten_cent / Math.max(1, n))
+    uit.push(
+      `${h.betaaldDoor || h.groep} heeft het andere huis gehuurd voor ${formatEuro(h.huurkosten_cent)}. ` +
+        (n === 2 ? `De helft (${formatEuro(deel)}) komt voor rekening van het andere gezin.` : `Elk gezin draagt een gelijk deel (${formatEuro(deel)}).`),
+    )
+  }
+  // Al verrekend, per richting opgeteld
+  const paren = new Map<string, number>()
+  for (const v of z.verrekeningen) paren.set(`${v.van}\u0000${v.aan}`, (paren.get(`${v.van}\u0000${v.aan}`) ?? 0) + v.bedrag_cent)
+  for (const [k, bedrag] of paren) {
+    const [van, aan] = k.split("\u0000")
+    uit.push(`${van} heeft al ${formatEuro(bedrag)} aan ${aan} betaald.`)
+  }
+  // Nog tussen de gezinnen: wie moet betalen, aan wie
+  const betalers = z.gezinnen.filter((g) => g.tussenGezinnen_cent < 0).map((g) => ({ gezin: g.gezin, rest: -g.tussenGezinnen_cent }))
+  const ontvangers = z.gezinnen.filter((g) => g.tussenGezinnen_cent > 0).map((g) => ({ gezin: g.gezin, rest: g.tussenGezinnen_cent }))
+  if (z.huurhuizen.some((h) => h.huurkosten_cent) || z.verrekeningen.length) {
+    if (betalers.length === 0) uit.push("Tussen de gezinnen is alles verrekend.")
+    for (const b of betalers) {
+      for (const o of ontvangers) {
+        const x = Math.min(b.rest, o.rest)
+        if (x <= 0) continue
+        const teVeel = z.verrekeningen.some((v) => v.van === o.gezin && v.aan === b.gezin)
+        uit.push(`${b.gezin} betaalt nog ${formatEuro(x)} aan ${o.gezin}${teVeel ? ` (${o.gezin} heeft eerder ${formatEuro(x)} te veel betaald)` : ""}.`)
+        b.rest -= x
+        o.rest -= x
+      }
+    }
+  }
+  // Uit de huuropbrengst
+  for (const g of z.gezinnen) {
+    if (g.opbrengst_cent <= 0) continue
+    const waarom = [
+      g.opbrengstAfgezien_cent > 0 ? `${formatEuro(g.opbrengstAfgezien_cent)} voor de verhuur in de weken waarvan zij hebben afgezien` : "",
+      g.opbrengstGedeeld_cent > 0 ? `${formatEuro(g.opbrengstGedeeld_cent)} als hun deel van de gedeeld verhuurde weken` : "",
+    ].filter(Boolean).join(" en ")
+    uit.push(`${g.gezin} krijgt ${formatEuro(g.opbrengst_cent)} uit de huuropbrengst van de zomer (${waarom}). Dit komt van de gezamenlijke rekening, niet van het andere gezin.`)
+  }
+  if (uit.length === 0) uit.push("Er valt deze zomer niets te verrekenen.")
+  return uit
 }

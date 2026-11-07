@@ -9,7 +9,7 @@ import { dagenTussen, formatLang, isIsoDatum, jaarVan, maandNaam, vandaag } from
 import { formatEuro, type Cent } from "../domein/geld"
 import { betaalstatus, bouwFactuurregels } from "../domein/factuur"
 import { financieelOverzicht, parkkostenOverzicht, pldGefactureerd, tbOverzicht, type FinBoeking } from "../domein/financieel"
-import { RECHT_NACHTEN, standaardZomer, wekenTekst, ZOMERVAKANTIES, zomerverdeling, zomerVoor, type ZomerVerhuur } from "../domein/zomer"
+import { RECHT_NACHTEN, standaardZomer, toelichting, wekenTekst, ZOMERVAKANTIES, zomerverdeling, zomerVoor, type ZomerVerhuur } from "../domein/zomer"
 import { useEigenVerblijvenIn } from "../lib/agenda"
 import { verblijfGroepen, type EigenVerblijf } from "../domein/agenda"
 import { EigenVerblijfDialoog } from "../components/EigenVerblijf"
@@ -465,11 +465,14 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
     downloadCsv(`zomerverdeling-${jaar}.csv`, [
       ["Zomer", periode!.van, periode!.tot, `${z.nachten} nachten`],
       [],
-      ["Gezin", "Recht (nachten)", "Gebruikt (nachten)", "Afgezien (nachten)", "Opbrengst afgeziene weken", "Aandeel gedeelde opbrengst", "Totaal opbrengst", "Verrekening huur ander huis", "Saldo", "Al verrekend", "Nog te verrekenen"],
+      ["Gezin", "Recht (nachten)", "Gebruikt (nachten)", "Afgezien (nachten)", "Opbrengst afgeziene weken", "Aandeel gedeelde opbrengst", "Totaal opbrengst (uit huuropbrengst)", "Verrekening huur ander huis", "Al verrekend", "Nog tussen gezinnen"],
       ...z.gezinnen.map((g) => [
         g.gezin, g.recht, g.gebruikt, g.afgezien, csvBedrag(g.opbrengstAfgezien_cent), csvBedrag(g.opbrengstGedeeld_cent), csvBedrag(g.opbrengst_cent),
-        csvBedrag(g.verrekening_cent), csvBedrag(g.saldo_cent), csvBedrag(g.verrekend_cent), csvBedrag(g.nogOpen_cent),
+        csvBedrag(g.verrekening_cent), csvBedrag(g.verrekend_cent), csvBedrag(g.tussenGezinnen_cent),
       ]),
+      [],
+      ["Toelichting"],
+      ...toelichting(z).map((zin) => [zin]),
       [],
       ["Tussentijds verrekend", "Datum", "Van", "Aan", "Bedrag"],
       ...verrekeningen.map((v) => [v.omschrijving, v.datum, v.van, v.aan, csvBedrag(v.bedrag_cent)]),
@@ -526,11 +529,10 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
                 <th className="py-2 pr-3 font-semibold">Afgezien</th>
                 <th className="py-2 pr-3 text-right font-semibold">Afgeziene weken</th>
                 <th className="py-2 pr-3 text-right font-semibold">Gedeeld</th>
-                <th className="py-2 text-right font-semibold">Recht op</th>
+                <th className="py-2 text-right font-semibold" title="Uit de huuropbrengst, van de gezamenlijke rekening">Recht op huuropbrengst</th>
                 {metHuur && <th className="py-2 pl-3 text-right font-semibold">Huur ander huis</th>}
-                {metSaldo && <th className="py-2 pl-3 text-right font-semibold">Saldo</th>}
                 {metVerrekend && <th className="py-2 pl-3 text-right font-semibold">Al verrekend</th>}
-                {metVerrekend && <th className="py-2 pl-3 text-right font-semibold">Nog te verrekenen</th>}
+                {metSaldo && <th className="py-2 pl-3 text-right font-semibold" title="Plus: krijgt nog van het andere gezin; min: moet nog betalen">Nog tussen gezinnen</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-lijn tabular-nums">
@@ -543,10 +545,9 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
                   <td className="py-2 pr-3 text-right">{formatEuro(g.opbrengstGedeeld_cent)}</td>
                   <td className="py-2 text-right font-semibold text-inkt">{formatEuro(g.opbrengst_cent)}</td>
                   {metHuur && <td className={`py-2 pl-3 text-right ${g.verrekening_cent < 0 ? "text-oranje" : ""}`}>{formatEuro(g.verrekening_cent)}</td>}
-                  {metSaldo && <td className={`py-2 pl-3 text-right ${metVerrekend ? "" : "font-semibold text-inkt"}`}>{formatEuro(g.saldo_cent)}</td>}
                   {metVerrekend && <td className="py-2 pl-3 text-right">{formatEuro(g.verrekend_cent)}</td>}
-                  {metVerrekend && (
-                    <td className={`py-2 pl-3 text-right font-semibold ${g.nogOpen_cent < 0 ? "text-oranje" : "text-inkt"}`}>{formatEuro(g.nogOpen_cent)}</td>
+                  {metSaldo && (
+                    <td className={`py-2 pl-3 text-right font-semibold ${g.tussenGezinnen_cent < 0 ? "text-oranje" : "text-inkt"}`}>{formatEuro(g.tussenGezinnen_cent)}</td>
                   )}
                 </tr>
               ))}
@@ -557,11 +558,23 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
                 <td className="py-2 pr-3 text-right">{formatEuro(z.opbrengst_cent - z.gedeeld_cent)}</td>
                 <td className="py-2 pr-3 text-right">{formatEuro(z.gedeeld_cent)}</td>
                 <td className="py-2 text-right">{formatEuro(z.opbrengst_cent)}</td>
-                {(metHuur || metSaldo || metVerrekend) && <td className="py-2 pl-3" colSpan={(metHuur ? 1 : 0) + (metSaldo ? 1 : 0) + (metVerrekend ? 2 : 0)} />}
+                {metSaldo && <td className="py-2 pl-3" colSpan={(metHuur ? 1 : 0) + (metVerrekend ? 1 : 0) + 1} />}
               </tr>
             </tfoot>
           </table>
         </div>
+        <section className="mt-5 border-l-2 border-goud bg-zand/50 px-4 py-3">
+          <div className="wenkbrauw mb-2">Toelichting</div>
+          <ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-tekst">
+            {toelichting(z).map((zin, k) => <li key={k}>{zin}</li>)}
+          </ul>
+          {metSaldo && (
+            <p className="mt-2 text-xs text-zacht">
+              "Nog tussen gezinnen" is wat de gezinnen elkaar nog moeten betalen (plus = krijgt nog, min = moet nog betalen). De huuropbrengst komt
+              daar los van uit de gezamenlijke rekening.
+            </p>
+          )}
+        </section>
       </Kaart>
 
       {z.huurhuizen.length > 0 && (
