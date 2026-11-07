@@ -153,10 +153,35 @@ describe("toelichting", () => {
     expect([a.tussenGezinnen_cent, b.tussenGezinnen_cent]).toEqual([-1_250, 1_250])
     expect(b.opbrengst_cent).toBe(9_500)
     const t = toelichting(z).join("\n")
-    expect(t).toContain("Gezin A heeft het andere huis gehuurd voor € 1.067,50. De helft (€ 533,75) komt voor rekening van het andere gezin.")
+    expect(t).toContain("Gezin A heeft van 11 juli 2026 tot 18 juli 2026 een ander huis gehuurd voor € 1.067,50.")
+    expect(t).toContain("Dat kost € 1.067,50; ieder gezin draagt de helft (€ 533,75).")
+    expect(t).toContain("Gezin A heeft € 1.067,50 aan huur betaald en draagt € 533,75, dus krijgt € 533,75 terug.")
+    expect(t).toContain("Gezin B heeft € 0,00 aan huur betaald en draagt € 533,75, dus moet nog € 533,75 bijdragen.")
     expect(t).toContain("Gezin B heeft al € 546,25 aan Gezin A betaald.")
-    expect(t).toContain("Gezin A betaalt nog € 12,50 aan Gezin B (Gezin B heeft eerder € 12,50 te veel betaald).")
+    expect(t).toContain("Conclusie: Gezin A betaalt nog € 12,50 aan Gezin B (Gezin B heeft eerder € 12,50 te veel betaald).")
     expect(t).toContain("Gezin B krijgt € 95,00 uit de huuropbrengst van de zomer")
     expect(t).toContain("van de gezamenlijke rekening")
+  })
+
+  it("meerdere gehuurde huizen: totaal, aandeel en meervoud bij namen", () => {
+    const T = "Tim, Claire en Alicia"
+    const S = "Selina, Lars en Ciara"
+    const z = zomerverdeling({
+      periode,
+      gezinnen: [T, S],
+      verblijven: [
+        { groep: T, aankomst: "2026-07-04", vertrek: "2026-07-11", anderHuis: true, huurkosten_cent: 110_000 },
+        { groep: S, aankomst: "2026-07-11", vertrek: "2026-07-18", anderHuis: true, huurkosten_cent: 112_500 },
+        { groep: T, aankomst: "2026-08-01", vertrek: "2026-08-08", anderHuis: true, huurkosten_cent: 109_250 },
+      ],
+      verhuur: [],
+    })
+    const [t, s] = z.gezinnen
+    expect([t.huurBetaald_cent, t.huurAandeel_cent, t.verrekening_cent]).toEqual([219_250, 165_875, 53_375])
+    expect(s.verrekening_cent).toBe(-53_375)
+    const tekst = toelichting(z).join("\n")
+    expect(tekst).toContain("Samen kostten de gehuurde huizen € 3.317,50; ieder gezin draagt de helft (€ 1.658,75).")
+    expect(tekst).toContain(`${T} hebben € 2.192,50 aan huur betaald en dragen € 1.658,75, dus krijgen € 533,75 terug.`)
+    expect(tekst).toContain(`Conclusie: ${S} betalen nog € 533,75 aan ${T}.`)
   })
 })

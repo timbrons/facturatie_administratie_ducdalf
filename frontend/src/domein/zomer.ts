@@ -1,4 +1,4 @@
-import { dagenTussen, nachten, type IsoDatum } from "./datum"
+import { dagenTussen, formatLang, nachten, type IsoDatum } from "./datum"
 import { formatEuro, type Cent } from "./geld"
 
 // Zomerverdeling tussen de gezinnen die samen eigenaar zijn.
@@ -108,6 +108,10 @@ export interface GezinRij {
   opbrengst_cent: Cent
   /** Huur van een gehuurd huis: betaald min eigen aandeel (positief: krijgt terug) */
   verrekening_cent: Cent
+  /** Door dit gezin betaalde huur van gehuurde huizen */
+  huurBetaald_cent: Cent
+  /** Aandeel van dit gezin in de huur van alle gehuurde huizen */
+  huurAandeel_cent: Cent
   /** Opbrengst + huur ander huis (positief: krijgt nog) */
   saldo_cent: Cent
   /** Al tussentijds verrekend: betaald aan de andere gezinnen min ontvangen */
@@ -216,11 +220,17 @@ export function zomerverdeling(input: {
     .map((v) => ({ groep: v.groep, aankomst: v.aankomst, vertrek: v.vertrek, huurkosten_cent: v.huurkosten_cent ?? 0, betaaldDoor: v.betaaldDoor || v.groep }))
     .sort((a, b) => a.aankomst.localeCompare(b.aankomst))
   const verrekening = namen.map(() => 0)
+  const huurBetaald = namen.map(() => 0)
+  const huurAandeel = namen.map(() => 0)
   for (const h of huurhuizen) {
     const delen = verdeel(h.huurkosten_cent, namen.map(() => 1))
     namen.forEach((g, i) => {
       verrekening[i] -= delen[i]
-      if (g === h.betaaldDoor) verrekening[i] += h.huurkosten_cent
+      huurAandeel[i] += delen[i]
+      if (g === h.betaaldDoor) {
+        verrekening[i] += h.huurkosten_cent
+        huurBetaald[i] += h.huurkosten_cent
+      }
     })
   }
 
@@ -243,6 +253,8 @@ export function zomerverdeling(input: {
       opbrengstGedeeld_cent: perGedeeld[i],
       opbrengst_cent: perAfgezien[i] + perGedeeld[i],
       verrekening_cent: verrekening[i],
+      huurBetaald_cent: huurBetaald[i],
+      huurAandeel_cent: huurAandeel[i],
       saldo_cent: perAfgezien[i] + perGedeeld[i] + verrekening[i],
       verrekend_cent: verrekend[i],
       nogOpen_cent: perAfgezien[i] + perGedeeld[i] + verrekening[i] + verrekend[i],
@@ -274,32 +286,54 @@ export function zomerVoor(jaar: number, eigen: Record<string, Zomerperiode> | nu
 export function toelichting(z: Zomerverdeling): string[] {
   const uit: string[] = []
   const n = z.gezinnen.length
-  for (const h of z.huurhuizen) {
-    if (!h.huurkosten_cent) continue
-    const deel = Math.round(h.huurkosten_cent / Math.max(1, n))
+  // Werkwoord passend bij de naam: "Gezin A heeft", "Tim, Claire en Alicia hebben".
+  const mv = (naam: string) => /,| en /.test(naam)
+  const ww = (naam: string, enkelvoud: string, meervoud: string) => (mv(naam) ? meervoud : enkelvoud)
+
+  const huizen = z.huurhuizen.filter((h) => h.huurkosten_cent)
+  for (const h of huizen) {
+    const wie = h.betaaldDoor || h.groep
+    const voor = h.betaaldDoor && h.betaaldDoor !== h.groep ? ` (voor ${h.groep})` : ""
+    uit.push(`${wie} ${ww(wie, "heeft", "hebben")} van ${formatLang(h.aankomst)} tot ${formatLang(h.vertrek)} een ander huis gehuurd${voor} voor ${formatEuro(h.huurkosten_cent)}.`)
+  }
+  if (huizen.length) {
+    const deel = Math.round(z.huurkosten_cent / Math.max(1, n))
     uit.push(
-      `${h.betaaldDoor || h.groep} heeft het andere huis gehuurd voor ${formatEuro(h.huurkosten_cent)}. ` +
-        (n === 2 ? `De helft (${formatEuro(deel)}) komt voor rekening van het andere gezin.` : `Elk gezin draagt een gelijk deel (${formatEuro(deel)}).`),
+      `${huizen.length > 1 ? "Samen kostten de gehuurde huizen" : "Dat kost"} ${formatEuro(z.huurkosten_cent)}; ` +
+        (n === 2 ? `ieder gezin draagt de helft (${formatEuro(deel)}).` : `elk gezin draagt een gelijk deel (${formatEuro(deel)}).`),
     )
+    for (const g of z.gezinnen) {
+      const verschil = g.huurBetaald_cent - g.huurAandeel_cent
+      if (!verschil) continue
+      uit.push(
+        `${g.gezin} ${ww(g.gezin, "heeft", "hebben")} ${formatEuro(g.huurBetaald_cent)} aan huur betaald en ${ww(g.gezin, "draagt", "dragen")} ${formatEuro(g.huurAandeel_cent)}, ` +
+          (verschil > 0
+            ? `dus ${ww(g.gezin, "krijgt", "krijgen")} ${formatEuro(verschil)} terug.`
+            : `dus ${ww(g.gezin, "moet", "moeten")} nog ${formatEuro(-verschil)} bijdragen.`),
+      )
+    }
   }
   // Al verrekend, per richting opgeteld
   const paren = new Map<string, number>()
   for (const v of z.verrekeningen) paren.set(`${v.van}\u0000${v.aan}`, (paren.get(`${v.van}\u0000${v.aan}`) ?? 0) + v.bedrag_cent)
   for (const [k, bedrag] of paren) {
     const [van, aan] = k.split("\u0000")
-    uit.push(`${van} heeft al ${formatEuro(bedrag)} aan ${aan} betaald.`)
+    uit.push(`${van} ${ww(van, "heeft", "hebben")} al ${formatEuro(bedrag)} aan ${aan} betaald.`)
   }
   // Nog tussen de gezinnen: wie moet betalen, aan wie
   const betalers = z.gezinnen.filter((g) => g.tussenGezinnen_cent < 0).map((g) => ({ gezin: g.gezin, rest: -g.tussenGezinnen_cent }))
   const ontvangers = z.gezinnen.filter((g) => g.tussenGezinnen_cent > 0).map((g) => ({ gezin: g.gezin, rest: g.tussenGezinnen_cent }))
-  if (z.huurhuizen.some((h) => h.huurkosten_cent) || z.verrekeningen.length) {
+  if (huizen.length || z.verrekeningen.length) {
     if (betalers.length === 0) uit.push("Tussen de gezinnen is alles verrekend.")
     for (const b of betalers) {
       for (const o of ontvangers) {
         const x = Math.min(b.rest, o.rest)
         if (x <= 0) continue
         const teVeel = z.verrekeningen.some((v) => v.van === o.gezin && v.aan === b.gezin)
-        uit.push(`${b.gezin} betaalt nog ${formatEuro(x)} aan ${o.gezin}${teVeel ? ` (${o.gezin} heeft eerder ${formatEuro(x)} te veel betaald)` : ""}.`)
+        uit.push(
+          `Conclusie: ${b.gezin} ${ww(b.gezin, "betaalt", "betalen")} nog ${formatEuro(x)} aan ${o.gezin}` +
+            (teVeel ? ` (${o.gezin} ${ww(o.gezin, "heeft", "hebben")} eerder ${formatEuro(x)} te veel betaald).` : "."),
+        )
         b.rest -= x
         o.rest -= x
       }
@@ -312,7 +346,10 @@ export function toelichting(z: Zomerverdeling): string[] {
       g.opbrengstAfgezien_cent > 0 ? `${formatEuro(g.opbrengstAfgezien_cent)} voor de verhuur in de weken waarvan zij hebben afgezien` : "",
       g.opbrengstGedeeld_cent > 0 ? `${formatEuro(g.opbrengstGedeeld_cent)} als hun deel van de gedeeld verhuurde weken` : "",
     ].filter(Boolean).join(" en ")
-    uit.push(`${g.gezin} krijgt ${formatEuro(g.opbrengst_cent)} uit de huuropbrengst van de zomer (${waarom}). Dit komt van de gezamenlijke rekening, niet van het andere gezin.`)
+    uit.push(
+      `${g.gezin} ${ww(g.gezin, "krijgt", "krijgen")} ${formatEuro(g.opbrengst_cent)} uit de huuropbrengst van de zomer (${waarom}). ` +
+        "Dit komt van de gezamenlijke rekening, niet van het andere gezin.",
+    )
   }
   if (uit.length === 0) uit.push("Er valt deze zomer niets te verrekenen.")
   return uit
