@@ -10,7 +10,8 @@ import { boekingNaam, huurderNaam, type Boeking, type Instellingen } from "../li
 import { aantalNachten, bijStatuswijziging, extrasTotaal, tbOpFactuur, tbRichtbedrag, totaalBoeking } from "../lib/boeking"
 import { formatLang, formatTijdstip } from "../domein/datum"
 import { formatEuro } from "../domein/geld"
-import { GEANNULEERD, gesorteerd, isBijOfVoorbij, labelVoor, overgangFout, positie, stappenbalk, volgendeStap, type WorkflowStap } from "../domein/workflow"
+import { nuTeDoen } from "../domein/actielijst"
+import { AFGEROND, GEANNULEERD, gesorteerd, isBijOfVoorbij, labelVoor, overgangFout, positie, stappenbalk, volgendeStap, type WorkflowStap } from "../domein/workflow"
 import { Dialoog, Fout, Gegeven, Kaart, Label, Laden, Melding, Paginakop } from "../components/ui"
 import { TbAangifteDialoog, TbBerekenDialoog } from "../components/Toeristenbelasting"
 import { BetalingenKaart, FactuurVersturenDialoog, FacturenKaart } from "../components/FacturenBetalingen"
@@ -178,11 +179,27 @@ function Detail({ boeking: b, stappen, inst }: { boeking: Boeking; stappen: Work
       {/* Huidige status en de knop naar de volgende stap */}
       <section className="mb-6 flex flex-col gap-4 border border-lijn bg-zand p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="wenkbrauw mb-1">Huidige status</div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-serif text-2xl text-inkt">{labelVoor(stappen, b.status)}</span>
-            {b.optie && <Label kleur="oranje">Optie</Label>}
-          </div>
+          {(() => {
+            // Het label van een stap kan als taak geformuleerd zijn ("Factuur versturen"):
+            // daarom expliciet "afgerond" erbij, en wat er nu gebeurt.
+            const klaar = b.status === GEANNULEERD || b.status === AFGEROND
+            const nu = klaar ? null : nuTeDoen(stappen, { ...b, naam: "" })
+            return (
+              <>
+                <div className="wenkbrauw mb-1">{klaar ? "Status" : "Laatst afgeronde stap"}</div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-serif text-2xl text-inkt">{!klaar && "✓ "}{labelVoor(stappen, b.status)}</span>
+                  {b.optie && <Label kleur="oranje">Optie</Label>}
+                </div>
+                {nu && (
+                  <div className={`mt-1 text-sm ${nu.wachten ? "text-zacht" : "text-tekst"}`}>
+                    Nu: <span className={nu.wachten ? "" : "font-medium text-inkt"}>{nu.titel}</span>
+                    {nu.uiterlijk ? ` (uiterlijk ${formatLang(nu.uiterlijk)})` : ""}
+                  </div>
+                )}
+              </>
+            )
+          })()}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {volgende && (
