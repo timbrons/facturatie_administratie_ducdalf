@@ -6,7 +6,7 @@ import { pb } from "../lib/pb"
 import { useQueryClient } from "@tanstack/react-query"
 import { boekingNaam } from "../lib/types"
 import { isActief } from "../lib/boeking"
-import { bouwActielijst, type Urgentie } from "../domein/actielijst"
+import { bouwActielijst, type Actie, type Urgentie } from "../domein/actielijst"
 import { formatMiddel, formatTijdstip, plusDagen, vandaag } from "../domein/datum"
 import { Fout, Kaart, Label, Laden, Paginakop } from "../components/ui"
 
@@ -52,6 +52,9 @@ export function Dashboard() {
   const fout = boekingen.error || stappen.error || inst.error
   if (fout) return <Fout fout={fout} />
 
+  // Acties: van ons is iets nodig. Wachten: we wachten op de huurder.
+  const teDoen = acties.filter((a) => !a.wachten)
+  const wachten = acties.filter((a) => a.wachten)
   const alle = boekingen.data ?? []
   const nieuweAanmeldingen = (aanmeldingen.data ?? []).filter((a) => a.status === "nieuw")
   const komend = alle.filter((b) => isActief(b) && b.vertrek >= nu).slice(0, 6)
@@ -105,37 +108,22 @@ export function Dashboard() {
               ))}
             </ul>
           )}
-          {acties.length === 0 && nieuweAanmeldingen.length === 0 && (nieuweMails.data ?? []).length === 0 ? (
-            <div className="infoblok">Er staat niets open. Alles is bijgewerkt.</div>
-          ) : acties.length === 0 ? null : (
+          {teDoen.length === 0 && nieuweAanmeldingen.length === 0 && (nieuweMails.data ?? []).length === 0 ? (
+            <div className="infoblok">Er is niets te doen. Alles is bijgewerkt.</div>
+          ) : teDoen.length === 0 ? null : (
             <ul className="flex flex-col gap-2">
-              {acties.map((a, i) => (
-                <li key={`${a.boekingId}-${a.soort}-${i}`}>
-                  <div className={`flex flex-col gap-2 border border-lijn border-l-4 px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${a.wachten ? "border-l-lijn bg-transparent" : KLEUR[a.urgentie]}`}>
-                    <Link to={`/boekingen/${a.boekingId}`} className="no-underline">
-                      {a.afgerond && (
-                        <div className="mb-0.5 text-xs text-olijf-donker">✓ Afgerond: {a.afgerond}</div>
-                      )}
-                      <div className={a.wachten ? "text-zacht" : "font-medium text-inkt"}>
-                        {a.afgerond && !a.wachten && <span className="font-normal text-zacht">Volgende stap: </span>}
-                        {a.titel}
-                      </div>
-                      {a.toelichting && <div className="text-sm text-tekst">{a.toelichting}</div>}
-                    </Link>
-                    {a.stap === "le_duc_aangemeld" && inst.data?.pld_portaal_url && (
-                      <a href={inst.data.pld_portaal_url} target="_blank" rel="noopener noreferrer" className="knop-klein shrink-0 self-start sm:self-center">
-                        Open PLD-portaal ↗
-                      </a>
-                    )}
-                    {a.mail && (
-                      <Link to={`/boekingen/${a.boekingId}?mail=${a.mail}`} className="knop-klein shrink-0 self-start sm:self-center">
-                        {a.mail === "fijne_reis" ? "Mail opstellen" : "Herinnering sturen"}
-                      </Link>
-                    )}
-                  </div>
-                </li>
-              ))}
+              {teDoen.map((a, i) => <ActieRegel key={`${a.boekingId}-${a.soort}-${i}`} a={a} pld={inst.data?.pld_portaal_url} />)}
             </ul>
+          )}
+
+          {wachten.length > 0 && (
+            <section className="mt-10">
+              <h2 className="mb-1 font-serif text-2xl text-inkt">Wachten</h2>
+              <p className="mb-3 text-sm text-zacht">Hier wachten we op de huurder; van ons is (nog) niets nodig.</p>
+              <ul className="flex flex-col gap-2">
+                {wachten.map((a, i) => <ActieRegel key={`${a.boekingId}-${a.soort}-${i}`} a={a} pld={inst.data?.pld_portaal_url} />)}
+              </ul>
+            </section>
           )}
         </div>
 
@@ -167,5 +155,35 @@ export function Dashboard() {
         </div>
       </div>
     </>
+  )
+}
+
+/** Eén regel in Acties of Wachten. */
+function ActieRegel({ a, pld }: { a: Actie; pld?: string }) {
+  return (
+    <li>
+      <div className={`flex flex-col gap-2 border border-lijn border-l-4 px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${a.wachten ? "border-l-lijn bg-transparent" : KLEUR[a.urgentie]}`}>
+        <Link to={`/boekingen/${a.boekingId}`} className="no-underline">
+          {a.afgerond && (
+            <div className="mb-0.5 text-xs text-olijf-donker">✓ Afgerond: {a.afgerond}</div>
+          )}
+          <div className={a.wachten ? "text-zacht" : "font-medium text-inkt"}>
+            {a.afgerond && !a.wachten && <span className="font-normal text-zacht">Volgende stap: </span>}
+            {a.titel}
+          </div>
+          {a.toelichting && <div className="text-sm text-tekst">{a.toelichting}</div>}
+        </Link>
+        {a.stap === "le_duc_aangemeld" && pld && (
+          <a href={pld} target="_blank" rel="noopener noreferrer" className="knop-klein shrink-0 self-start sm:self-center">
+            Open PLD-portaal ↗
+          </a>
+        )}
+        {a.mail && (
+          <Link to={`/boekingen/${a.boekingId}?mail=${a.mail}`} className="knop-klein shrink-0 self-start sm:self-center">
+            {a.mail === "fijne_reis" ? "Mail opstellen" : "Herinnering sturen"}
+          </Link>
+        )}
+      </div>
+    </li>
   )
 }
