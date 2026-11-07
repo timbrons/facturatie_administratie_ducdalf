@@ -82,7 +82,7 @@ export function Boekingen() {
                   <td className="px-4 py-3"><Link to={`/boekingen/${b.id}`} className="text-inkt">{boekingNaam(b)}</Link></td>
                   <td className="px-4 py-3">{formatMiddel(b.aankomst)} – {formatMiddel(b.vertrek)} <span className="text-zacht">({aantalNachten(b)} n.)</span></td>
                   <td className="px-4 py-3">{b.volwassenen}{b.kinderen ? ` + ${b.kinderen}` : ""}</td>
-                  <td className="px-4 py-3"><StatusLabel status={b.status} stappen={stappen.data ?? []} optie={b.optie} /></td>
+                  <td className="px-4 py-3"><StatusLabel boeking={b} stappen={stappen.data ?? []} /></td>
                   <td className="px-4 py-3 text-right tabular-nums">{formatEuro(totaalBoeking(b))}</td>
                 </tr>
               ))}
@@ -97,7 +97,7 @@ export function Boekingen() {
                     <span className="tabular-nums text-sm">{formatEuro(totaalBoeking(b))}</span>
                   </div>
                   <div className="text-xs text-zacht">{formatMiddel(b.aankomst)} – {formatMiddel(b.vertrek)}</div>
-                  <div className="mt-1"><StatusLabel status={b.status} stappen={stappen.data ?? []} optie={b.optie} /></div>
+                  <div className="mt-1"><StatusLabel boeking={b} stappen={stappen.data ?? []} /></div>
                 </Link>
               </li>
             ))}

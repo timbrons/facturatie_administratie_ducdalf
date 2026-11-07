@@ -94,6 +94,7 @@ const TE_DOEN: Record<string, { titel: string; toelichting: string; wachten?: bo
 export function nuTeDoen(
   stappen: WorkflowStap[],
   b: ActieBoeking,
+  vandaag?: IsoDatum,
 ): { titel: string; toelichting: string; wachten: boolean; uiterlijk?: string } | null {
   const volgende = volgendeStap(stappen, b)
   if (!volgende) return null
@@ -106,8 +107,13 @@ export function nuTeDoen(
         ? { titel: "Wachten op de restbetaling", toelichting: `De aanbetaling is binnen.${tot(b.rest_vervaldatum)}`, wachten: true, uiterlijk: b.rest_vervaldatum || undefined }
         : { titel: "Wachten op de betaling", toelichting: `De factuur is verstuurd.${tot(b.rest_vervaldatum)}`, wachten: true, uiterlijk: b.rest_vervaldatum || undefined }
     case "verblijf":
-      return { titel: "Wachten op aankomst", toelichting: `Aankomst ${formatLang(b.aankomst)}.`, wachten: true }
+      return vandaag && b.aankomst <= vandaag
+        ? { titel: "Verblijf starten", toelichting: "De aankomstdatum is bereikt; zet de status op Verblijf.", wachten: false }
+        : { titel: "Wachten op aankomst", toelichting: `Aankomst ${formatLang(b.aankomst)}.`, wachten: true }
     case "tb_aangegeven":
+      if (b.status === "verblijf" && vandaag && b.vertrek > vandaag) {
+        return { titel: "Verblijf loopt", toelichting: `Vertrek ${formatLang(b.vertrek)}.`, wachten: true }
+      }
       return { titel: "Toeristenbelasting aangeven", toelichting: "Na vertrek de aangifte doen in het portaal.", wachten: false }
     case AFGEROND:
       return { titel: "Boeking afronden", toelichting: "", wachten: false }
