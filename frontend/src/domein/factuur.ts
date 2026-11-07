@@ -11,6 +11,8 @@ export interface Factuurregel {
   nachten?: number | null
   personen?: number | null
   bedrag_cent: Cent
+  /** Deel van bedrag_cent dat parkkosten zijn (de huurregel is inclusief parkkosten) */
+  waarvan_parkkosten_cent?: Cent
 }
 
 export interface FactuurBoeking {
@@ -28,10 +30,14 @@ export interface FactuurBoeking {
 /** Factuurregels in de volgorde van de voorbeeldfactuur. */
 export function bouwFactuurregels(b: FactuurBoeking): Factuurregel[] {
   const regels: Factuurregel[] = [
-    { soort: "huur", omschrijving: "Huur", nachten: b.nachten, bedrag_cent: b.huur_cent },
+    // De huurprijs is inclusief parkkosten; die staan niet als aparte post op de factuur,
+    // maar worden wel bijgehouden voor het financieel overzicht.
+    {
+      soort: "huur", omschrijving: "Huur", nachten: b.nachten, bedrag_cent: b.huur_cent + b.parkkosten_cent,
+      ...(b.parkkosten_cent ? { waarvan_parkkosten_cent: b.parkkosten_cent } : {}),
+    },
     { soort: "schoonmaak", omschrijving: "Eindschoonmaak", bedrag_cent: b.schoonmaak_cent },
   ]
-  if (b.parkkosten_cent > 0) regels.push({ soort: "parkkosten", omschrijving: "Parkkosten", bedrag_cent: b.parkkosten_cent })
   for (const e of b.extras ?? []) {
     if (e.aantal <= 0) continue
     const factor = e.eenheid === "per_nacht" ? b.nachten : 1

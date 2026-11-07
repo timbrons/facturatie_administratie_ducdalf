@@ -14,11 +14,11 @@ describe("factuurregels (testcase 2026-004)", () => {
   const regels = bouwFactuurregels(TESTCASE)
   it("heeft de posten van de voorbeeldfactuur", () => {
     expect(regels.map((r) => [r.omschrijving, r.nachten ?? null, r.personen ?? null, r.bedrag_cent])).toEqual([
-      ["Huur", 9, null, 90000],
+      ["Huur", 9, null, 99000],
       ["Eindschoonmaak", null, null, 6400],
-      ["Parkkosten", null, null, 9000],
       ["Toeristenbelasting", 9, 2, 2700],
     ])
+    expect(regels[0].waarvan_parkkosten_cent).toBe(9000)
     expect(totaalVan(regels)).toBe(108100)
   })
   it("heeft de juiste betaaltekst", () => {
