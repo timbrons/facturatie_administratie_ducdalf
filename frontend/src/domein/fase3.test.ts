@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { aanmeldLink, combineer, vulIn } from "./sjablonen"
-import { bouwActielijst } from "./actielijst"
+import { bouwActielijst, nuTeDoen } from "./actielijst"
 import type { WorkflowStap } from "./workflow"
 import { adres, bouwMime, kopWaarde, naarBase64Url, nieuwMessageId, tekstNaarHtml } from "./mime"
 
@@ -94,5 +94,30 @@ describe("herinneringen in de actielijst", () => {
     const vol = { ...b, status: "volledig_betaald" }
     expect(bouwActielijst([vol], STAPPEN, inst, "2026-10-12").some((x) => x.mail === "fijne_reis")).toBe(true)
     expect(bouwActielijst([vol], STAPPEN, inst, "2026-10-12", [{ boekingId: "b1", sjablonen: ["fijne_reis"], datum: "2026-10-11" }]).some((x) => x.mail === "fijne_reis")).toBe(false)
+  })
+})
+
+describe("wachten op betaling in de actielijst", () => {
+  const inst = { herinnering_rest_dagen: 7, aankomst_vooruit_dagen: 14, tb_aangifte_dag: 15 }
+  const b = {
+    id: "b2", naam: "Bram", status: "factuur_verstuurd", betaalwijze: "aanbetaling", aankomst: "2027-06-19", vertrek: "2027-07-11",
+    aanbetaling_vervaldatum: "2026-12-07", rest_vervaldatum: "2027-05-22",
+  }
+  it("toont na het versturen van de factuur dat we op de aanbetaling wachten", () => {
+    const a = bouwActielijst([b], STAPPEN, inst, "2026-11-07").filter((x) => x.boekingId === "b2")
+    expect(a).toHaveLength(1)
+    expect(a[0]).toMatchObject({ soort: "aanbetaling", wachten: true, afgerond: "factuur_verstuurd", datum: "2026-12-07" })
+    expect(a[0].titel).toBe("Wachten op de aanbetaling – Bram")
+    expect(a[0].toelichting).toMatch(/Uiterlijk 7 december 2026/)
+    expect(nuTeDoen(STAPPEN, b)?.titel).toBe("Wachten op de aanbetaling")
+  })
+  it("vlak voor de vervaldatum alleen de herinnering, geen dubbele wachtregel", () => {
+    const a = bouwActielijst([b], STAPPEN, inst, "2026-12-03").filter((x) => x.boekingId === "b2")
+    expect(a).toHaveLength(1)
+    expect(a[0]).toMatchObject({ urgentie: "oranje", mail: "herinnering_aanbetaling" })
+  })
+  it("na de aanbetaling: wachten op de restbetaling", () => {
+    const a = bouwActielijst([{ ...b, status: "aanbetaling_ontvangen" }], STAPPEN, inst, "2027-01-10").filter((x) => x.boekingId === "b2")
+    expect(a.map((x) => x.titel)).toEqual(["Wachten op de restbetaling – Bram"])
   })
 })

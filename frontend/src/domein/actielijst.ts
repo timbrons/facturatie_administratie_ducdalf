@@ -86,6 +86,40 @@ const TE_DOEN: Record<string, { titel: string; toelichting: string; wachten?: bo
   },
 }
 
+/**
+ * Wat er nu te doen is (of waarop we wachten) voor een boeking: de volgende
+ * workflowstap als taak, bij betalingen met de uiterste datum. null als er
+ * geen volgende stap is.
+ */
+export function nuTeDoen(
+  stappen: WorkflowStap[],
+  b: ActieBoeking,
+): { titel: string; toelichting: string; wachten: boolean; uiterlijk?: string } | null {
+  const volgende = volgendeStap(stappen, b)
+  if (!volgende) return null
+  const tot = (d?: string | null) => (d ? ` Uiterlijk ${formatLang(d)}.` : "")
+  switch (volgende.sleutel) {
+    case "aanbetaling_ontvangen":
+      return { titel: "Wachten op de aanbetaling", toelichting: `De factuur is verstuurd.${tot(b.aanbetaling_vervaldatum)}`, wachten: true, uiterlijk: b.aanbetaling_vervaldatum || undefined }
+    case "volledig_betaald":
+      return b.betaalwijze === "aanbetaling"
+        ? { titel: "Wachten op de restbetaling", toelichting: `De aanbetaling is binnen.${tot(b.rest_vervaldatum)}`, wachten: true, uiterlijk: b.rest_vervaldatum || undefined }
+        : { titel: "Wachten op de betaling", toelichting: `De factuur is verstuurd.${tot(b.rest_vervaldatum)}`, wachten: true, uiterlijk: b.rest_vervaldatum || undefined }
+    case "verblijf":
+      return { titel: "Wachten op aankomst", toelichting: `Aankomst ${formatLang(b.aankomst)}.`, wachten: true }
+    case "tb_aangegeven":
+      return { titel: "Toeristenbelasting aangeven", toelichting: "Na vertrek de aangifte doen in het portaal.", wachten: false }
+    case AFGEROND:
+      return { titel: "Boeking afronden", toelichting: "", wachten: false }
+  }
+  const taak = TE_DOEN[volgende.sleutel]
+  return {
+    titel: taak?.titel || volgende.actie_label || volgende.label,
+    toelichting: taak?.toelichting ?? volgende.omschrijving ?? "",
+    wachten: !!taak?.wachten,
+  }
+}
+
 /** Eerder verstuurde mails (uit het maillog), om herinneringen te tonen of te onderdrukken. */
 export interface VerstuurdeMail {
   boekingId: string
@@ -131,6 +165,7 @@ export function bouwActielijst(
   for (const b of boekingen) {
     if (ACTIEVE_STATUS_UITGESLOTEN.has(b.status)) continue
 
+    const voor = acties.length
     const factuurVerstuurd = isBijOfVoorbij(stappen, b, "factuur_verstuurd")
     const aanbetalingBinnen = isBijOfVoorbij(stappen, b, "aanbetaling_ontvangen")
     const volledigBetaald = isBijOfVoorbij(stappen, b, "volledig_betaald")
@@ -170,6 +205,19 @@ export function bouwActielijst(
           toelichting: (dagen === 0 ? "Vervalt vandaag." : `Vervalt over ${dagen} dag(en).`) + herinnerd(b.id, "herinnering_rest"),
         })
       }
+    }
+
+    // Geen herinnering nodig (nog niet bijna vervallen): laten zien dat we op de betaling wachten.
+    const betaalActie = acties.length > voor
+    const volgendeBetaling = volgendeStap(stappen, b)
+    if (!betaalActie && factuurVerstuurd && volgendeBetaling && ["aanbetaling_ontvangen", "volledig_betaald"].includes(volgendeBetaling.sleutel)) {
+      const nu = nuTeDoen(stappen, b)!
+      acties.push({
+        boekingId: b.id, soort: volgendeBetaling.sleutel === "aanbetaling_ontvangen" ? "aanbetaling" : "restbetaling", urgentie: "normaal",
+        datum: (volgendeBetaling.sleutel === "aanbetaling_ontvangen" ? b.aanbetaling_vervaldatum : b.rest_vervaldatum) || b.aankomst,
+        titel: `${nu.titel} – ${b.naam}`, toelichting: nu.toelichting, wachten: true,
+        stap: volgendeBetaling.sleutel, afgerond: labelVoor(stappen, b.status),
+      })
     }
 
     // Aankomst in de komende dagen
