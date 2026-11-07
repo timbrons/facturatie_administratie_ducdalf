@@ -61,7 +61,7 @@ function VerrekeningDialoog({ jaar, record: r, gezinnen, onSluiten }: {
   const [aan, setAan] = useState(r?.aan ?? (voorstel ? ontvanger.gezin : namen[0] ?? ""))
   const [bedrag, setBedrag] = useState<Cent | null>(r ? r.bedrag_cent : voorstel)
   const [datum, setDatum] = useState(r?.datum ?? vandaag())
-  const [omschrijving, setOmschrijving] = useState(r?.omschrijving ?? "Helft huur ander huis")
+  const [omschrijving, setOmschrijving] = useState(r?.omschrijving ?? "Verrekening gehuurde huizen")
   const [bezig, setBezig] = useState(false)
   const [fout, setFout] = useState<unknown>(null)
   const geldig = !!van && !!aan && van !== aan && bedrag !== null && bedrag > 0 && (datum === "" || isIsoDatum(datum))

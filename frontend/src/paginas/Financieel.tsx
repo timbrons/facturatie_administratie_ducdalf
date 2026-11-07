@@ -465,7 +465,7 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
     downloadCsv(`zomerverdeling-${jaar}.csv`, [
       ["Zomer", periode!.van, periode!.tot, `${z.nachten} nachten`],
       [],
-      ["Gezin", "Recht (nachten)", "Gebruikt (nachten)", "Afgezien (nachten)", "Opbrengst afgeziene weken", "Aandeel gedeelde opbrengst", "Totaal opbrengst (uit huuropbrengst)", "Verrekening huur ander huis", "Al verrekend", "Nog tussen gezinnen"],
+      ["Gezin", "Recht (nachten)", "Gebruikt (nachten)", "Afgezien (nachten)", "Opbrengst afgeziene weken", "Aandeel gedeelde opbrengst", "Totaal opbrengst (uit huuropbrengst)", "Gehuurde huizen (betaald min aandeel)", "Al verrekend", "Nog tussen gezinnen"],
       ...z.gezinnen.map((g) => [
         g.gezin, g.recht, g.gebruikt, g.afgezien, csvBedrag(g.opbrengstAfgezien_cent), csvBedrag(g.opbrengstGedeeld_cent), csvBedrag(g.opbrengst_cent),
         csvBedrag(g.verrekening_cent), csvBedrag(g.verrekend_cent), csvBedrag(g.tussenGezinnen_cent),
@@ -530,7 +530,11 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
                 <th className="py-2 pr-3 text-right font-semibold">Afgeziene weken</th>
                 <th className="py-2 pr-3 text-right font-semibold">Gedeeld</th>
                 <th className="py-2 text-right font-semibold" title="Uit de huuropbrengst, van de gezamenlijke rekening">Recht op huuropbrengst</th>
-                {metHuur && <th className="py-2 pl-3 text-right font-semibold">Huur ander huis</th>}
+                {metHuur && (
+                  <th className="py-2 pl-3 text-right font-semibold" title="Over alle gehuurde huizen samen: zelf betaalde huur min eigen aandeel (plus = krijgt terug)">
+                    Gehuurde huizen
+                  </th>
+                )}
                 {metVerrekend && <th className="py-2 pl-3 text-right font-semibold">Al verrekend</th>}
                 {metSaldo && <th className="py-2 pl-3 text-right font-semibold" title="Plus: krijgt nog van het andere gezin; min: moet nog betalen">Nog tussen gezinnen</th>}
               </tr>
@@ -578,21 +582,62 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
       </Kaart>
 
       {z.huurhuizen.length > 0 && (
-        <Kaart titel="Gehuurd huis (overlapweek)">
+        <Kaart titel="Gehuurde huizen">
           <p className="mb-3 text-sm text-zacht">
-            De huur wordt gelijk over de gezinnen verdeeld. In de kolom "Huur ander huis" hierboven: positief = krijgt terug, negatief = moet bijbetalen.
-            Is dat al (deels) verrekend, leg dat dan vast bij Tussentijds verrekend.
+            De huur van alle gehuurde huizen samen wordt gelijk over de gezinnen verdeeld. In de kolom "Gehuurde huizen" hierboven staat per gezin
+            het verschil tussen wat het zelf betaalde en zijn aandeel (plus = krijgt terug, min = moet nog bijdragen). Is dat al (deels) verrekend,
+            leg dat dan vast bij Tussentijds verrekend.
           </p>
-          <ul className="divide-y divide-lijn border-t border-lijn text-sm">
-            {z.huurhuizen.map((h, i) => (
-              <li key={i} className="flex flex-wrap justify-between gap-2 py-2">
-                <span className="text-inkt">{h.groep || "Gezin niet opgegeven"} · {formatLang(h.aankomst)} – {formatLang(h.vertrek)}</span>
-                <span className="tabular-nums text-xs text-zacht">
-                  {h.huurkosten_cent ? `${formatEuro(h.huurkosten_cent)}, betaald door ${h.betaaldDoor || "?"}` : <span className="text-oranje">huurkosten nog niet ingevuld</span>}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[36rem] text-left text-sm">
+              <thead className="border-b border-lijn text-xs uppercase tracking-wider text-zacht">
+                <tr>
+                  <th className="py-2 pr-3 font-semibold">Periode</th>
+                  <th className="py-2 pr-3 font-semibold">Voor</th>
+                  <th className="py-2 pr-3 font-semibold">Betaald door</th>
+                  <th className="py-2 text-right font-semibold">Huur</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-lijn tabular-nums">
+                {z.huurhuizen.map((h, i) => (
+                  <tr key={i}>
+                    <td className="py-2 pr-3 whitespace-nowrap">{formatLang(h.aankomst)} – {formatLang(h.vertrek)}</td>
+                    <td className="py-2 pr-3">{h.groep || "Gezin niet opgegeven"}</td>
+                    <td className="py-2 pr-3">{h.betaaldDoor || "?"}</td>
+                    <td className="py-2 text-right">{h.huurkosten_cent ? formatEuro(h.huurkosten_cent) : <span className="text-oranje">nog niet ingevuld</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="border-t-2 border-inkt/50 font-semibold tabular-nums text-inkt">
+                <tr>
+                  <td className="py-2 pr-3" colSpan={3}>Totaal</td>
+                  <td className="py-2 text-right">{formatEuro(z.huurkosten_cent)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[36rem] text-left text-sm">
+              <thead className="border-b border-lijn text-xs uppercase tracking-wider text-zacht">
+                <tr>
+                  <th className="py-2 pr-3 font-semibold">Gezin</th>
+                  <th className="py-2 pr-3 text-right font-semibold">Zelf betaald</th>
+                  <th className="py-2 pr-3 text-right font-semibold">Aandeel</th>
+                  <th className="py-2 text-right font-semibold">Verschil</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-lijn tabular-nums">
+                {z.gezinnen.map((g) => (
+                  <tr key={g.gezin}>
+                    <td className="py-2 pr-3 text-inkt">{g.gezin}</td>
+                    <td className="py-2 pr-3 text-right">{formatEuro(g.huurBetaald_cent)}</td>
+                    <td className="py-2 pr-3 text-right">{formatEuro(g.huurAandeel_cent)}</td>
+                    <td className={`py-2 text-right font-semibold ${g.verrekening_cent < 0 ? "text-oranje" : "text-inkt"}`}>{formatEuro(g.verrekening_cent)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </Kaart>
       )}
 
