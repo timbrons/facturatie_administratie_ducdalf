@@ -36,15 +36,38 @@ function periodeTekst(periode: string): string {
  */
 export function TbBetalingen({ jaar, aangegevenCent }: { jaar: number; aangegevenCent: Cent }) {
   const uitgaven = useUitgaven()
+  const qc = useQueryClient()
   const [open, setOpen] = useState<Uitgave | null | undefined>(undefined)
+  const [ophalen, setOphalen] = useState<{ bezig: boolean; melding: string }>({ bezig: false, melding: "" })
+
+  async function haalMails() {
+    setOphalen({ bezig: true, melding: "" })
+    try {
+      const r = await pb.send<{ nieuw: number; melding: string }>("/api/ducdalf/uitgaven/betaalmails", { method: "POST" })
+      await qc.invalidateQueries({ queryKey: sleutels.uitgaven })
+      setOphalen({ bezig: false, melding: r.melding || (r.nieuw ? `${r.nieuw} nieuwe betaling(en) vastgelegd.` : "Geen nieuwe betaalbevestigingen gevonden.") })
+    } catch (err) {
+      setOphalen({ bezig: false, melding: `Ophalen mislukt: ${err instanceof Error ? err.message : String(err)}` })
+    }
+  }
   if (uitgaven.isLoading) return <Laden />
   const lijst = (uitgaven.data ?? []).filter((u) => u.soort === "toeristenbelasting" && jaarVanUitgave(u) === jaar)
   const betaald = totaalUitgaven(jaar, uitgaven.data ?? [], "toeristenbelasting")
   return (
-    <Kaart titel="Betaald aan Grand Pic Saint-Loup" actie={<button type="button" className="knop-klein" onClick={() => setOpen(null)}>+ Betaling</button>}>
+    <Kaart
+      titel="Betaald aan Grand Pic Saint-Loup"
+      actie={
+        <span className="flex flex-wrap gap-2">
+          <button type="button" className="knop-klein" disabled={ophalen.bezig} onClick={haalMails}>{ophalen.bezig ? "Ophalen…" : "Nu ophalen uit Gmail"}</button>
+          <button type="button" className="knop-klein" onClick={() => setOpen(null)}>+ Betaling</button>
+        </span>
+      }
+    >
       <p className="mb-3 text-sm text-zacht">
         Wat we via het portaal hebben betaald (afgeschreven van de gezamenlijke rekening). Een betaling telt in het jaar van afschrijving.
+        Betaalbevestigingen per mail worden elk half uur automatisch vastgelegd.
       </p>
+      {ophalen.melding && <p className="mb-3 text-sm text-tekst">{ophalen.melding}</p>}
       {uitgaven.error ? <Fout fout={uitgaven.error} /> : null}
       {lijst.length === 0 ? (
         <p className="text-sm text-zacht">Nog geen betalingen in {jaar}.</p>
@@ -55,6 +78,10 @@ export function TbBetalingen({ jaar, aangegevenCent }: { jaar: number; aangegeve
               <span className="text-inkt">
                 {u.datum ? formatLang(u.datum) : "Datum onbekend"}
                 <span className="ml-2 text-xs text-zacht">{[u.periode && `over ${periodeTekst(u.periode)}`, u.omschrijving].filter(Boolean).join(" · ")}</span>
+                {u.bron?.startsWith("gmail:") && (
+                  <a className="ml-2 text-xs" href={`https://mail.google.com/mail/u/0/#all/${u.bron.slice(6)}`} target="_blank" rel="noopener noreferrer">uit e-mail ↗</a>
+                )}
+                {u.controleren && <span className="ml-2 bg-oranje-zacht px-1.5 py-0.5 text-xs text-oranje">bedrag controleren</span>}
               </span>
               <span className="flex items-center gap-3 tabular-nums">
                 {formatEuro(u.bedrag_cent)}
@@ -121,6 +148,8 @@ function UitgaveDialoog({ soort, titel, uitgave: u, standaard, onSluiten }: {
     data.set("periode", periode)
     data.set("bedrag_cent", String(bedrag ?? 0))
     data.set("omschrijving", omschrijving)
+    // Opgeslagen door de gebruiker: het bedrag is nagekeken.
+    data.set("controleren", "false")
     for (const f of bestanden) data.append("bewijs+", f)
     return klaar(() => (u ? pb.collection("uitgaven").update(u.id, data) : pb.collection("uitgaven").create(data)))
   }

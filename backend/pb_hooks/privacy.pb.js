@@ -32,7 +32,8 @@ routerAdd("GET", "/privacy", (e) => {
 <ul>
 <li>in te loggen (naam en e-mailadres);</li>
 <li>e-mails aan huurders te versturen vanuit dat account (gmail.send);</li>
-<li>reacties van huurders op die e-mails te lezen, zodat ze bij de boeking te zien zijn; de app leest alleen de Gmail-gesprekken van e-mails die zij zelf heeft verstuurd en slaat de inhoud niet op (gmail.readonly);</li>
+<li>e-mails van en aan huurders te lezen, zodat ze bij de boeking en de huurder te zien zijn; de app slaat de inhoud niet op (gmail.readonly);</li>
+<li>betaalbevestigingen van de toeristenbelasting (van de betaaldienst PayFiP) te lezen en daarvan alleen datum, bedrag en ordernummer vast te leggen (gmail.readonly);</li>
 <li>eigen verblijven in Google Agenda te tonen, toe te voegen en te wijzigen, en de bezette periodes te bepalen (calendar.events);</li>
 <li>kopieën van facturen en bewijsstukken in Google Drive te zetten; de app ziet alleen de bestanden die zij zelf heeft gemaakt (drive.file).</li>
 </ul>

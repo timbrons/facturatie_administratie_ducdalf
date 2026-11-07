@@ -158,6 +158,10 @@ function Algemeen({ inst }: { inst: Instellingen }) {
         <div className="grid gap-4 sm:grid-cols-2">
           {tekst("tb_portaal_url", "Portaal toeristenbelasting", { type: "url" })}
           {tekst("pld_portaal_url", "Portaal Parc le Duc (aanmelden huurders)", { type: "url" })}
+          {tekst("tb_betaalmail_afzender", "Afzender betaalbevestiging toeristenbelasting", {
+            hint: "Mails van dit adres met het onderwerp hiernaast worden automatisch als betaling vastgelegd (Financieel → Toeristenbelasting).",
+          })}
+          {tekst("tb_betaalmail_onderwerp", "Onderwerp betaalbevestiging toeristenbelasting")}
           {tekst("aanmeldformulier_url", "Aanmeldformulier", { type: "url", hint: `Leeg = het formulier van deze app (${formulierUrl()})` })}
         </div>
       </Kaart>
