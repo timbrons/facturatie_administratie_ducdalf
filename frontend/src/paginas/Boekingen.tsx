@@ -5,9 +5,8 @@ import { boekingNaam } from "../lib/types"
 import { aantalNachten, totaalBoeking } from "../lib/boeking"
 import { formatMiddel, jaarVan, vandaag } from "../domein/datum"
 import { formatEuro } from "../domein/geld"
-import { gesorteerd } from "../domein/workflow"
 import { Fout, Laden, Paginakop } from "../components/ui"
-import { StatusLabel } from "../components/Status"
+import { huidigeStatus, StatusLabel } from "../components/Status"
 
 export function Boekingen() {
   const boekingen = useBoekingen()
@@ -23,15 +22,30 @@ export function Boekingen() {
     return [...set].sort((a, b) => b - a)
   }, [boekingen.data])
 
+  // Filter op de huidige status (wat er nu speelt), zoals in de kolom Status.
+  const vanJaar = useMemo(() => (boekingen.data ?? []).filter((b) => jaarVan(b.aankomst) === jaar), [boekingen.data, jaar])
+  const statussen = useMemo(() => {
+    const per = new Map<string, { soort: string; aantal: number }>()
+    for (const b of vanJaar) {
+      const h = huidigeStatus(b, stappen.data ?? [])
+      per.set(h.tekst, { soort: h.soort, aantal: (per.get(h.tekst)?.aantal ?? 0) + 1 })
+    }
+    const volgorde = { actie: 0, wachten: 1, klaar: 2 } as Record<string, number>
+    return [...per.entries()].sort((a, b) => volgorde[a[1].soort] - volgorde[b[1].soort] || a[0].localeCompare(b[0]))
+  }, [vanJaar, stappen.data])
+
   const lijst = useMemo(() => {
     const z = zoek.trim().toLowerCase()
-    return (boekingen.data ?? []).filter((b) => {
-      if (jaarVan(b.aankomst) !== jaar) return false
-      if (status === "actief" ? ["geannuleerd", "afgerond"].includes(b.status) : status && b.status !== status) return false
+    return vanJaar.filter((b) => {
+      const h = huidigeStatus(b, stappen.data ?? [])
+      if (status === "actief" && h.soort === "klaar") return false
+      if (status === "actie" && h.soort !== "actie") return false
+      if (status === "wachten" && h.soort !== "wachten") return false
+      if (status.startsWith("nu:") && h.tekst !== status.slice(3)) return false
       if (z && !`${boekingNaam(b)} ${b.expand?.huurder?.email ?? ""} ${b.kenteken}`.toLowerCase().includes(z)) return false
       return true
     })
-  }, [boekingen.data, jaar, status, zoek])
+  }, [vanJaar, stappen.data, status, zoek])
 
   function zet(sleutel: string, waarde: string) {
     const p = new URLSearchParams(params)
@@ -56,8 +70,14 @@ export function Boekingen() {
         <select value={status} onChange={(e) => zet("status", e.target.value)} aria-label="Status">
           <option value="">Alle statussen</option>
           <option value="actief">Alleen lopend</option>
-          {gesorteerd(stappen.data ?? []).map((s) => <option key={s.sleutel} value={s.sleutel}>{s.label}</option>)}
-          <option value="geannuleerd">Geannuleerd</option>
+          <option value="actie">Actie nodig (van ons)</option>
+          <option value="wachten">Wachten op de huurder</option>
+          {statussen.length > 0 && (
+            <optgroup label="Status">
+              {statussen.map(([tekst, { aantal }]) => <option key={tekst} value={`nu:${tekst}`}>{tekst} ({aantal})</option>)}
+            </optgroup>
+          )}
+          {status.startsWith("nu:") && !statussen.some(([t]) => `nu:${t}` === status) && <option value={status}>{status.slice(3)} (0)</option>}
         </select>
         <input type="search" placeholder="Zoek op naam, e-mail of kenteken" value={zoek} onChange={(e) => setZoek(e.target.value)} />
       </div>
