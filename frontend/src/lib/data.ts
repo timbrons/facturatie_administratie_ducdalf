@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { stelAfzenderIn } from "./gmail"
 import { pb } from "./pb"
 import type {
-  Betaling, Factuur, MailLog, MailSjabloon, TbAangifte, Uitgave,
+  Betaling, Factuur, MailLog, MailSjabloon, TbAangifte, Uitgave, ZomerVerrekeningRecord,
   Boeking, ExtraRecord, Huurder, Instellingen, Nummerreeks, SeizoenRecord, Statuswijziging, TbTariefRecord,
   WorkflowStapRecord, AanmeldingRecord,
 } from "./types"
@@ -29,6 +29,7 @@ export const sleutels = {
   maillog: ["mail_log"] as const,
   aanmeldingen: ["aanmeldingen"] as const,
   uitgaven: ["uitgaven"] as const,
+  zomerVerrekeningen: ["zomer_verrekeningen"] as const,
 }
 
 /** Inzendingen van het eigen aanmeldformulier, nieuwste eerst. */
@@ -196,5 +197,13 @@ export function useUitgaven() {
   return useQuery({
     queryKey: sleutels.uitgaven,
     queryFn: () => pb.collection("uitgaven").getFullList<Uitgave>({ sort: "periode,datum" }),
+  })
+}
+
+/** Tussentijds verrekende bedragen tussen de gezinnen (Zomerverdeling). */
+export function useZomerVerrekeningen() {
+  return useQuery({
+    queryKey: sleutels.zomerVerrekeningen,
+    queryFn: () => pb.collection("zomer_verrekeningen").getFullList<ZomerVerrekeningRecord>({ sort: "datum" }),
   })
 }

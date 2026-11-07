@@ -230,6 +230,16 @@ export interface TbAangifte extends RecordModel {
   notities: string
 }
 
+/** Bedrag dat de gezinnen tussentijds met elkaar hebben verrekend (Zomerverdeling). */
+export interface ZomerVerrekeningRecord extends RecordModel {
+  jaar: number
+  datum: string
+  van: string
+  aan: string
+  bedrag_cent: Cent
+  omschrijving: string
+}
+
 /** Een betaling die we zelf doen: afdracht toeristenbelasting, Starlink, ... */
 export interface Uitgave extends RecordModel {
   soort: "toeristenbelasting" | "starlink" | "overig"

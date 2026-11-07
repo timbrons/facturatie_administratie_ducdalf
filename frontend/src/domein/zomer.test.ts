@@ -118,3 +118,20 @@ describe("zomerverdeling met een gehuurd huis (overlapweek)", () => {
     expect(z.gezinnen.map((g) => g.verrekening_cent)).toEqual([50_000, -50_000])
   })
 })
+
+describe("tussentijds verrekend", () => {
+  it("trekt al verrekende bedragen af van wat nog openstaat", () => {
+    const basis = {
+      periode,
+      gezinnen: [A, B],
+      verblijven: [{ groep: A, aankomst: "2026-07-11", vertrek: "2026-07-18", anderHuis: true, huurkosten_cent: 110_000 }],
+      verhuur: [],
+    }
+    const z = zomerverdeling({ ...basis, verrekend: [{ van: B, aan: A, bedrag_cent: 50_000 }] })
+    const [a, b] = z.gezinnen
+    expect([a.saldo_cent, b.saldo_cent]).toEqual([55_000, -55_000])
+    expect([a.verrekend_cent, b.verrekend_cent]).toEqual([-50_000, 50_000])
+    expect([a.nogOpen_cent, b.nogOpen_cent]).toEqual([5_000, -5_000])
+    expect(zomerverdeling(basis).gezinnen.map((g) => g.nogOpen_cent)).toEqual([55_000, -55_000])
+  })
+})
