@@ -64,9 +64,7 @@ export function Dashboard() {
 
   return (
     <>
-      <Paginakop wenkbrauw={`Vandaag, ${formatMiddel(nu)}`} titel="Acties">
-        <Link to="/boekingen/nieuw" className="knop sm:hidden">Nieuwe boeking</Link>
-      </Paginakop>
+      <Paginakop wenkbrauw={`Vandaag, ${formatMiddel(nu)}`} titel="Acties" />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
