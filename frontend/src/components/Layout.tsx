@@ -74,7 +74,8 @@ export function Layout({ children }: { children: ReactNode }) {
         </div>
         {open && (
           <nav className="border-t border-lijn bg-creme px-4 py-2 lg:hidden">
-            {[...MENU, { naar: "/boekingen/nieuw", label: "Nieuwe boeking" }].map((m) => (
+            {/* Op de telefoon: Nieuwe boeking direct onder Overzicht. */}
+            {[MENU[0], { naar: "/boekingen/nieuw", label: "Nieuwe boeking" }, ...MENU.slice(1)].map((m) => (
               <NavLink
                 key={m.naar}
                 to={m.naar}
