@@ -437,6 +437,8 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
   const [wijzigen, setWijzigen] = useState(false)
   const [verblijfOpen, setVerblijfOpen] = useState<EigenVerblijf | null>(null)
   const verrekeningen = (useZomerVerrekeningen().data ?? []).filter((v) => v.jaar === jaar)
+  // Uitleg bij een kolom (na een klik op ⓘ in de kolomkop)
+  const [uitleg, setUitleg] = useState<KolomUitleg | null>(null)
 
   if (!inst) return <Laden />
   if (!periode || wijzigen) {
@@ -520,23 +522,29 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
           </div>
         )}
 
+        <p className="mb-2 text-xs text-zacht">Klik op ⓘ bij een kolom voor uitleg.</p>
+        {uitleg && (
+          <div className="mb-3 flex items-start justify-between gap-3 border-l-2 border-goud bg-zand/50 px-4 py-3 text-sm" role="note">
+            <div>
+              <div className="font-semibold text-inkt">{KOLOMMEN[uitleg].titel}</div>
+              <p className="mt-1 text-tekst">{KOLOMMEN[uitleg].tekst}</p>
+            </div>
+            <button type="button" className="shrink-0 text-zacht hover:text-inkt" aria-label="Uitleg sluiten" onClick={() => setUitleg(null)}>×</button>
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full min-w-[44rem] text-left text-sm">
             <thead className="border-b border-lijn text-xs uppercase tracking-wider text-zacht">
               <tr>
-                <th className="py-2 pr-3 font-semibold">Gezin</th>
-                <th className="py-2 pr-3 font-semibold">Zelf gebruikt</th>
-                <th className="py-2 pr-3 font-semibold">Afgezien</th>
-                <th className="py-2 pr-3 text-right font-semibold">Afgeziene weken</th>
-                <th className="py-2 pr-3 text-right font-semibold">Gedeeld</th>
-                <th className="py-2 text-right font-semibold" title="Uit de huuropbrengst, van de gezamenlijke rekening">Recht op huuropbrengst</th>
-                {metHuur && (
-                  <th className="py-2 pl-3 text-right font-semibold" title="Over alle gehuurde huizen samen: zelf betaalde huur min eigen aandeel (plus = krijgt terug)">
-                    Gehuurde huizen
-                  </th>
-                )}
-                {metVerrekend && <th className="py-2 pl-3 text-right font-semibold">Al verrekend</th>}
-                {metSaldo && <th className="py-2 pl-3 text-right font-semibold" title="Plus: krijgt nog van het andere gezin; min: moet nog betalen">Nog tussen gezinnen</th>}
+                <Kolomkop k="gezin" open={uitleg} onKies={setUitleg} className="pr-3">Gezin</Kolomkop>
+                <Kolomkop k="gebruikt" open={uitleg} onKies={setUitleg} className="pr-3">Zelf gebruikt</Kolomkop>
+                <Kolomkop k="afgezien" open={uitleg} onKies={setUitleg} className="pr-3">Afgezien</Kolomkop>
+                <Kolomkop k="afgezieneWeken" open={uitleg} onKies={setUitleg} className="pr-3 text-right">Afgeziene weken</Kolomkop>
+                <Kolomkop k="gedeeld" open={uitleg} onKies={setUitleg} className="pr-3 text-right">Gedeeld</Kolomkop>
+                <Kolomkop k="rechtOp" open={uitleg} onKies={setUitleg} className="text-right">Recht op huuropbrengst</Kolomkop>
+                {metHuur && <Kolomkop k="gehuurd" open={uitleg} onKies={setUitleg} className="pl-3 text-right">Gehuurde huizen</Kolomkop>}
+                {metVerrekend && <Kolomkop k="verrekend" open={uitleg} onKies={setUitleg} className="pl-3 text-right">Al verrekend</Kolomkop>}
+                {metSaldo && <Kolomkop k="nogTussen" open={uitleg} onKies={setUitleg} className="pl-3 text-right">Nog tussen gezinnen</Kolomkop>}
               </tr>
             </thead>
             <tbody className="divide-y divide-lijn tabular-nums">
@@ -743,5 +751,81 @@ function PeriodeInvoer({ jaar, inst, huidig, onKlaar }: {
         {huidig && <button type="button" className="knop-rand" onClick={onKlaar}>Annuleren</button>}
       </div>
     </div>
+  )
+}
+
+type KolomUitleg = "gezin" | "gebruikt" | "afgezien" | "afgezieneWeken" | "gedeeld" | "rechtOp" | "gehuurd" | "verrekend" | "nogTussen"
+
+/** Uitleg per kolom van de zomerverdeling. */
+const KOLOMMEN: Record<KolomUitleg, { titel: string; tekst: string }> = {
+  gezin: {
+    titel: "Gezin",
+    tekst: "Het gezin, zoals ingesteld bij Instellingen → Gezinnen voor een eigen verblijf.",
+  },
+  gebruikt: {
+    titel: "Zelf gebruikt",
+    tekst:
+      "Hoeveel nachten het gezin deze zomer zelf heeft gebruikt (de eigen verblijven in de agenda, alleen nachten binnen de zomervakantie). " +
+      "Een verblijf in een gehuurd huis op het park (zoals de overlapweek) telt ook mee. Een nacht die dubbel in de agenda staat, telt één keer.",
+  },
+  afgezien: {
+    titel: "Afgezien",
+    tekst: "Het deel van het recht van 3 weken (21 nachten) dat het gezin niet heeft gebruikt: 3 weken min \"Zelf gebruikt\". Bij meer dan 3 weken gebruik staat hier \"–\".",
+  },
+  afgezieneWeken: {
+    titel: "Afgeziene weken",
+    tekst:
+      "De huuropbrengst van verhuurde nachten die zijn toegerekend aan de weken waarvan dit gezin heeft afgezien. Verhuurde nachten vullen eerst " +
+      "die afgeziene weken; hebben beide gezinnen afgezien, dan naar verhouding. Opbrengst = huur en extra's zonder toeristenbelasting, min park- en " +
+      "schoonmaakkosten PLD, gemiddeld per verhuurde nacht.",
+  },
+  gedeeld: {
+    titel: "Gedeeld",
+    tekst: "Is er meer verhuurd dan er afgeziene weken waren, dan wordt de opbrengst van de rest gelijk over de gezinnen verdeeld. Dit is het deel van dit gezin.",
+  },
+  rechtOp: {
+    titel: "Recht op huuropbrengst",
+    tekst: "\"Afgeziene weken\" + \"Gedeeld\": wat dit gezin uit de huuropbrengst krijgt. Dit komt van de gezamenlijke rekening, niet van het andere gezin.",
+  },
+  gehuurd: {
+    titel: "Gehuurde huizen",
+    tekst:
+      "De huur van alle gehuurde huizen op het park samen wordt gelijk over de gezinnen verdeeld. Hier staat wat dit gezin zelf aan huur betaalde, " +
+      "min zijn aandeel. Plus = krijgt terug, min = moet nog bijdragen. De berekening per huis en per gezin staat in het blok Gehuurde huizen.",
+  },
+  verrekend: {
+    titel: "Al verrekend",
+    tekst: "Wat er al tussentijds tussen de gezinnen is betaald (blok Tussentijds verrekend). Plus = dit gezin heeft al betaald aan het andere gezin, min = heeft ontvangen.",
+  },
+  nogTussen: {
+    titel: "Nog tussen gezinnen",
+    tekst:
+      "\"Gehuurde huizen\" + \"Al verrekend\": wat de gezinnen elkaar nog moeten betalen. Plus = krijgt nog van het andere gezin, min = moet nog betalen. " +
+      "De huuropbrengst (Recht op huuropbrengst) staat daar los van.",
+  },
+}
+
+/** Kolomkop met een ⓘ-knop die de uitleg van de kolom opent of sluit. */
+function Kolomkop({ k, open, onKies, className = "", children }: {
+  k: KolomUitleg
+  open: KolomUitleg | null
+  onKies: (k: KolomUitleg | null) => void
+  className?: string
+  children: React.ReactNode
+}) {
+  const actief = open === k
+  return (
+    <th className={`py-2 font-semibold ${className}`}>
+      {children}
+      <button
+        type="button"
+        className={`ml-1 align-middle text-[11px] normal-case ${actief ? "text-goud-tekst" : "text-zacht hover:text-inkt"}`}
+        aria-label={`Uitleg: ${KOLOMMEN[k].titel}`}
+        aria-expanded={actief}
+        onClick={() => onKies(actief ? null : k)}
+      >
+        ⓘ
+      </button>
+    </th>
   )
 }
