@@ -9,7 +9,7 @@ import { dagenTussen, formatLang, isIsoDatum, jaarVan, maandNaam, vandaag } from
 import { formatEuro, type Cent } from "../domein/geld"
 import { betaalstatus, bouwFactuurregels } from "../domein/factuur"
 import { financieelOverzicht, parkkostenOverzicht, pldGefactureerd, tbOverzicht, type FinBoeking } from "../domein/financieel"
-import { RECHT_NACHTEN, standaardZomer, toelichting, wekenTekst, ZOMERVAKANTIES, zomerverdeling, zomerVoor, type ZomerVerhuur } from "../domein/zomer"
+import { RECHT_NACHTEN, standaardZomer, toelichting, verrekenOpdrachten, wekenTekst, ZOMERVAKANTIES, zomerverdeling, zomerVoor, type ZomerVerhuur } from "../domein/zomer"
 import { useEigenVerblijvenIn } from "../lib/agenda"
 import { verblijfGroepen, type EigenVerblijf } from "../domein/agenda"
 import { EigenVerblijfDialoog } from "../components/EigenVerblijf"
@@ -467,7 +467,7 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
     downloadCsv(`zomerverdeling-${jaar}.csv`, [
       ["Zomer", periode!.van, periode!.tot, `${z.nachten} nachten`],
       [],
-      ["Gezin", "Recht (nachten)", "Gebruikt (nachten)", "Afgezien (nachten)", "Opbrengst afgeziene weken", "Aandeel gedeelde opbrengst", "Totaal opbrengst (uit huuropbrengst)", "Saldo gehuurde huizen (betaald min aandeel)", "Al verrekend", "Nog tussen gezinnen"],
+      ["Gezin", "Recht (nachten)", "Gebruikt (nachten)", "Afgezien (nachten)", "Opbrengst afgeziene weken", "Aandeel gedeelde opbrengst", "Totaal opbrengst (uit huuropbrengst)", "Saldo gehuurde huizen (betaald min aandeel)", "Al verrekend", "Verrekenen tussen gezinnen"],
       ...z.gezinnen.map((g) => [
         g.gezin, g.recht, g.gebruikt, g.afgezien, csvBedrag(g.opbrengstAfgezien_cent), csvBedrag(g.opbrengstGedeeld_cent), csvBedrag(g.opbrengst_cent),
         csvBedrag(g.verrekening_cent), csvBedrag(g.verrekend_cent), csvBedrag(g.tussenGezinnen_cent),
@@ -544,7 +544,7 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
                 <Kolomkop k="rechtOp" open={uitleg} onKies={setUitleg} className="text-right">Recht op huuropbrengst</Kolomkop>
                 {metHuur && <Kolomkop k="gehuurd" open={uitleg} onKies={setUitleg} className="pl-3 text-right">Saldo gehuurde huizen</Kolomkop>}
                 {metVerrekend && <Kolomkop k="verrekend" open={uitleg} onKies={setUitleg} className="pl-3 text-right">Al verrekend</Kolomkop>}
-                {metSaldo && <Kolomkop k="nogTussen" open={uitleg} onKies={setUitleg} className="pl-3 text-right">Nog tussen gezinnen</Kolomkop>}
+                {metSaldo && <Kolomkop k="nogTussen" open={uitleg} onKies={setUitleg} className="pl-3 text-right">Verrekenen tussen gezinnen</Kolomkop>}
               </tr>
             </thead>
             <tbody className="divide-y divide-lijn tabular-nums">
@@ -575,6 +575,7 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
             </tfoot>
           </table>
         </div>
+        <Conclusie z={z} />
         <section className="mt-5 border-l-2 border-goud bg-zand/50 px-4 py-3">
           <div className="wenkbrauw mb-2">Toelichting</div>
           <ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-tekst">
@@ -582,7 +583,7 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
           </ul>
           {metSaldo && (
             <p className="mt-2 text-xs text-zacht">
-              "Nog tussen gezinnen" is wat de gezinnen elkaar nog moeten betalen (plus = krijgt nog, min = moet nog betalen). De huuropbrengst komt
+              "Verrekenen tussen gezinnen" is wat de gezinnen elkaar nog moeten betalen (plus = krijgt nog, min = moet nog betalen). De huuropbrengst komt
               daar los van uit de gezamenlijke rekening.
             </p>
           )}
@@ -798,7 +799,7 @@ const KOLOMMEN: Record<KolomUitleg, { titel: string; tekst: string }> = {
     tekst: "Wat er al tussentijds tussen de gezinnen is betaald (blok Tussentijds verrekend). Plus = dit gezin heeft al betaald aan het andere gezin, min = heeft ontvangen.",
   },
   nogTussen: {
-    titel: "Nog tussen gezinnen",
+    titel: "Verrekenen tussen gezinnen",
     tekst:
       "\"Saldo gehuurde huizen\" + \"Al verrekend\": wat de gezinnen elkaar nog moeten betalen. Plus = krijgt nog van het andere gezin, min = moet nog betalen. " +
       "De huuropbrengst (Recht op huuropbrengst) staat daar los van.",
@@ -827,5 +828,63 @@ function Kolomkop({ k, open, onKies, className = "", children }: {
         ⓘ
       </button>
     </th>
+  )
+}
+
+/**
+ * Conclusie per gezin, met de twee soorten bedragen apart: wat er tussen de
+ * gezinnen verrekend moet worden en wat er uit de huuropbrengst (gezamenlijke
+ * rekening) naar het gezin gaat.
+ */
+function Conclusie({ z }: { z: ReturnType<typeof zomerverdeling> }) {
+  const opdrachten = verrekenOpdrachten(z)
+  const tussen = (gezin: string) => {
+    const regels = [
+      ...opdrachten.filter((o) => o.van === gezin).map((o) => ({ tekst: `Betaalt aan ${o.aan}`, bedrag: -o.bedrag_cent })),
+      ...opdrachten.filter((o) => o.aan === gezin).map((o) => ({ tekst: `Ontvangt van ${o.van}`, bedrag: o.bedrag_cent })),
+    ]
+    return regels
+  }
+  const iets = opdrachten.length > 0 || z.gezinnen.some((g) => g.opbrengst_cent > 0)
+  return (
+    <section className="mt-5">
+      <div className="wenkbrauw mb-2">Conclusie</div>
+      {!iets ? (
+        <p className="text-sm text-zacht">Er valt deze zomer niets te verrekenen of uit te keren.</p>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {z.gezinnen.map((g) => {
+            const regels = tussen(g.gezin)
+            return (
+              <div key={g.gezin} className="border border-lijn bg-white p-4 text-sm">
+                <div className="mb-2 font-semibold text-inkt">{g.gezin}</div>
+                <dl className="flex flex-col gap-2">
+                  <div>
+                    <dt className="text-xs uppercase tracking-wider text-zacht">Verrekenen tussen gezinnen</dt>
+                    {regels.length === 0 ? (
+                      <dd className="text-tekst">Niets</dd>
+                    ) : (
+                      regels.map((r, i) => (
+                        <dd key={i} className="flex justify-between gap-3 tabular-nums">
+                          <span className="text-tekst">{r.tekst}</span>
+                          <span className={`font-semibold ${r.bedrag < 0 ? "text-oranje" : "text-inkt"}`}>{formatEuro(Math.abs(r.bedrag))}</span>
+                        </dd>
+                      ))
+                    )}
+                  </div>
+                  <div>
+                    <dt className="text-xs uppercase tracking-wider text-zacht">Uit de huuropbrengst (gezamenlijke rekening)</dt>
+                    <dd className="flex justify-between gap-3 tabular-nums">
+                      <span className="text-tekst">{g.opbrengst_cent > 0 ? "Ontvangt" : "Niets"}</span>
+                      {g.opbrengst_cent > 0 && <span className="font-semibold text-inkt">{formatEuro(g.opbrengst_cent)}</span>}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </section>
   )
 }

@@ -18,7 +18,7 @@ export function TussentijdsVerrekend({ jaar, lijst, gezinnen }: { jaar: number; 
   return (
     <Kaart titel="Tussentijds verrekend" actie={<button type="button" className="knop-klein" onClick={() => setOpen(null)}>+ Verrekening</button>}>
       <p className="mb-3 text-sm text-zacht">
-        Wat de gezinnen voor de zomer van {jaar} al met elkaar hebben verrekend. Dit gaat af van wat de gezinnen elkaar nog moeten betalen ("Nog tussen gezinnen"). In de kolom "Al verrekend": plus = betaald aan het andere gezin, min = ontvangen.
+        Wat de gezinnen voor de zomer van {jaar} al met elkaar hebben verrekend. Dit gaat af van wat de gezinnen elkaar nog moeten betalen ("Verrekenen tussen gezinnen"). In de kolom "Al verrekend": plus = betaald aan het andere gezin, min = ontvangen.
       </p>
       {lijst.length === 0 ? (
         <p className="text-sm text-zacht">Nog niets tussentijds verrekend.</p>

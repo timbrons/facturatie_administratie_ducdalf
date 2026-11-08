@@ -321,22 +321,15 @@ export function toelichting(z: Zomerverdeling): string[] {
     uit.push(`${van} ${ww(van, "heeft", "hebben")} al ${formatEuro(bedrag)} aan ${aan} betaald.`)
   }
   // Nog tussen de gezinnen: wie moet betalen, aan wie
-  const betalers = z.gezinnen.filter((g) => g.tussenGezinnen_cent < 0).map((g) => ({ gezin: g.gezin, rest: -g.tussenGezinnen_cent }))
-  const ontvangers = z.gezinnen.filter((g) => g.tussenGezinnen_cent > 0).map((g) => ({ gezin: g.gezin, rest: g.tussenGezinnen_cent }))
   if (huizen.length || z.verrekeningen.length) {
-    if (betalers.length === 0) uit.push("Tussen de gezinnen is alles verrekend.")
-    for (const b of betalers) {
-      for (const o of ontvangers) {
-        const x = Math.min(b.rest, o.rest)
-        if (x <= 0) continue
-        const teVeel = z.verrekeningen.some((v) => v.van === o.gezin && v.aan === b.gezin)
-        uit.push(
-          `Conclusie: ${b.gezin} ${ww(b.gezin, "betaalt", "betalen")} nog ${formatEuro(x)} aan ${o.gezin}` +
-            (teVeel ? ` (${o.gezin} ${ww(o.gezin, "heeft", "hebben")} eerder ${formatEuro(x)} te veel betaald).` : "."),
-        )
-        b.rest -= x
-        o.rest -= x
-      }
+    const opdrachten = verrekenOpdrachten(z)
+    if (opdrachten.length === 0) uit.push("Tussen de gezinnen is alles verrekend.")
+    for (const o of opdrachten) {
+      const teVeel = z.verrekeningen.some((v) => v.van === o.aan && v.aan === o.van)
+      uit.push(
+        `Conclusie: ${o.van} ${ww(o.van, "betaalt", "betalen")} nog ${formatEuro(o.bedrag_cent)} aan ${o.aan}` +
+          (teVeel ? ` (${o.aan} ${ww(o.aan, "heeft", "hebben")} eerder ${formatEuro(o.bedrag_cent)} te veel betaald).` : "."),
+      )
     }
   }
   // Uit de huuropbrengst
@@ -352,5 +345,22 @@ export function toelichting(z: Zomerverdeling): string[] {
     )
   }
   if (uit.length === 0) uit.push("Er valt deze zomer niets te verrekenen.")
+  return uit
+}
+
+/** Wie aan wie nog moet betalen om "Verrekenen tussen gezinnen" op nul te krijgen. */
+export function verrekenOpdrachten(z: Zomerverdeling): ZomerVerrekening[] {
+  const betalers = z.gezinnen.filter((g) => g.tussenGezinnen_cent < 0).map((g) => ({ gezin: g.gezin, rest: -g.tussenGezinnen_cent }))
+  const ontvangers = z.gezinnen.filter((g) => g.tussenGezinnen_cent > 0).map((g) => ({ gezin: g.gezin, rest: g.tussenGezinnen_cent }))
+  const uit: ZomerVerrekening[] = []
+  for (const b of betalers) {
+    for (const o of ontvangers) {
+      const x = Math.min(b.rest, o.rest)
+      if (x <= 0) continue
+      uit.push({ van: b.gezin, aan: o.gezin, bedrag_cent: x })
+      b.rest -= x
+      o.rest -= x
+    }
+  }
   return uit
 }
