@@ -539,8 +539,8 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
                 <Kolomkop k="gezin" open={uitleg} onKies={setUitleg} className="pr-3">Gezin</Kolomkop>
                 <Kolomkop k="gebruikt" open={uitleg} onKies={setUitleg} className="pr-3">Zelf gebruikt</Kolomkop>
                 <Kolomkop k="afgezien" open={uitleg} onKies={setUitleg} className="pr-3">Afgezien</Kolomkop>
-                <Kolomkop k="afgezieneWeken" open={uitleg} onKies={setUitleg} className="pr-3 text-right">Afgeziene weken</Kolomkop>
-                <Kolomkop k="gedeeld" open={uitleg} onKies={setUitleg} className="pr-3 text-right">Gedeeld</Kolomkop>
+                <Kolomkop k="afgezieneWeken" open={uitleg} onKies={setUitleg} className="pr-3 text-right">Opbrengst afgeziene weken</Kolomkop>
+                <Kolomkop k="gedeeld" open={uitleg} onKies={setUitleg} className="pr-3 text-right">Gedeelde opbrengst</Kolomkop>
                 <Kolomkop k="rechtOp" open={uitleg} onKies={setUitleg} className="text-right">Recht op huuropbrengst</Kolomkop>
                 {metHuur && <Kolomkop k="gehuurd" open={uitleg} onKies={setUitleg} className="pl-3 text-right">Gehuurde huizen</Kolomkop>}
                 {metVerrekend && <Kolomkop k="verrekend" open={uitleg} onKies={setUitleg} className="pl-3 text-right">Al verrekend</Kolomkop>}
@@ -773,19 +773,19 @@ const KOLOMMEN: Record<KolomUitleg, { titel: string; tekst: string }> = {
     tekst: "Het deel van het recht van 3 weken (21 nachten) dat het gezin niet heeft gebruikt: 3 weken min \"Zelf gebruikt\". Bij meer dan 3 weken gebruik staat hier \"–\".",
   },
   afgezieneWeken: {
-    titel: "Afgeziene weken",
+    titel: "Opbrengst afgeziene weken",
     tekst:
       "De huuropbrengst van verhuurde nachten die zijn toegerekend aan de weken waarvan dit gezin heeft afgezien. Verhuurde nachten vullen eerst " +
       "die afgeziene weken; hebben beide gezinnen afgezien, dan naar verhouding. Opbrengst = huur en extra's zonder toeristenbelasting, min park- en " +
       "schoonmaakkosten PLD, gemiddeld per verhuurde nacht.",
   },
   gedeeld: {
-    titel: "Gedeeld",
+    titel: "Gedeelde opbrengst",
     tekst: "Is er meer verhuurd dan er afgeziene weken waren, dan wordt de opbrengst van de rest gelijk over de gezinnen verdeeld. Dit is het deel van dit gezin.",
   },
   rechtOp: {
     titel: "Recht op huuropbrengst",
-    tekst: "\"Afgeziene weken\" + \"Gedeeld\": wat dit gezin uit de huuropbrengst krijgt. Dit komt van de gezamenlijke rekening, niet van het andere gezin.",
+    tekst: "\"Opbrengst afgeziene weken\" + \"Gedeelde opbrengst\": wat dit gezin uit de huuropbrengst krijgt. Dit komt van de gezamenlijke rekening, niet van het andere gezin.",
   },
   gehuurd: {
     titel: "Gehuurde huizen",
