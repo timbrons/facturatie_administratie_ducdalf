@@ -467,7 +467,7 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
     downloadCsv(`zomerverdeling-${jaar}.csv`, [
       ["Zomer", periode!.van, periode!.tot, `${z.nachten} nachten`],
       [],
-      ["Gezin", "Recht (nachten)", "Gebruikt (nachten)", "Afgezien (nachten)", "Opbrengst afgeziene weken", "Aandeel gedeelde opbrengst", "Totaal opbrengst (uit huuropbrengst)", "Gehuurde huizen (betaald min aandeel)", "Al verrekend", "Nog tussen gezinnen"],
+      ["Gezin", "Recht (nachten)", "Gebruikt (nachten)", "Afgezien (nachten)", "Opbrengst afgeziene weken", "Aandeel gedeelde opbrengst", "Totaal opbrengst (uit huuropbrengst)", "Saldo gehuurde huizen (betaald min aandeel)", "Al verrekend", "Nog tussen gezinnen"],
       ...z.gezinnen.map((g) => [
         g.gezin, g.recht, g.gebruikt, g.afgezien, csvBedrag(g.opbrengstAfgezien_cent), csvBedrag(g.opbrengstGedeeld_cent), csvBedrag(g.opbrengst_cent),
         csvBedrag(g.verrekening_cent), csvBedrag(g.verrekend_cent), csvBedrag(g.tussenGezinnen_cent),
@@ -542,7 +542,7 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
                 <Kolomkop k="afgezieneWeken" open={uitleg} onKies={setUitleg} className="pr-3 text-right">Opbrengst afgeziene weken</Kolomkop>
                 <Kolomkop k="gedeeld" open={uitleg} onKies={setUitleg} className="pr-3 text-right">Gedeelde opbrengst</Kolomkop>
                 <Kolomkop k="rechtOp" open={uitleg} onKies={setUitleg} className="text-right">Recht op huuropbrengst</Kolomkop>
-                {metHuur && <Kolomkop k="gehuurd" open={uitleg} onKies={setUitleg} className="pl-3 text-right">Gehuurde huizen</Kolomkop>}
+                {metHuur && <Kolomkop k="gehuurd" open={uitleg} onKies={setUitleg} className="pl-3 text-right">Saldo gehuurde huizen</Kolomkop>}
                 {metVerrekend && <Kolomkop k="verrekend" open={uitleg} onKies={setUitleg} className="pl-3 text-right">Al verrekend</Kolomkop>}
                 {metSaldo && <Kolomkop k="nogTussen" open={uitleg} onKies={setUitleg} className="pl-3 text-right">Nog tussen gezinnen</Kolomkop>}
               </tr>
@@ -592,7 +592,7 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
       {z.huurhuizen.length > 0 && (
         <Kaart titel="Gehuurde huizen">
           <p className="mb-3 text-sm text-zacht">
-            De huur van alle gehuurde huizen samen wordt gelijk over de gezinnen verdeeld. In de kolom "Gehuurde huizen" hierboven staat per gezin
+            De huur van alle gehuurde huizen samen wordt gelijk over de gezinnen verdeeld. In de kolom "Saldo gehuurde huizen" hierboven staat per gezin
             het verschil tussen wat het zelf betaalde en zijn aandeel (plus = krijgt terug, min = moet nog bijdragen). Is dat al (deels) verrekend,
             leg dat dan vast bij Tussentijds verrekend.
           </p>
@@ -631,7 +631,7 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
                   <th className="py-2 pr-3 font-semibold">Gezin</th>
                   <th className="py-2 pr-3 text-right font-semibold">Zelf betaald</th>
                   <th className="py-2 pr-3 text-right font-semibold">Aandeel</th>
-                  <th className="py-2 text-right font-semibold">Verschil</th>
+                  <th className="py-2 text-right font-semibold">Saldo</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-lijn tabular-nums">
@@ -788,7 +788,7 @@ const KOLOMMEN: Record<KolomUitleg, { titel: string; tekst: string }> = {
     tekst: "\"Opbrengst afgeziene weken\" + \"Gedeelde opbrengst\": wat dit gezin uit de huuropbrengst krijgt. Dit komt van de gezamenlijke rekening, niet van het andere gezin.",
   },
   gehuurd: {
-    titel: "Gehuurde huizen",
+    titel: "Saldo gehuurde huizen",
     tekst:
       "De huur van alle gehuurde huizen op het park samen wordt gelijk over de gezinnen verdeeld. Hier staat wat dit gezin zelf aan huur betaalde, " +
       "min zijn aandeel. Plus = krijgt terug, min = moet nog bijdragen. De berekening per huis en per gezin staat in het blok Gehuurde huizen.",
@@ -800,7 +800,7 @@ const KOLOMMEN: Record<KolomUitleg, { titel: string; tekst: string }> = {
   nogTussen: {
     titel: "Nog tussen gezinnen",
     tekst:
-      "\"Gehuurde huizen\" + \"Al verrekend\": wat de gezinnen elkaar nog moeten betalen. Plus = krijgt nog van het andere gezin, min = moet nog betalen. " +
+      "\"Saldo gehuurde huizen\" + \"Al verrekend\": wat de gezinnen elkaar nog moeten betalen. Plus = krijgt nog van het andere gezin, min = moet nog betalen. " +
       "De huuropbrengst (Recht op huuropbrengst) staat daar los van.",
   },
 }
