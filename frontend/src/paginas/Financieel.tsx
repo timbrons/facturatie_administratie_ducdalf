@@ -2,14 +2,14 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useMemo, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom"
 import { pb } from "../lib/pb"
-import { sleutels, useBetalingen, useBoekingen, useFacturen, useInstellingen, useOpslaan, useTbAangiften, useZomerVerrekeningen } from "../lib/data"
+import { sleutels, useBetalingen, useBoekingen, useFacturen, useInstellingen, useOpslaan, useSeizoenen, useTbAangiften, useZomerVerrekeningen } from "../lib/data"
 import { boekingNaam, type Boeking, type Factuur, type Instellingen, type TbAangifte } from "../lib/types"
 import { pdfUrl } from "../lib/facturen"
 import { dagenTussen, formatLang, isIsoDatum, jaarVan, maandNaam, vandaag } from "../domein/datum"
 import { formatEuro, type Cent } from "../domein/geld"
 import { betaalstatus, bouwFactuurregels } from "../domein/factuur"
 import { financieelOverzicht, parkkostenOverzicht, pldGefactureerd, tbOverzicht, type FinBoeking } from "../domein/financieel"
-import { RECHT_NACHTEN, standaardZomer, toelichting, verrekenOpdrachten, wekenTekst, ZOMERVAKANTIES, zomerverdeling, zomerVoor, type ZomerVerhuur } from "../domein/zomer"
+import { hoogseizoenTarief, RECHT_NACHTEN, standaardZomer, toelichting, verrekenOpdrachten, wekenTekst, ZOMERVAKANTIES, zomerverdeling, zomerVoor, type ZomerVerhuur } from "../domein/zomer"
 import { useEigenVerblijvenIn } from "../lib/agenda"
 import { verblijfGroepen, type EigenVerblijf } from "../domein/agenda"
 import { EigenVerblijfDialoog } from "../components/EigenVerblijf"
@@ -437,6 +437,7 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
   const [wijzigen, setWijzigen] = useState(false)
   const [verblijfOpen, setVerblijfOpen] = useState<EigenVerblijf | null>(null)
   const verrekeningen = (useZomerVerrekeningen().data ?? []).filter((v) => v.jaar === jaar)
+  const seizoenen = useSeizoenen().data ?? []
   // Uitleg bij een kolom (na een klik op ⓘ in de kolomkop)
   const [uitleg, setUitleg] = useState<KolomUitleg | null>(null)
 
@@ -454,7 +455,7 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
   const verhuur = boekingen
     .filter((b) => b.status !== "geannuleerd" && b.aankomst < periode.tot && b.vertrek > periode.van)
     .map((b) => zomerOpbrengst(b, facturen))
-  const z = zomerverdeling({ periode, gezinnen, verblijven: agenda.data?.verblijven ?? [], verhuur, verrekend: verrekeningen })
+  const z = zomerverdeling({ periode, gezinnen, verblijven: agenda.data?.verblijven ?? [], verhuur, verrekend: verrekeningen, hoogseizoen: hoogseizoenTarief(seizoenen, inst) })
   const regios = ZOMERVAKANTIES[jaar]
   const standaard = standaardZomer(jaar)
   const eigenPeriode = !!inst.zomerperiodes?.[String(jaar)]
@@ -502,8 +503,8 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
         {eigenPeriode && standaard && <p className="mb-3 text-xs text-zacht">Aangepaste periode (schoolvakanties: {formatLang(standaard.van)} t/m {formatLang(standaard.tot)}).</p>}
         <p className="mb-4 text-xs text-zacht">
           Elk gezin heeft recht op {wekenTekst(RECHT_NACHTEN)} in de zomer. Verhuurde nachten worden eerst toegerekend aan de weken waarvan een gezin
-          heeft afgezien (bij beide gezinnen naar verhouding); de opbrengst van wat daarboven is verhuurd, wordt gelijk verdeeld. Opbrengst = huur en
-          extra's zonder toeristenbelasting, min park- en schoonmaakkosten PLD; gemiddeld per verhuurde nacht.
+          heeft afgezien (bij beide gezinnen naar verhouding); de opbrengst van wat daarboven is verhuurd, wordt gelijk verdeeld. Elke verhuurde zomernacht telt
+          tegen het hoogseizoentarief (zonder parkkosten) uit de prijzen van dat jaar.
         </p>
 
         {agenda.isLoading && <p className="mb-3 text-sm text-zacht">Eigen verblijven uit Google Agenda ophalen…</p>}
@@ -665,7 +666,7 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
                   <th className="py-2 pr-3 font-semibold">Verblijf</th>
                   <th className="py-2 pr-3 font-semibold">In de zomer</th>
                   <th className="py-2 pr-3 text-right font-semibold">Opbrengst</th>
-                  <th className="py-2 text-right font-semibold">Zomerdeel</th>
+                  <th className="py-2 text-right font-semibold" title="Zomernachten × hoogseizoentarief">Zomerdeel</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-lijn tabular-nums">
@@ -675,7 +676,14 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
                     <td className="py-2 pr-3 whitespace-nowrap">{formatLang(r.aankomst)} – {formatLang(r.vertrek)}</td>
                     <td className="py-2 pr-3">{r.zomerNachten === r.nachten ? wekenTekst(r.nachten) : `${wekenTekst(r.zomerNachten)} van ${wekenTekst(r.nachten)}`}</td>
                     <td className="py-2 pr-3 text-right">{formatEuro(r.opbrengst_cent)}{r.geschat && <span className="ml-1 text-xs text-zacht">(geschat)</span>}</td>
-                    <td className="py-2 text-right">{formatEuro(r.zomerOpbrengst_cent)}</td>
+                    <td className="py-2 text-right">
+                      {formatEuro(r.zomerOpbrengst_cent)}
+                      <div className="text-xs text-zacht">
+                        {r.tarief === "hoogseizoen"
+                          ? `${wekenTekst(r.zomerNachten)} × ${formatEuro(Math.round(r.zomerOpbrengst_cent / r.zomerNachten))} hoogseizoen`
+                          : "naar rato (geen hoogseizoentarief)"}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -777,8 +785,8 @@ const KOLOMMEN: Record<KolomUitleg, { titel: string; tekst: string }> = {
     titel: "Opbrengst afgeziene weken",
     tekst:
       "De huuropbrengst van verhuurde nachten die zijn toegerekend aan de weken waarvan dit gezin heeft afgezien. Verhuurde nachten vullen eerst " +
-      "die afgeziene weken; hebben beide gezinnen afgezien, dan naar verhouding. Opbrengst = huur en extra's zonder toeristenbelasting, min park- en " +
-      "schoonmaakkosten PLD, gemiddeld per verhuurde nacht.",
+      "die afgeziene weken; hebben beide gezinnen afgezien, dan naar verhouding. Elke verhuurde zomernacht telt tegen het hoogseizoentarief " +
+      "(zonder parkkosten) uit de prijzen van dat jaar.",
   },
   gedeeld: {
     titel: "Gedeelde opbrengst",

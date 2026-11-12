@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { standaardZomer, toelichting, verdeel, wekenTekst, zomerverdeling, zomerVoor, type ZomerVerhuur } from "./zomer"
+import { hoogseizoenTarief, standaardZomer, toelichting, verdeel, wekenTekst, zomerverdeling, zomerVoor, type ZomerVerhuur } from "./zomer"
 
 const periode = { van: "2026-07-04", tot: "2026-08-30" }
 const A = "Gezin A"
@@ -203,5 +203,31 @@ describe("toelichting", () => {
     const t = toelichting(z).join("\n")
     expect(t).toContain("De verhuurde nachten vullen eerst de afgeziene weken: 1 nacht × € 100,00 = € 100,00. Die € 100,00 is voor Gezin B")
     expect(t).toContain("Er is meer verhuurd dan er afgeziene weken waren. De opbrengst van 2 nachten (€ 200,00) wordt gelijk over de gezinnen verdeeld (\"Gedeelde opbrengst\"): ieder gezin krijgt € 100,00.")
+  })
+})
+
+describe("zomernachten tegen het hoogseizoentarief", () => {
+  const seizoenen = [
+    { naam: "Middenseizoen", van: "2027-06-01", tot: "2027-07-09", prijs_per_nacht_cent: 12_800 },
+    { naam: "Hoogseizoen", van: "2027-07-10", tot: "2027-08-28", prijs_per_nacht_cent: 15_700 },
+  ]
+  const tarief = hoogseizoenTarief(seizoenen, { parkkosten_per_nacht_cent: 1_000, parkkosten_apart_op_factuur: true })
+  it("geeft het hoogseizoentarief zonder parkkosten, ook buiten de seizoensdata van dat jaar", () => {
+    expect(tarief("2027-07-10")).toBe(14_700)
+    expect(tarief("2027-08-30")).toBe(14_700)
+    expect(tarief("2026-07-10")).toBeNull()
+  })
+  it("telt een deels-zomerverblijf tegen het hoogseizoentarief, niet naar rato", () => {
+    const z = zomerverdeling({
+      periode: { van: "2027-07-10", tot: "2027-09-05" },
+      gezinnen: [A, B],
+      verblijven: [],
+      // 22 nachten met een opbrengst van € 2.625 (gemiddeld € 119,32); 1 nacht in de zomer
+      verhuur: [{ id: "x", naam: "X", aankomst: "2027-06-19", vertrek: "2027-07-11", opbrengst_cent: 262_500, geschat: false }],
+      hoogseizoen: tarief,
+    })
+    expect(z.verhuur[0]).toMatchObject({ zomerNachten: 1, zomerOpbrengst_cent: 14_700, tarief: "hoogseizoen" })
+    const zonder = zomerverdeling({ periode: { van: "2027-07-10", tot: "2027-09-05" }, gezinnen: [A, B], verblijven: [], verhuur: [{ id: "x", naam: "X", aankomst: "2027-06-19", vertrek: "2027-07-11", opbrengst_cent: 262_500, geschat: false }] })
+    expect(zonder.verhuur[0]).toMatchObject({ zomerOpbrengst_cent: 11_932, tarief: "naar rato" })
   })
 })

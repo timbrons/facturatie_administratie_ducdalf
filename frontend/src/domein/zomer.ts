@@ -89,6 +89,8 @@ export interface ZomerVerhuur {
 }
 
 export interface VerhuurRij extends ZomerVerhuur {
+  /** Hoe het zomerdeel is berekend: tegen het hoogseizoentarief, of (zonder tarief) naar rato van de opbrengst */
+  tarief: "hoogseizoen" | "naar rato"
   nachten: number
   zomerNachten: number
   zomerOpbrengst_cent: Cent
@@ -174,6 +176,12 @@ export function zomerverdeling(input: {
   gezinnen: string[]
   verblijven: ZomerVerblijf[]
   verhuur: ZomerVerhuur[]
+  /**
+   * Hoogseizoentarief per nacht (zonder parkkosten) voor een datum. Verhuurde
+   * zomernachten tellen tegen dit tarief; zonder tarief naar rato van de
+   * opbrengst van het hele verblijf.
+   */
+  hoogseizoen?: (datum: IsoDatum) => Cent | null
   /** Tussentijds al verrekende bedragen tussen de gezinnen */
   verrekend?: ZomerVerrekening[]
 }): Zomerverdeling {
@@ -195,8 +203,15 @@ export function zomerverdeling(input: {
   const verhuur: VerhuurRij[] = input.verhuur
     .map((b) => {
       const totaal = dagenTussen(b.aankomst, b.vertrek)
-      const z = inZomer(b.aankomst, b.vertrek).length
-      return { ...b, nachten: totaal, zomerNachten: z, zomerOpbrengst_cent: totaal > 0 ? Math.round((b.opbrengst_cent * z) / totaal) : 0 }
+      const zomernachten = inZomer(b.aankomst, b.vertrek)
+      const z = zomernachten.length
+      // In de verrekening tellen zomernachten tegen het hoogseizoentarief.
+      const tarieven = input.hoogseizoen ? zomernachten.map((d) => input.hoogseizoen!(d)) : []
+      if (z > 0 && tarieven.length === z && tarieven.every((t) => t !== null)) {
+        const som = tarieven.reduce((t: number, c) => t + (c ?? 0), 0)
+        return { ...b, tarief: "hoogseizoen" as const, nachten: totaal, zomerNachten: z, zomerOpbrengst_cent: som }
+      }
+      return { ...b, tarief: "naar rato" as const, nachten: totaal, zomerNachten: z, zomerOpbrengst_cent: totaal > 0 ? Math.round((b.opbrengst_cent * z) / totaal) : 0 }
     })
     .filter((r) => r.zomerNachten > 0)
     .sort((a, b) => a.aankomst.localeCompare(b.aankomst))
@@ -296,9 +311,13 @@ export function toelichting(z: Zomerverdeling): string[] {
     uit.push("In de zomer is niet verhuurd, dus er is geen huuropbrengst te verdelen.")
   } else {
     const perNacht = Math.round(z.opbrengst_cent / N)
+    const allesHoog = z.verhuur.every((r) => r.tarief === "hoogseizoen")
     uit.push(
-      `In de zomer is ${wekenTekst(N)} verhuurd. De opbrengst daarvan is ${formatEuro(z.opbrengst_cent)} ` +
-        `(huur en extra's zonder toeristenbelasting, min park- en schoonmaakkosten PLD), gemiddeld ${formatEuro(perNacht)} per nacht.`,
+      `In de zomer is ${wekenTekst(N)} verhuurd. ` +
+        (allesHoog
+          ? `Elke zomernacht telt tegen het hoogseizoentarief (zonder parkkosten): samen ${formatEuro(z.opbrengst_cent)}, ${formatEuro(perNacht)} per nacht.`
+          : `De opbrengst daarvan is ${formatEuro(z.opbrengst_cent)} (zomernachten tegen het hoogseizoentarief; waar geen tarief bekend is naar rato van ` +
+            `de huur zonder toeristenbelasting en PLD-kosten), gemiddeld ${formatEuro(perNacht)} per nacht.`),
     )
     const afziend = z.gezinnen.filter((g) => g.afgezien > 0)
     for (const g of afziend) {
@@ -402,4 +421,24 @@ export function verrekenOpdrachten(z: Zomerverdeling): ZomerVerrekening[] {
     }
   }
   return uit
+}
+
+/**
+ * Hoogseizoentarief per nacht voor de zomerverrekening: de prijs van het
+ * seizoen "Hoogseizoen" (naam bevat "hoog") van dat jaar, zonder parkkosten
+ * als die apart worden bijgehouden. Valt de nacht in zo'n seizoen, dan dat
+ * seizoen; anders het (duurste) hoogseizoen van hetzelfde jaar.
+ */
+export function hoogseizoenTarief(
+  seizoenen: { naam: string; van: IsoDatum; tot: IsoDatum; prijs_per_nacht_cent: Cent }[],
+  park: { parkkosten_per_nacht_cent?: Cent | null; parkkosten_apart_op_factuur?: boolean | null },
+): (datum: IsoDatum) => Cent | null {
+  const hoog = seizoenen.filter((s) => /hoog/i.test(s.naam))
+  const parkPerNacht = park.parkkosten_apart_op_factuur ? park.parkkosten_per_nacht_cent ?? 0 : 0
+  return (datum) => {
+    const jaar = datum.slice(0, 4)
+    const kandidaten = hoog.filter((s) => s.van.slice(0, 4) === jaar || s.tot.slice(0, 4) === jaar)
+    const s = kandidaten.find((x) => x.van <= datum && datum <= x.tot) ?? [...kandidaten].sort((a, b) => b.prijs_per_nacht_cent - a.prijs_per_nacht_cent)[0]
+    return s ? Math.max(0, s.prijs_per_nacht_cent - parkPerNacht) : null
+  }
 }
