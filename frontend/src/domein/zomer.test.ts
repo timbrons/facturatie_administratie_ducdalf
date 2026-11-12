@@ -160,7 +160,8 @@ describe("toelichting", () => {
     expect(t).toContain("Gezin B heeft al € 546,25 aan Gezin A betaald.")
     expect(t).toContain("Conclusie: Gezin A betaalt nog € 12,50 aan Gezin B (Gezin B heeft eerder € 12,50 te veel betaald).")
     expect(t).toContain("Gezin B krijgt € 95,00 uit de huuropbrengst van de zomer")
-    expect(t).toContain("In de zomer is 1 nacht verhuurd. De opbrengst daarvan is € 95,00")
+    expect(t).toContain("In de zomer is 1 nacht verhuurd. Samen telt dat voor € 95,00")
+    expect(t).toContain("geen hoogseizoentarief bekend, dus naar rato van de opbrengst van het verblijf (€ 95,00)")
     expect(t).toContain("Gezin B heeft 6 nachten van het recht van 3 weken niet gebruikt (afgezien).")
     expect(t).toContain("De verhuurde nachten vullen eerst de afgeziene weken: 1 nacht × € 95,00 = € 95,00. Die € 95,00 is voor Gezin B (\"Opbrengst afgeziene weken\").")
     expect(t).toContain("Er is niet meer verhuurd dan er afgeziene weken waren, dus er is geen gedeelde opbrengst.")
@@ -229,5 +230,11 @@ describe("zomernachten tegen het hoogseizoentarief", () => {
     expect(z.verhuur[0]).toMatchObject({ zomerNachten: 1, zomerOpbrengst_cent: 14_700, tarief: "hoogseizoen" })
     const zonder = zomerverdeling({ periode: { van: "2027-07-10", tot: "2027-09-05" }, gezinnen: [A, B], verblijven: [], verhuur: [{ id: "x", naam: "X", aankomst: "2027-06-19", vertrek: "2027-07-11", opbrengst_cent: 262_500, geschat: false }] })
     expect(zonder.verhuur[0]).toMatchObject({ zomerOpbrengst_cent: 11_932, tarief: "naar rato" })
+    const eigen = zomerverdeling({
+      periode: { van: "2027-07-10", tot: "2027-09-05" }, gezinnen: [A, B], verblijven: [], hoogseizoen: tarief,
+      verhuur: [{ id: "x", naam: "X", aankomst: "2027-06-19", vertrek: "2027-07-11", opbrengst_cent: 262_500, geschat: false, eigenTarief_cent: 13_500 }],
+    })
+    expect(eigen.verhuur[0]).toMatchObject({ zomerOpbrengst_cent: 13_500, tarief: "aangepast" })
+    expect(toelichting(eigen).join("\n")).toContain("X: aangepast tarief van € 135,00 per nacht × 1 nacht = € 135,00.")
   })
 })
