@@ -17,7 +17,7 @@ import { Starlink, TbBetalingen } from "../components/Uitgaven"
 import { TussentijdsVerrekend } from "../components/ZomerVerrekeningen"
 import { openParkkostenFactuur } from "../lib/parkkosten"
 import { csvBedrag, schrijfCsv } from "../domein/csv"
-import { Fout, Kaart, Laden, Melding, Paginakop, Veld } from "../components/ui"
+import { BedragVeld, Fout, Kaart, Laden, Melding, Paginakop, Veld } from "../components/ui"
 import { StatusFactuur } from "../components/FacturenBetalingen"
 
 type Tab = "overzicht" | "facturen" | "toeristenbelasting" | "parkkosten" | "zomer" | "starlink"
@@ -427,7 +427,7 @@ function zomerOpbrengst(b: Boeking, facturen: Factuur[]): ZomerVerhuur {
   const regels = fs.length ? fs.flatMap((f) => f.regels ?? []) : bouwFactuurregels({ ...b, nachten: dagenTussen(b.aankomst, b.vertrek) })
   const zonderTb = regels.filter((r) => r.soort !== "toeristenbelasting").reduce((t, r) => t + r.bedrag_cent, 0)
   const pld = b.parkkosten_betaald_op ? b.parkkosten_betaald_cent : pldGefactureerd(b)
-  return { id: b.id, naam: boekingNaam(b), aankomst: b.aankomst, vertrek: b.vertrek, opbrengst_cent: zonderTb - pld, geschat: fs.length === 0 }
+  return { id: b.id, naam: boekingNaam(b), aankomst: b.aankomst, vertrek: b.vertrek, opbrengst_cent: zonderTb - pld, geschat: fs.length === 0, eigenTarief_cent: b.zomer_tarief_cent || null }
 }
 
 function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen: Boeking[]; facturen: Factuur[] }) {
@@ -679,10 +679,11 @@ function Zomerverdeling({ jaar, boekingen, facturen }: { jaar: number; boekingen
                     <td className="py-2 text-right">
                       {formatEuro(r.zomerOpbrengst_cent)}
                       <div className="text-xs text-zacht">
-                        {r.tarief === "hoogseizoen"
-                          ? `${wekenTekst(r.zomerNachten)} × ${formatEuro(Math.round(r.zomerOpbrengst_cent / r.zomerNachten))} hoogseizoen`
-                          : "naar rato (geen hoogseizoentarief)"}
+                        {r.tarief === "naar rato"
+                          ? "naar rato (geen hoogseizoentarief)"
+                          : `${wekenTekst(r.zomerNachten)} × ${formatEuro(Math.round(r.zomerOpbrengst_cent / r.zomerNachten))} ${r.tarief === "aangepast" ? "aangepast tarief" : "hoogseizoen"}`}
                       </div>
+                      <TariefAanpassen boekingId={r.id} huidig={r.eigenTarief_cent ?? null} />
                     </td>
                   </tr>
                 ))}
@@ -894,5 +895,53 @@ function Conclusie({ z }: { z: ReturnType<typeof zomerverdeling> }) {
         </div>
       )}
     </section>
+  )
+}
+
+/**
+ * Afwijkend nachttarief voor de zomerverrekening van één boeking (bijv. als de
+ * huurder een ander tarief betaalde dan het hoogseizoentarief). Leeg = het
+ * hoogseizoentarief uit de prijzen.
+ */
+function TariefAanpassen({ boekingId, huidig }: { boekingId: string; huidig: Cent | null }) {
+  const qc = useQueryClient()
+  const [open, setOpen] = useState(false)
+  const [bedrag, setBedrag] = useState<Cent | null>(huidig)
+  const [bezig, setBezig] = useState(false)
+  const [fout, setFout] = useState<unknown>(null)
+
+  async function bewaar(waarde: Cent | null) {
+    setBezig(true)
+    setFout(null)
+    try {
+      await pb.collection("boekingen").update(boekingId, { zomer_tarief_cent: waarde ?? 0 })
+      await qc.invalidateQueries({ queryKey: sleutels.boekingen })
+      setOpen(false)
+    } catch (err) {
+      setFout(err)
+    } finally {
+      setBezig(false)
+    }
+  }
+
+  if (!open) {
+    return (
+      <button type="button" className="mt-1 text-xs underline" onClick={() => { setBedrag(huidig); setOpen(true) }}>
+        Tarief aanpassen
+      </button>
+    )
+  }
+  return (
+    <div className="mt-2 flex flex-col items-end gap-2 text-left">
+      <div className="w-40"><BedragVeld waarde={bedrag} onChange={setBedrag} placeholder="per nacht" /></div>
+      <div className="flex flex-wrap justify-end gap-2">
+        {huidig !== null && (
+          <button type="button" className="knop-klein" disabled={bezig} onClick={() => bewaar(null)}>Hoogseizoentarief gebruiken</button>
+        )}
+        <button type="button" className="knop-klein" onClick={() => setOpen(false)}>Annuleren</button>
+        <button type="button" className="knop-klein" disabled={bezig || !bedrag} onClick={() => bewaar(bedrag)}>Opslaan</button>
+      </div>
+      {fout ? <Fout fout={fout} /> : null}
+    </div>
   )
 }

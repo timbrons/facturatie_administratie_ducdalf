@@ -86,11 +86,13 @@ export interface ZomerVerhuur {
   opbrengst_cent: Cent
   /** true: nog geen factuur, bedrag uit de boeking */
   geschat: boolean
+  /** Handmatig ingevoerd nachttarief voor de zomerverrekening (gaat voor het hoogseizoentarief) */
+  eigenTarief_cent?: Cent | null
 }
 
 export interface VerhuurRij extends ZomerVerhuur {
   /** Hoe het zomerdeel is berekend: tegen het hoogseizoentarief, of (zonder tarief) naar rato van de opbrengst */
-  tarief: "hoogseizoen" | "naar rato"
+  tarief: "aangepast" | "hoogseizoen" | "naar rato"
   nachten: number
   zomerNachten: number
   zomerOpbrengst_cent: Cent
@@ -205,7 +207,10 @@ export function zomerverdeling(input: {
       const totaal = dagenTussen(b.aankomst, b.vertrek)
       const zomernachten = inZomer(b.aankomst, b.vertrek)
       const z = zomernachten.length
-      // In de verrekening tellen zomernachten tegen het hoogseizoentarief.
+      // Een handmatig tarief gaat voor; anders tellen zomernachten tegen het hoogseizoentarief.
+      if (b.eigenTarief_cent && b.eigenTarief_cent > 0) {
+        return { ...b, tarief: "aangepast" as const, nachten: totaal, zomerNachten: z, zomerOpbrengst_cent: z * b.eigenTarief_cent }
+      }
       const tarieven = input.hoogseizoen ? zomernachten.map((d) => input.hoogseizoen!(d)) : []
       if (z > 0 && tarieven.length === z && tarieven.every((t) => t !== null)) {
         const som = tarieven.reduce((t: number, c) => t + (c ?? 0), 0)
@@ -316,9 +321,16 @@ export function toelichting(z: Zomerverdeling): string[] {
       `In de zomer is ${wekenTekst(N)} verhuurd. ` +
         (allesHoog
           ? `Elke zomernacht telt tegen het hoogseizoentarief (zonder parkkosten): samen ${formatEuro(z.opbrengst_cent)}, ${formatEuro(perNacht)} per nacht.`
-          : `De opbrengst daarvan is ${formatEuro(z.opbrengst_cent)} (zomernachten tegen het hoogseizoentarief; waar geen tarief bekend is naar rato van ` +
-            `de huur zonder toeristenbelasting en PLD-kosten), gemiddeld ${formatEuro(perNacht)} per nacht.`),
+          : `Samen telt dat voor ${formatEuro(z.opbrengst_cent)}, gemiddeld ${formatEuro(perNacht)} per nacht. ` +
+            "Zomernachten tellen tegen het hoogseizoentarief (zonder parkkosten), behalve:"),
     )
+    for (const r of z.verhuur) {
+      if (r.tarief === "aangepast") {
+        uit.push(`${r.naam}: aangepast tarief van ${formatEuro(r.eigenTarief_cent ?? 0)} per nacht × ${wekenTekst(r.zomerNachten)} = ${formatEuro(r.zomerOpbrengst_cent)}.`)
+      } else if (r.tarief === "naar rato") {
+        uit.push(`${r.naam}: geen hoogseizoentarief bekend, dus naar rato van de opbrengst van het verblijf (${formatEuro(r.zomerOpbrengst_cent)}).`)
+      }
+    }
     const afziend = z.gezinnen.filter((g) => g.afgezien > 0)
     for (const g of afziend) {
       uit.push(`${g.gezin} ${ww(g.gezin, "heeft", "hebben")} ${wekenTekst(g.afgezien)} van het recht van 3 weken niet gebruikt (afgezien).`)

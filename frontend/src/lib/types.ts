@@ -132,6 +132,8 @@ export interface Boeking extends RecordModel {
   huur_cent: Cent
   huur_berekend_cent: Cent
   huur_handmatig: boolean
+  /** Afwijkend nachttarief voor de zomerverrekening; 0 = hoogseizoentarief */
+  zomer_tarief_cent?: Cent
   parkkosten_cent: Cent
   schoonmaak_cent: Cent
   extras: ExtraRegel[] | null
