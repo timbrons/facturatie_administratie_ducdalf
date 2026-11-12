@@ -290,6 +290,45 @@ export function toelichting(z: Zomerverdeling): string[] {
   const mv = (naam: string) => /,| en /.test(naam)
   const ww = (naam: string, enkelvoud: string, meervoud: string) => (mv(naam) ? meervoud : enkelvoud)
 
+  // Huuropbrengst: hoe "Opbrengst afgeziene weken" en "Gedeelde opbrengst" tot stand komen
+  const N = z.verhuurdeNachten
+  if (N === 0) {
+    uit.push("In de zomer is niet verhuurd, dus er is geen huuropbrengst te verdelen.")
+  } else {
+    const perNacht = Math.round(z.opbrengst_cent / N)
+    uit.push(
+      `In de zomer is ${wekenTekst(N)} verhuurd. De opbrengst daarvan is ${formatEuro(z.opbrengst_cent)} ` +
+        `(huur en extra's zonder toeristenbelasting, min park- en schoonmaakkosten PLD), gemiddeld ${formatEuro(perNacht)} per nacht.`,
+    )
+    const afziend = z.gezinnen.filter((g) => g.afgezien > 0)
+    for (const g of afziend) {
+      uit.push(`${g.gezin} ${ww(g.gezin, "heeft", "hebben")} ${wekenTekst(g.afgezien)} van het recht van 3 weken niet gebruikt (afgezien).`)
+    }
+    const naarAfgezien = N - z.gedeeldeNachten
+    const afgezienOpbrengst = z.opbrengst_cent - z.gedeeld_cent
+    if (afziend.length === 0) {
+      uit.push("Geen van de gezinnen heeft afgezien van zijn weken, dus de hele opbrengst wordt gedeeld.")
+    } else if (naarAfgezien > 0) {
+      const verdeling =
+        afziend.length === 1
+          ? `Die ${formatEuro(afgezienOpbrengst)} is voor ${afziend[0].gezin} ("Opbrengst afgeziene weken").`
+          : `Die ${formatEuro(afgezienOpbrengst)} wordt verdeeld naar verhouding van de afgeziene nachten ("Opbrengst afgeziene weken"): ` +
+            afziend.map((g) => `${g.gezin} ${formatEuro(g.opbrengstAfgezien_cent)}`).join(", ") + "."
+      uit.push(
+        `De verhuurde nachten vullen eerst de afgeziene weken: ${wekenTekst(naarAfgezien)} × ${formatEuro(perNacht)} = ${formatEuro(afgezienOpbrengst)}. ${verdeling}`,
+      )
+    }
+    if (z.gedeeldeNachten > 0) {
+      const deel = Math.round(z.gedeeld_cent / Math.max(1, n))
+      uit.push(
+        `${afziend.length ? "Er is meer verhuurd dan er afgeziene weken waren. " : ""}De opbrengst van ${wekenTekst(z.gedeeldeNachten)} ` +
+          `(${formatEuro(z.gedeeld_cent)}) wordt gelijk over de gezinnen verdeeld ("Gedeelde opbrengst"): ieder gezin krijgt ${formatEuro(deel)}.`,
+      )
+    } else if (afziend.length) {
+      uit.push("Er is niet meer verhuurd dan er afgeziene weken waren, dus er is geen gedeelde opbrengst.")
+    }
+  }
+
   const huizen = z.huurhuizen.filter((h) => h.huurkosten_cent)
   for (const h of huizen) {
     const wie = h.betaaldDoor || h.groep

@@ -160,6 +160,10 @@ describe("toelichting", () => {
     expect(t).toContain("Gezin B heeft al € 546,25 aan Gezin A betaald.")
     expect(t).toContain("Conclusie: Gezin A betaalt nog € 12,50 aan Gezin B (Gezin B heeft eerder € 12,50 te veel betaald).")
     expect(t).toContain("Gezin B krijgt € 95,00 uit de huuropbrengst van de zomer")
+    expect(t).toContain("In de zomer is 1 nacht verhuurd. De opbrengst daarvan is € 95,00")
+    expect(t).toContain("Gezin B heeft 6 nachten van het recht van 3 weken niet gebruikt (afgezien).")
+    expect(t).toContain("De verhuurde nachten vullen eerst de afgeziene weken: 1 nacht × € 95,00 = € 95,00. Die € 95,00 is voor Gezin B (\"Opbrengst afgeziene weken\").")
+    expect(t).toContain("Er is niet meer verhuurd dan er afgeziene weken waren, dus er is geen gedeelde opbrengst.")
     expect(t).toContain("van de gezamenlijke rekening")
   })
 
@@ -183,5 +187,21 @@ describe("toelichting", () => {
     expect(tekst).toContain("Samen kostten de gehuurde huizen € 3.317,50; ieder gezin draagt de helft (€ 1.658,75).")
     expect(tekst).toContain(`${T} hebben € 2.192,50 aan huur betaald en dragen € 1.658,75, dus krijgen € 533,75 terug.`)
     expect(tekst).toContain(`Conclusie: ${S} betalen nog € 533,75 aan ${T}.`)
+  })
+
+  it("legt de gedeelde opbrengst uit als er meer is verhuurd dan afgezien", () => {
+    // A gebruikt 3 weken, B 20 nachten (1 nacht afgezien); 3 nachten verhuurd à € 100
+    const z = zomerverdeling({
+      periode,
+      gezinnen: [A, B],
+      verblijven: [
+        { groep: A, aankomst: "2026-07-04", vertrek: "2026-07-25" },
+        { groep: B, aankomst: "2026-07-25", vertrek: "2026-08-14" },
+      ],
+      verhuur: [week("2026-08-14", "2026-08-17", 30_000)],
+    })
+    const t = toelichting(z).join("\n")
+    expect(t).toContain("De verhuurde nachten vullen eerst de afgeziene weken: 1 nacht × € 100,00 = € 100,00. Die € 100,00 is voor Gezin B")
+    expect(t).toContain("Er is meer verhuurd dan er afgeziene weken waren. De opbrengst van 2 nachten (€ 200,00) wordt gelijk over de gezinnen verdeeld (\"Gedeelde opbrengst\"): ieder gezin krijgt € 100,00.")
   })
 })
